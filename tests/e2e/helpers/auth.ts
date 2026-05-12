@@ -1,0 +1,22 @@
+import type { Page } from "@playwright/test";
+
+export const DEMO_BUYER = {
+  email: process.env.DEMO_BUYER_EMAIL ?? "buyer@miso.local",
+  password: process.env.DEMO_BUYER_PASSWORD ?? "misobuyer",
+};
+
+export const DEMO_ADMIN = {
+  email: process.env.DEMO_ADMIN_EMAIL ?? "admin@miso.local",
+  password: process.env.DEMO_ADMIN_PASSWORD ?? "misoadmin",
+};
+
+export async function login(
+  page: Page,
+  credentials: { email: string; password: string },
+) {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(credentials.email);
+  await page.getByLabel("Password").fill(credentials.password);
+  await page.getByRole("button", { name: /log in/i }).click();
+  await page.waitForURL((url) => !/\/login/.test(url.pathname), { timeout: 15_000 });
+}
