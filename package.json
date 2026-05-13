@@ -12,7 +12,6 @@
     "demo:seed": "MISO_DEMO_MODE=true PAYMENT_PROVIDER=mock tsx scripts/seed.ts",
     "airdrop": "tsx scripts/reset-devnet-airdrop.ts",
     "expire": "tsx scripts/expire-tickets.ts",
-    "reconcile": "tsx scripts/reconcile-redemptions.ts",
     "supabase:types": "supabase gen types typescript --local > src/types/db.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

@@ -8,10 +8,8 @@
 
 import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
-import { encrypt, decrypt } from "@/lib/crypto/aes";
+import { encrypt } from "@/lib/crypto/aes";
 import { createServiceClient } from "@/lib/supabase/service";
-import { umiFromSecret } from "@/lib/solana/umi";
-import type { Umi } from "@metaplex-foundation/umi";
 
 export interface CustodialWallet {
   address: string;
@@ -19,7 +17,7 @@ export interface CustodialWallet {
 }
 
 /** Generate a new Ed25519 keypair. Returns base58 secret + pubkey. */
-export function generateKeypair(): CustodialWallet {
+function generateKeypair(): CustodialWallet {
   const kp = Keypair.generate();
   return { address: kp.publicKey.toBase58(), secretBase58: bs58.encode(kp.secretKey) };
 }
@@ -51,47 +49,4 @@ export async function ensureCustodialWallet(userId: string): Promise<{ address: 
   if (error) throw error;
 
   return { address: wallet.address };
-}
-
-/**
- * Load a custodial Umi signer for a user. SERVICE ROLE ONLY.
- * Throws if user has no custodial wallet or is external-only.
- */
-export async function loadCustodialUmi(userId: string): Promise<Umi> {
-  const sb = createServiceClient();
-  const { data, error } = await sb
-    .from("wallets")
-    .select("encrypted_secret_key, wallet_type")
-    .eq("user_id", userId)
-    .eq("is_primary", true)
-    .single();
-  if (error) throw error;
-  if (data.wallet_type !== "custodial" || !data.encrypted_secret_key) {
-    throw new Error("User has no custodial wallet (external-only)");
-  }
-  const secret = decrypt(data.encrypted_secret_key);
-  return umiFromSecret(new Uint8Array(secret));
-}
-
-/** Sign arbitrary bytes with a user's custodial keypair. */
-export async function signWithCustodial(userId: string, message: Uint8Array): Promise<{
-  signature: string;
-  publicKey: string;
-}> {
-  const sb = createServiceClient();
-  const { data, error } = await sb
-    .from("wallets")
-    .select("encrypted_secret_key, wallet_address, wallet_type")
-    .eq("user_id", userId)
-    .eq("is_primary", true)
-    .single();
-  if (error) throw error;
-  if (data.wallet_type !== "custodial" || !data.encrypted_secret_key) {
-    throw new Error("Cannot server-sign for an external wallet");
-  }
-  const secret = decrypt(data.encrypted_secret_key);
-  const kp = Keypair.fromSecretKey(new Uint8Array(secret));
-  const nacl = await import("tweetnacl");
-  const sig = nacl.sign.detached(message, kp.secretKey);
-  return { signature: bs58.encode(sig), publicKey: data.wallet_address };
 }
