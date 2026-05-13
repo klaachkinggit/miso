@@ -9,15 +9,7 @@ const ServerEnv = z.object({
   NEXT_PUBLIC_SOLANA_RPC: z.string().url(),
   NEXT_PUBLIC_SOLANA_CLUSTER: z.enum(["devnet", "testnet", "mainnet-beta"]).default("devnet"),
   NEXT_PUBLIC_SOLANA_EXPLORER_BASE: z.string().url().default("https://explorer.solana.com"),
-  PLATFORM_TREASURY_SECRET: z.string().optional(),
-  PAYMENT_PROVIDER: z.enum(["mock", "payzone"]).default("mock"),
-  // PayZone credentials are only required when PAYMENT_PROVIDER=payzone.
-  PAYZONE_API_BASE: z.string().url().optional(),
-  PAYZONE_MERCHANT_ID: z.string().optional(),
-  PAYZONE_API_KEY: z.string().optional(),
-  PAYZONE_HMAC_SECRET: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
-  MISO_DEMO_MODE: z.enum(["true", "false"]).optional(),
 });
 
 let cached: z.infer<typeof ServerEnv> | undefined;
