@@ -6,16 +6,18 @@ import { DEMO_BUYER, DEMO_SELLER, login } from "./helpers/auth";
 // stays green on smoke tests alone.
 const fullPathEnabled = process.env.MISO_E2E_FULL === "1";
 
+async function openDemoEvent(page: Parameters<typeof login>[0]) {
+  await page.goto("/events");
+  await page.getByRole("link", { name: "Miso Demo Night" }).first().click();
+}
+
 test.describe("Full path: discover → checkout → my tickets → redeem", () => {
   test.skip(!fullPathEnabled, "Set MISO_E2E_FULL=1 with a seeded DB to run.");
 
   test("buyer purchases a ticket with Account Balance", async ({ page }) => {
     await login(page, DEMO_BUYER);
 
-    await page.goto("/events");
-    const eventLink = page.getByRole("link", { name: /view tickets/i }).first();
-    await expect(eventLink).toBeVisible();
-    await eventLink.click();
+    await openDemoEvent(page);
 
     await expect(page.getByRole("heading", { name: /tickets/i })).toBeVisible();
 
@@ -32,10 +34,7 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
   test("zero-balance holder cannot start checkout", async ({ page }) => {
     await login(page, DEMO_SELLER);
 
-    await page.goto("/events");
-    const eventLink = page.getByRole("link", { name: /view tickets/i }).first();
-    await expect(eventLink).toBeVisible();
-    await eventLink.click();
+    await openDemoEvent(page);
 
     const buyButton = page.getByRole("button", { name: /buy ticket/i }).first();
     await expect(buyButton).toBeDisabled();
@@ -49,10 +48,10 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
     await expect(page.getByRole("heading", { name: "Account Balance" })).toBeVisible();
 
     await page.getByRole("button", { name: /^charge$/i }).click();
-    await expect(page.getByText(/charging account balance is not implemented yet/i)).toBeVisible();
+    await expect(page.getByText("Charging Account Balance is not implemented yet.", { exact: true }).first()).toBeVisible();
 
     await page.getByRole("button", { name: /^cashout$/i }).click();
-    await expect(page.getByText(/cashout is not implemented yet/i)).toBeVisible();
+    await expect(page.getByText("Cashout is not implemented yet.", { exact: true }).first()).toBeVisible();
   });
 
   test("ticket appears in /tickets after purchase", async ({ page }) => {

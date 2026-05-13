@@ -33,12 +33,15 @@ export async function settlePaidPurchase(params: { purchaseId: string }): Promis
     return;
   }
 
-  await debitPurchaseBalance({
-    purchaseId: purchase.id,
-    buyerUserId: purchase.buyer_user_id,
-    amount: purchase.amount,
-    currency: purchase.currency,
-  });
+  const purchaseAmount = Number(purchase.amount);
+  if (purchaseAmount > 0) {
+    await debitPurchaseBalance({
+      purchaseId: purchase.id,
+      buyerUserId: purchase.buyer_user_id,
+      amount: purchase.amount,
+      currency: purchase.currency,
+    });
+  }
 
   try {
     await fulfillReservedTicket({
@@ -47,12 +50,14 @@ export async function settlePaidPurchase(params: { purchaseId: string }): Promis
       purchaseId: purchase.id,
     });
   } catch (error) {
-    await compensatePurchaseDebit({
-      purchaseId: purchase.id,
-      buyerUserId: purchase.buyer_user_id,
-      amount: purchase.amount,
-      currency: purchase.currency,
-    });
+    if (purchaseAmount > 0) {
+      await compensatePurchaseDebit({
+        purchaseId: purchase.id,
+        buyerUserId: purchase.buyer_user_id,
+        amount: purchase.amount,
+        currency: purchase.currency,
+      });
+    }
     await settleFailedPurchase({ purchaseId: purchase.id, ticketId: purchase.ticket_id });
     throw error;
   }

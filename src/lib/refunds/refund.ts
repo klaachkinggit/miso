@@ -53,7 +53,7 @@ export async function refundTicket(params: {
 
   await markTicketRefunded(ticket.id);
 
-  if (holderUserId && refundAmount && refundCurrency) {
+  if (holderUserId && refundAmount && refundCurrency && Number(refundAmount) > 0) {
     await creditRefundBalance({
       ticketId: ticket.id,
       holderUserId,

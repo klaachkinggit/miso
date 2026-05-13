@@ -158,12 +158,14 @@ export async function fulfillResale(params: {
   }
   if (ticket.status !== "listed") {
     if (ticket.owner_user_id === params.buyerUserId && listing.status === "active") {
-      await creditResaleSellerBalance({
-        listingId: listing.id,
-        sellerUserId: listing.seller_user_id,
-        amount: listing.price,
-        currency: listing.currency,
-      });
+      if (Number(listing.price) > 0) {
+        await creditResaleSellerBalance({
+          listingId: listing.id,
+          sellerUserId: listing.seller_user_id,
+          amount: listing.price,
+          currency: listing.currency,
+        });
+      }
       await sb
         .from("resale_listings")
         .update({
@@ -187,13 +189,16 @@ export async function fulfillResale(params: {
 
   // Ensure buyer wallet.
   const { address: buyerWallet } = await ensureCustodialWallet(params.buyerUserId);
+  const listingAmount = Number(listing.price);
 
-  await debitResaleBuyerBalance({
-    listingId: listing.id,
-    buyerUserId: params.buyerUserId,
-    amount: listing.price,
-    currency: listing.currency,
-  });
+  if (listingAmount > 0) {
+    await debitResaleBuyerBalance({
+      listingId: listing.id,
+      buyerUserId: params.buyerUserId,
+      amount: listing.price,
+      currency: listing.currency,
+    });
+  }
 
   // Demo: synthetic thaw/transfer/refreeze signatures only.
   const result = await demoMarketplaceTransfer();
@@ -207,21 +212,25 @@ export async function fulfillResale(params: {
       buyerWalletAddress: buyerWallet,
     });
   } catch (error) {
-    await compensateResaleBuyerDebit({
-      listingId: listing.id,
-      buyerUserId: params.buyerUserId,
-      amount: listing.price,
-      currency: listing.currency,
-    });
+    if (listingAmount > 0) {
+      await compensateResaleBuyerDebit({
+        listingId: listing.id,
+        buyerUserId: params.buyerUserId,
+        amount: listing.price,
+        currency: listing.currency,
+      });
+    }
     throw error;
   }
 
-  await creditResaleSellerBalance({
-    listingId: listing.id,
-    sellerUserId: listing.seller_user_id,
-    amount: listing.price,
-    currency: listing.currency,
-  });
+  if (listingAmount > 0) {
+    await creditResaleSellerBalance({
+      listingId: listing.id,
+      sellerUserId: listing.seller_user_id,
+      amount: listing.price,
+      currency: listing.currency,
+    });
+  }
 
   await sb
     .from("resale_listings")
