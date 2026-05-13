@@ -17,6 +17,14 @@ export type TicketStatus =
   | "canceled";
 export type PurchaseStatus = "pending" | "paid" | "failed" | "refunded";
 export type ListingStatus = "active" | "sold" | "canceled" | "expired";
+export type BalanceMovementType =
+  | "seed_credit"
+  | "admin_topup_credit"
+  | "purchase_debit"
+  | "resale_buyer_debit"
+  | "resale_seller_credit"
+  | "refund_credit"
+  | "compensation_credit";
 export type RedemptionResult =
   | "valid"
   | "already_used"
@@ -49,6 +57,27 @@ export interface Wallet {
   encrypted_secret_key: string | null;
   wallet_type: WalletType;
   is_primary: boolean;
+  created_at: string;
+}
+
+export interface AccountBalance {
+  id: string;
+  profile_id: string;
+  currency: Currency;
+  available_amount: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BalanceLedgerEntry {
+  id: string;
+  account_balance_id: string;
+  profile_id: string;
+  movement_type: BalanceMovementType;
+  amount: string;
+  currency: Currency;
+  reference_type: string;
+  reference_id: string;
   created_at: string;
 }
 
