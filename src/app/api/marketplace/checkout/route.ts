@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getCurrentProfile } from "@/lib/auth";
-import { paymentProvider } from "@/lib/payments";
 import { fulfillResale } from "@/lib/resale/listing";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRequestOrigin } from "@/lib/url";
@@ -48,21 +47,13 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = getRequestOrigin(request);
-    const provider = paymentProvider();
 
-    if (provider.id === "mock") {
-      // Mock provider settles synchronously — run the transfer immediately so
-      // the buyer is redirected to a success page with a real DB-paid resale.
-      await fulfillResale({ listingId: listing.id, buyerUserId: profile.id });
-      return NextResponse.json({
-        url: `${appUrl}/marketplace/success?listing_id=${listing.id}&mock=1`,
-      });
-    }
-
-    return NextResponse.json(
-      { error: `Resale checkout via ${provider.id} is not yet implemented.` },
-      { status: 501 },
-    );
+    // Mock provider settles synchronously — run the transfer immediately so
+    // the buyer is redirected to a success page with a real DB-paid resale.
+    await fulfillResale({ listingId: listing.id, buyerUserId: profile.id });
+    return NextResponse.json({
+      url: `${appUrl}/marketplace/success?listing_id=${listing.id}&mock=1`,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Checkout failed." },
