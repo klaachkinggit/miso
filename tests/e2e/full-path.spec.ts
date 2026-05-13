@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { DEMO_BUYER, login } from "./helpers/auth";
+import { DEMO_BUYER, DEMO_SELLER, login } from "./helpers/auth";
 
-// Full-path E2E (requires `npm run demo:seed` + dev server in mock-payment mode).
+// Full-path E2E (requires `npm run demo:seed` + dev server).
 // Set MISO_E2E_FULL=1 to enable. Skipped by default so CI without a seeded DB
 // stays green on smoke tests alone.
 const fullPathEnabled = process.env.MISO_E2E_FULL === "1";
@@ -9,7 +9,7 @@ const fullPathEnabled = process.env.MISO_E2E_FULL === "1";
 test.describe("Full path: discover → checkout → my tickets → redeem", () => {
   test.skip(!fullPathEnabled, "Set MISO_E2E_FULL=1 with a seeded DB to run.");
 
-  test("buyer purchases a ticket in mock-payment mode", async ({ page }) => {
+  test("buyer purchases a ticket with Account Balance", async ({ page }) => {
     await login(page, DEMO_BUYER);
 
     await page.goto("/events");
@@ -27,6 +27,32 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
     await expect(page.getByText(/ticket is ready|finalising/i)).toBeVisible({
       timeout: 30_000,
     });
+  });
+
+  test("zero-balance holder cannot start checkout", async ({ page }) => {
+    await login(page, DEMO_SELLER);
+
+    await page.goto("/events");
+    const eventLink = page.getByRole("link", { name: /view tickets/i }).first();
+    await expect(eventLink).toBeVisible();
+    await eventLink.click();
+
+    const buyButton = page.getByRole("button", { name: /buy ticket/i }).first();
+    await expect(buyButton).toBeDisabled();
+    await expect(page.getByText(/balance 0 mad/i).first()).toBeVisible();
+  });
+
+  test("funding actions are visible but not implemented", async ({ page }) => {
+    await login(page, DEMO_BUYER);
+
+    await page.goto("/balance");
+    await expect(page.getByRole("heading", { name: "Account Balance" })).toBeVisible();
+
+    await page.getByRole("button", { name: /^charge$/i }).click();
+    await expect(page.getByText(/charging account balance is not implemented yet/i)).toBeVisible();
+
+    await page.getByRole("button", { name: /^cashout$/i }).click();
+    await expect(page.getByText(/cashout is not implemented yet/i)).toBeVisible();
   });
 
   test("ticket appears in /tickets after purchase", async ({ page }) => {

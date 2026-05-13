@@ -6,6 +6,7 @@
 // Creates:
 //   - admin@miso.local       password: misoadmin
 //   - buyer@miso.local       password: misobuyer
+//   - seller@miso.local      password: misoseller
 //   - controller@miso.local  password: misocontroller
 //   - one published event ("Miso Demo Night") with two categories
 //   - 5 GA + 3 VIP tickets seeded as `available`
@@ -42,6 +43,7 @@ interface SeedUser {
 const users: SeedUser[] = [
   { email: "admin@miso.local", password: "misoadmin", display_name: "Demo Admin", role: "admin" },
   { email: "buyer@miso.local", password: "misobuyer", display_name: "Demo Buyer", role: "user" },
+  { email: "seller@miso.local", password: "misoseller", display_name: "Demo Seller", role: "user" },
   { email: "controller@miso.local", password: "misocontroller", display_name: "Demo Controller", role: "controller" },
 ];
 
@@ -186,6 +188,25 @@ async function ensureController(eventId: string, controllerUserId: string) {
     .upsert({ event_id: eventId, user_id: controllerUserId });
 }
 
+async function ensureSeedBalance(args: {
+  userId: string;
+  email: string;
+  currency: "MAD" | "EUR";
+  amount: number;
+}) {
+  const { error } = await sb.rpc("account_balance_credit", {
+    p_profile_id: args.userId,
+    p_currency: args.currency,
+    p_movement_type: "seed_credit",
+    p_amount: args.amount,
+    p_reference_type: "seed",
+    p_reference_id: `${args.email}:${args.currency}`,
+  });
+  if (error) {
+    throw new Error(`Failed to seed ${args.currency} balance for ${args.email}: ${error.message}`);
+  }
+}
+
 async function main() {
   console.log(`Seeding against ${supabaseUrl}`);
   const userIds: Record<string, string> = {};
@@ -203,6 +224,26 @@ async function main() {
 
   await ensureController(eventId, userIds["controller@miso.local"]);
   console.log("  controller assigned");
+
+  await ensureSeedBalance({
+    userId: userIds["buyer@miso.local"],
+    email: "buyer@miso.local",
+    currency: "MAD",
+    amount: 2500,
+  });
+  await ensureSeedBalance({
+    userId: userIds["buyer@miso.local"],
+    email: "buyer@miso.local",
+    currency: "EUR",
+    amount: 500,
+  });
+  await ensureSeedBalance({
+    userId: userIds["admin@miso.local"],
+    email: "admin@miso.local",
+    currency: "MAD",
+    amount: 1000,
+  });
+  console.log("  account balances seeded");
 
   console.log("\nDone. Demo credentials:");
   for (const user of users) {

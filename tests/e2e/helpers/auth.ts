@@ -10,6 +10,11 @@ export const DEMO_ADMIN = {
   password: process.env.DEMO_ADMIN_PASSWORD ?? "misoadmin",
 };
 
+export const DEMO_SELLER = {
+  email: process.env.DEMO_SELLER_EMAIL ?? "seller@miso.local",
+  password: process.env.DEMO_SELLER_PASSWORD ?? "misoseller",
+};
+
 export async function login(
   page: Page,
   credentials: { email: string; password: string },
