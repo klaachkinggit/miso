@@ -70,7 +70,6 @@ export async function POST(request: NextRequest) {
       currency: category.currency,
       successUrl: `${appUrl}/checkout/success?purchase_id=${purchase.id}`,
       cancelUrl: `${appUrl}/checkout/cancel?ticket_id=${ticket.id}&purchase_id=${purchase.id}`,
-      webhookUrl: `${appUrl}/api/webhooks/payments`,
     });
 
     await sb

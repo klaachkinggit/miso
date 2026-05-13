@@ -1,5 +1,4 @@
-// PaymentProvider — provider-agnostic interface used by checkout + webhook routes.
-// Concrete impls: MockPaymentProvider (free demo), PayzoneProvider (production).
+// PaymentProvider — interface for the mock provider used by the demo.
 
 import type { Currency } from "@/types/db";
 
@@ -17,8 +16,6 @@ export interface CreateCheckoutInput {
   currency: Currency;
   successUrl: string;      // app URL the buyer returns to on success
   cancelUrl: string;
-  // Where the provider should send asynchronous status (webhooks).
-  webhookUrl: string;
 }
 
 export interface CreateCheckoutResult {
@@ -59,7 +56,7 @@ export interface RefundResult {
 }
 
 export interface PaymentProvider {
-  readonly id: "mock" | "payzone";
+  readonly id: "mock";
 
   createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult>;
 
