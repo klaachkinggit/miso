@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Ticket } from "lucide-react";
 import { getCurrentProfile } from "@/lib/auth";
+import { listAccountBalances } from "@/lib/balances/ledger";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/site/user-menu";
 
 export async function Header() {
   const profile = await getCurrentProfile();
   const controllerOnly = profile?.role === "controller";
+  const balances = profile && !controllerOnly ? await listAccountBalances(profile.id) : [];
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/80 backdrop-blur-xl">
@@ -48,7 +50,7 @@ export async function Header() {
 
         <div className="flex items-center gap-2">
           {profile ? (
-            <UserMenu profile={profile} />
+            <UserMenu profile={profile} balances={balances} />
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>

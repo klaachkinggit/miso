@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth";
+import { creditAdminTopup } from "@/lib/balances/ledger";
 import {
   cancelEventSetup,
   cancelUnsoldInventory,
@@ -15,7 +16,13 @@ import {
   updateEventDetails,
 } from "@/lib/events/setup";
 import { refundTicket } from "@/lib/refunds/refund";
-import { CreateCategorySchema, CreateEventSchema, InviteControllerSchema, RefundSchema } from "@/lib/schemas";
+import {
+  AdminTopupSchema,
+  CreateCategorySchema,
+  CreateEventSchema,
+  InviteControllerSchema,
+  RefundSchema,
+} from "@/lib/schemas";
 import { createServiceClient } from "@/lib/supabase/service";
 
 function checkbox(formData: FormData, key: string) {
@@ -257,4 +264,42 @@ export async function refundTicketAction(formData: FormData) {
     reason: parsed.data.reason,
   });
   revalidatePath("/admin");
+}
+
+export async function adminTopupAccountBalance(formData: FormData) {
+  const admin = await requireAdmin();
+  const parsed = AdminTopupSchema.safeParse({
+    profile_id: formData.get("profile_id"),
+    currency: formData.get("currency"),
+    amount: formData.get("amount"),
+    topup_request_id: formData.get("topup_request_id"),
+  });
+  if (!parsed.success) fail("/admin", parsed.error.issues[0]?.message ?? "Invalid top-up request.");
+
+  try {
+    await creditAdminTopup({
+      profileId: parsed.data.profile_id,
+      currency: parsed.data.currency,
+      amount: parsed.data.amount,
+      referenceId: parsed.data.topup_request_id,
+    });
+
+    await audit({
+      actorUserId: admin.id,
+      action: "balance.admin_topup",
+      entityType: "profile",
+      entityId: parsed.data.profile_id,
+      metadata: {
+        amount: parsed.data.amount,
+        currency: parsed.data.currency,
+        topup_request_id: parsed.data.topup_request_id,
+      },
+    });
+  } catch (error) {
+    fail("/admin", errorMessage(error, "Account Balance could not be topped up."));
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/balance");
+  redirect("/admin?success=Account%20Balance%20topped%20up.");
 }

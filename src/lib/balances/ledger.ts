@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type {
+  AccountBalance,
   BalanceLedgerEntry,
   BalanceMovementType,
   Currency,
@@ -17,6 +18,46 @@ export class InsufficientBalanceError extends Error {
     super(message);
     this.name = "InsufficientBalanceError";
   }
+}
+
+export async function listAccountBalances(profileId: string): Promise<AccountBalance[]> {
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from("account_balances")
+    .select("*")
+    .eq("profile_id", profileId)
+    .order("currency", { ascending: true })
+    .returns<AccountBalance[]>();
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getAccountBalanceAmount(params: {
+  profileId: string;
+  currency: Currency;
+}): Promise<number> {
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from("account_balances")
+    .select("available_amount")
+    .eq("profile_id", params.profileId)
+    .eq("currency", params.currency)
+    .maybeSingle<Pick<AccountBalance, "available_amount">>();
+  if (error) throw error;
+  return data ? Number(data.available_amount) : 0;
+}
+
+export async function listBalanceLedgerEntries(profileId: string): Promise<BalanceLedgerEntry[]> {
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from("balance_ledger_entries")
+    .select("*")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: false })
+    .limit(100)
+    .returns<BalanceLedgerEntry[]>();
+  if (error) throw error;
+  return data ?? [];
 }
 
 function normalizeAmount(amount: number | string): string {

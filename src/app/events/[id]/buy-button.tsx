@@ -8,9 +8,11 @@ import { toast } from "@/components/ui/use-toast";
 export function BuyButton({
   categoryId,
   disabled,
+  reason,
 }: {
   categoryId: string;
   disabled?: boolean;
+  reason?: string | null;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -44,9 +46,14 @@ export function BuyButton({
   }
 
   return (
-    <Button type="button" onClick={startCheckout} disabled={disabled || loading} className="w-full sm:w-auto">
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-      Buy ticket
-    </Button>
+    <div className="space-y-2">
+      <Button type="button" onClick={startCheckout} disabled={disabled || loading} className="w-full sm:w-auto">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+        Buy ticket
+      </Button>
+      {disabled && reason ? (
+        <p className="text-center text-xs text-muted-foreground sm:text-right">{reason}</p>
+      ) : null}
+    </div>
   );
 }

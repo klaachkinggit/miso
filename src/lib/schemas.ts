@@ -42,6 +42,13 @@ export const RefundSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+export const AdminTopupSchema = z.object({
+  profile_id: z.string().uuid(),
+  currency: CurrencySchema,
+  amount: z.coerce.number().positive(),
+  topup_request_id: z.string().uuid(),
+});
+
 export const InviteControllerSchema = z.object({
   event_id: z.string().uuid(),
   email: z.string().email(),

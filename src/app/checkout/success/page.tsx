@@ -56,13 +56,13 @@ export default async function CheckoutSuccessPage({
           <div>
             <Badge variant={paid ? "success" : failed ? "destructive" : "warning"}>{status}</Badge>
             <h1 className="mt-4 text-2xl font-semibold">
-              {paid ? "Ticket is ready" : failed ? "Payment was not completed" : "Payment received, finalising ticket"}
+              {paid ? "Ticket is ready" : failed ? "Balance checkout was not completed" : "Balance debit received, finalising ticket"}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {paid
                 ? "Your ticket is now in My Tickets."
                 : failed
-                  ? "The reservation was released. You can try checkout again."
+                  ? "The reservation was released. You can try checkout again after checking your balance."
                   : "This page refreshes while we finalise your ticket."}
             </p>
           </div>
