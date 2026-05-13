@@ -1,7 +1,8 @@
 // scripts/seed.ts
 //
 // Seeds a fully working demo against a local Supabase stack.
-// Idempotent: re-running upserts the same fixtures.
+// Re-runnable: upserts fixtures, restores available demo inventory, and tops
+// demo balances back up to their target amounts.
 //
 // Creates:
 //   - admin@miso.local       password: misoadmin
@@ -131,19 +132,33 @@ async function ensureCategoryWithTickets(args: {
   name: string;
   price: number;
   supply: number;
-  currency: "MAD" | "EUR";
+  currency: "MAD";
 }) {
   const { data: existing } = await sb
     .from("ticket_categories")
-    .select("id")
+    .select("id, supply, sold_count")
     .eq("event_id", args.eventId)
     .eq("name", args.name)
-    .maybeSingle();
+    .maybeSingle<{ id: string; supply: number; sold_count: number }>();
   if (existing) {
+    const remaining = Math.max(0, existing.supply - existing.sold_count);
+    const ticketsToAdd = Math.max(0, args.supply - remaining);
     await sb
       .from("ticket_categories")
-      .update({ resale_enabled: true })
+      .update({
+        price: args.price,
+        currency: args.currency,
+        resale_enabled: true,
+        supply: existing.supply + ticketsToAdd,
+      })
       .eq("id", existing.id);
+    if (ticketsToAdd > 0) {
+      await insertAvailableTickets({
+        eventId: args.eventId,
+        categoryId: existing.id,
+        count: ticketsToAdd,
+      });
+    }
     return existing.id;
   }
 
@@ -161,6 +176,22 @@ async function ensureCategoryWithTickets(args: {
     .single();
   if (error || !category) throw new Error(`Failed to create category ${args.name}: ${error?.message}`);
 
+  await insertAvailableTickets({
+    eventId: args.eventId,
+    categoryId: category.id,
+    count: args.supply,
+  });
+
+  return category.id;
+}
+
+async function insertAvailableTickets(args: {
+  eventId: string;
+  categoryId: string;
+  count: number;
+}) {
+  if (args.count <= 0) return;
+
   const { data: lastTicket } = await sb
     .from("tickets")
     .select("serial_number")
@@ -170,16 +201,14 @@ async function ensureCategoryWithTickets(args: {
     .maybeSingle<{ serial_number: number }>();
   const offset = lastTicket?.serial_number ?? 0;
 
-  const ticketRows = Array.from({ length: args.supply }, (_, index) => ({
+  const ticketRows = Array.from({ length: args.count }, (_, index) => ({
     event_id: args.eventId,
-    category_id: category.id,
+    category_id: args.categoryId,
     serial_number: offset + index + 1,
     status: "available" as const,
   }));
   const { error: ticketsErr } = await sb.from("tickets").insert(ticketRows);
   if (ticketsErr) throw new Error(`Failed to seed tickets: ${ticketsErr.message}`);
-
-  return category.id;
 }
 
 async function ensureController(eventId: string, controllerUserId: string) {
@@ -191,16 +220,25 @@ async function ensureController(eventId: string, controllerUserId: string) {
 async function ensureSeedBalance(args: {
   userId: string;
   email: string;
-  currency: "MAD" | "EUR";
+  currency: "MAD";
   amount: number;
 }) {
+  const { data: balance } = await sb
+    .from("account_balances")
+    .select("available_amount")
+    .eq("profile_id", args.userId)
+    .eq("currency", args.currency)
+    .maybeSingle<{ available_amount: string }>();
+  const currentAmount = balance ? Number(balance.available_amount) : 0;
+  if (currentAmount >= args.amount) return;
+
   const { error } = await sb.rpc("account_balance_credit", {
     p_profile_id: args.userId,
     p_currency: args.currency,
     p_movement_type: "seed_credit",
-    p_amount: args.amount,
+    p_amount: args.amount - currentAmount,
     p_reference_type: "seed",
-    p_reference_id: `${args.email}:${args.currency}`,
+    p_reference_id: `${args.email}:${args.currency}:${Date.now()}`,
   });
   if (error) {
     throw new Error(`Failed to seed ${args.currency} balance for ${args.email}: ${error.message}`);
@@ -230,12 +268,6 @@ async function main() {
     email: "buyer@miso.local",
     currency: "MAD",
     amount: 2500,
-  });
-  await ensureSeedBalance({
-    userId: userIds["buyer@miso.local"],
-    email: "buyer@miso.local",
-    currency: "EUR",
-    amount: 500,
   });
   await ensureSeedBalance({
     userId: userIds["admin@miso.local"],

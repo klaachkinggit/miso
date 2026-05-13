@@ -4,7 +4,7 @@
 export type UserRole = "user" | "controller" | "admin";
 export type WalletType = "custodial" | "external";
 export type EventStatus = "draft" | "published" | "canceled" | "completed";
-export type Currency = "MAD" | "EUR";
+export type Currency = "MAD";
 export type TicketStatus =
   | "available"
   | "reserved"

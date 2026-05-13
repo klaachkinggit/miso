@@ -87,15 +87,13 @@ export function CategoriesPanel({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="currency">Currency</Label>
-                <select
+                <input
                   id="currency"
                   name="currency"
-                  defaultValue="EUR"
-                  className="h-10 rounded-md border border-input bg-background/40 px-3 text-sm"
-                >
-                  <option value="EUR">EUR</option>
-                  <option value="MAD">MAD</option>
-                </select>
+                  value="MAD"
+                  readOnly
+                  className="h-10 rounded-md border border-input bg-background/40 px-3 text-sm text-muted-foreground"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

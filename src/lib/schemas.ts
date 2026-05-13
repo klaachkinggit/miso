@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CurrencySchema = z.enum(["MAD", "EUR"]);
+export const CurrencySchema = z.literal("MAD");
 
 export const CreateEventSchema = z.object({
   name: z.string().min(2).max(120),

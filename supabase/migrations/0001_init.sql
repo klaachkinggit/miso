@@ -7,7 +7,7 @@ create extension if not exists "pgcrypto";
 create type user_role        as enum ('user', 'controller', 'admin');
 create type wallet_type      as enum ('custodial', 'external');
 create type event_status     as enum ('draft', 'published', 'canceled', 'completed');
-create type currency         as enum ('MAD', 'EUR');
+create type currency         as enum ('MAD');
 create type ticket_status    as enum ('available', 'reserved', 'sold', 'listed', 'used', 'refunded', 'canceled');
 create type purchase_status  as enum ('pending', 'paid', 'failed', 'refunded');
 create type listing_status   as enum ('active', 'sold', 'canceled', 'expired');

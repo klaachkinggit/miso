@@ -67,6 +67,7 @@ export default async function AdminPage({
           </div>
           <form action={adminTopupAccountBalance} className="grid gap-3 md:grid-cols-[1.5fr_0.8fr_1fr_auto] md:items-end">
             <input type="hidden" name="topup_request_id" value={crypto.randomUUID()} />
+            <input type="hidden" name="currency" value="MAD" />
             <div className="space-y-2">
               <Label htmlFor="profile_id">Holder</Label>
               <select
@@ -85,15 +86,12 @@ export default async function AdminPage({
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <select
+              <input
                 id="currency"
-                name="currency"
-                defaultValue="MAD"
-                className="flex h-10 w-full rounded-md border border-input bg-background/40 px-3 py-2 text-sm"
-              >
-                <option value="MAD">MAD</option>
-                <option value="EUR">EUR</option>
-              </select>
+                value="MAD"
+                disabled
+                className="flex h-10 w-full rounded-md border border-input bg-background/40 px-3 py-2 text-sm text-muted-foreground"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="amount">Amount</Label>
