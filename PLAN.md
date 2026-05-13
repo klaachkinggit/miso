@@ -1,35 +1,69 @@
-# Miso — Demo Branch
+# Miso — On-Chain Implementation
 
-This branch is a stripped-down build of Miso for live demonstration. It
-removes everything not exercised by the demo seed and demo flow:
+This branch (`on-chain-implementation`) pivots Miso from a synthetic
+demo build to a real on-chain ticketing app on **Base Sepolia** via
+**Thirdweb**.
 
-- No PayZone payment provider (mock provider only, settles inline).
-- No real Solana NFT mint (synthetic asset ids, `demo_asset_<ticket_id>`).
-- No on-chain memo / attribute / freeze plugin writes during redemption
-  or resale (synthetic signatures, `demo_redeem_*`, `demo_attr_*`, etc.).
-- No reconciliation, expiration cron, or devnet airdrop scripts.
-- No NFT clawback during refunds.
+The detailed phased plan is in [`ON_CHAIN_PLAN.md`](./ON_CHAIN_PLAN.md).
+Read that file for the authoritative architecture decisions, contract
+source, env vars, and per-phase delivery scope.
 
-For the full product roadmap — real mpl-core mint, PayZone integration,
-Anchor redemption program, recoverable resale state machine — see the
-`main` branch.
+## TL;DR
 
-## Demo Flow
+- Real ERC-721 mints on Base Sepolia (chain `84532`), one
+  `MisoTicket` contract per event.
+- User wallets pregenerated via Thirdweb In-App Wallet keyed on email.
+- **Issuer-controlled trust model**: backend wallet
+  `0x1860Ef4CdB6EFf2E06C9D3cC4b6530eb2822bAC5` holds
+  `MINTER_ROLE`, `METADATA_ROLE`, and `ADMIN_TRANSFER_ROLE` on every
+  contract. Users never sign on chain in v1.
+- Gas paid by backend wallet (Sepolia ETH free; mainnet later
+  amortized via MAD ticket-price markup).
+- MAD-only Account Balance ledger remains the in-app payment rail.
+  No stablecoin / on-chain payment in this iteration.
+- Demo data wiped and re-seeded clean.
 
-1. `cp .env.example .env.local` and fill Supabase + WALLET_ENCRYPTION_KEY.
+## Setup
+
+1. Copy `.env.example` → `.env.local`, fill Thirdweb + Supabase vars.
 2. `supabase start && supabase migration up`
 3. `npm run demo:seed`
-4. `npm run dev` (the local dev server runs on http://localhost:3002)
-5. Sign in as `buyer@miso.local`, purchase a ticket, scan the controller
-   gate QR, redeem.
+4. `npm run dev` (http://localhost:3002)
+5. Sign in as `buyer@miso.local`, purchase ticket → real mint on
+   Sepolia. Verify on https://sepolia.basescan.org/.
 
-## QA Sanity Checklist
+## Required env vars
 
-- Buyer purchase via mock payment settles inline.
-- My Tickets shows the new ticket.
-- Controller opens a gate; QR + short code both navigate to the redeem page.
-- Buyer redeems; second attempt is rejected as `already_used`.
-- Wrong buyer cannot redeem someone else's ticket.
-- Marketplace listing, cancel, and mock resale purchase all work.
-- Resale rejects used / refunded / canceled tickets.
-- Controllers cannot purchase or use marketplace.
+```
+THIRDWEB_CLIENT_ID=
+THIRDWEB_SECRET_KEY=
+THIRDWEB_API_URL=https://api.thirdweb.com
+THIRDWEB_BACKEND_WALLET_ADDRESS=0x1860Ef4CdB6EFf2E06C9D3cC4b6530eb2822bAC5
+CHAIN_ID=84532
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+## QA sanity checklist (final state)
+
+- Admin publishes event → real `MisoTicket` contract deployed; address
+  visible in admin UI + basescan.
+- Buyer purchases ticket → real ERC-721 mint to buyer smart account;
+  `mint_tx_hash` visible on ticket.
+- Buyer redeems at gate → on-chain `Redeemed=true` attribute set;
+  `redeem_tx_hash` recorded.
+- Second redeem attempt rejected.
+- Resale purchase → on-chain `adminTransfer` from seller to buyer
+  smart account; tx hash recorded.
+- Mock payment / balance settlement still works (MAD-only ledger).
+- Controller cannot mint, redeem someone else's ticket, or transfer.
+- Live Sepolia smoke test passes when `LIVE_CHAIN=true`.
+
+## Out of scope this iteration
+
+- Mainnet (Base 8453)
+- Paymaster / Account Abstraction sponsorship
+- Session-key-based user signing
+- Stablecoin (USDC) payment rail
+- Real-money charge / cashout (External Funding Rail still 501)
