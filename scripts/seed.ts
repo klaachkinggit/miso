@@ -1,6 +1,6 @@
 // scripts/seed.ts
 //
-// Seeds a fully working demo against a local Supabase + devnet Solana stack.
+// Seeds a fully working demo against a local Supabase stack.
 // Idempotent: re-running upserts the same fixtures.
 //
 // Creates:
@@ -10,7 +10,7 @@
 //   - one published event ("Miso Demo Night") with two categories
 //   - 5 GA + 3 VIP tickets seeded as `available`
 //
-// Run with: npm run demo:seed (forces MISO_DEMO_MODE=true + mock payments).
+// Run with: npm run demo:seed.
 // The script loads .env.local itself, matching the Next.js runtime.
 
 import { loadEnvConfig } from "@next/env";
