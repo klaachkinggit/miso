@@ -4,7 +4,6 @@
 import { transfer, fetchAsset } from "@metaplex-foundation/mpl-core";
 import { publicKey } from "@metaplex-foundation/umi";
 import { loadCustodialUmi } from "./wallet";
-import { buildUmi } from "./umi";
 
 export async function transferAsset(params: {
   assetAddress: string;
@@ -26,11 +25,4 @@ export async function transferAsset(params: {
   }).sendAndConfirm(umi);
 
   return { signature: Buffer.from(tx.signature).toString("base64") };
-}
-
-/** Fetch current on-chain owner of an asset. Read-only. */
-export async function fetchOnchainOwner(assetAddress: string): Promise<string> {
-  const umi = buildUmi();
-  const asset = await fetchAsset(umi, publicKey(assetAddress));
-  return asset.owner.toString();
 }
