@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { createMockCheckout } from "@/lib/payments/mock";
 import { settleFailedPurchase, settlePaidPurchase } from "@/lib/payments/settlement";
 import { PurchaseInitSchema } from "@/lib/schemas";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -55,39 +54,9 @@ export async function POST(request: NextRequest) {
     purchaseId = purchase.id;
 
     const appUrl = getRequestOrigin(request);
-    const checkout = await createMockCheckout({
-      purchaseId: purchase.id,
-      ticketId: ticket.id,
-      buyerUserId: profile.id,
-      buyerEmail: profile.email,
-      eventId: event.id,
-      eventName: event.name,
-      eventVenue: event.venue_name,
-      eventImage: event.image_url,
-      categoryName: category.name,
-      amount: parseFloat(category.price),
-      currency: category.currency,
-      successUrl: `${appUrl}/checkout/success?purchase_id=${purchase.id}`,
-      cancelUrl: `${appUrl}/checkout/cancel?ticket_id=${ticket.id}&purchase_id=${purchase.id}`,
-    });
+    await settlePaidPurchase({ purchaseId: purchase.id });
 
-    await sb
-      .from("purchases")
-      .update({
-        provider_session_id: checkout.providerSessionId,
-        provider_payment_id: checkout.providerPaymentId,
-        payment_provider: checkout.paymentProvider,
-      })
-      .eq("id", purchase.id);
-
-    if (checkout.inlineOutcome === "paid") {
-      await settlePaidPurchase({
-        purchaseId: purchase.id,
-        providerPaymentId: checkout.providerPaymentId,
-      });
-    }
-
-    return NextResponse.json({ url: checkout.redirectUrl });
+    return NextResponse.json({ url: `${appUrl}/checkout/success?purchase_id=${purchase.id}` });
   } catch (error) {
     await settleFailedPurchase({ ticketId, purchaseId });
     return NextResponse.json(

@@ -1,11 +1,12 @@
 import { fulfillReservedTicket, releaseReservation } from "@/lib/tickets/lifecycle";
+import {
+  compensatePurchaseDebit,
+  debitPurchaseBalance,
+} from "@/lib/balances/ledger";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Purchase, Ticket } from "@/types/db";
 
-export async function settlePaidPurchase(params: {
-  purchaseId: string;
-  providerPaymentId?: string | null;
-}): Promise<void> {
+export async function settlePaidPurchase(params: { purchaseId: string }): Promise<void> {
   const sb = createServiceClient();
   const { data: purchase } = await sb
     .from("purchases")
@@ -20,36 +21,50 @@ export async function settlePaidPurchase(params: {
     .eq("id", purchase.ticket_id)
     .maybeSingle<Pick<Ticket, "id" | "status" | "original_purchase_id">>();
   if (ticket?.status === "sold" && ticket.original_purchase_id === purchase.id) {
-    if (purchase.status !== "paid" || params.providerPaymentId) {
+    if (purchase.status !== "paid") {
       await sb
         .from("purchases")
         .update({
           status: "paid",
           paid_at: purchase.paid_at ?? new Date().toISOString(),
-          provider_payment_id: params.providerPaymentId ?? purchase.provider_payment_id,
         })
         .eq("id", purchase.id);
     }
     return;
   }
 
-  if (purchase.status !== "paid" || params.providerPaymentId) {
-    const { error } = await sb
-      .from("purchases")
-      .update({
-        status: "paid",
-        paid_at: purchase.paid_at ?? new Date().toISOString(),
-        provider_payment_id: params.providerPaymentId ?? purchase.provider_payment_id,
-      })
-      .eq("id", purchase.id);
-    if (error) throw error;
+  await debitPurchaseBalance({
+    purchaseId: purchase.id,
+    buyerUserId: purchase.buyer_user_id,
+    amount: purchase.amount,
+    currency: purchase.currency,
+  });
+
+  try {
+    await fulfillReservedTicket({
+      ticketId: purchase.ticket_id,
+      buyerUserId: purchase.buyer_user_id,
+      purchaseId: purchase.id,
+    });
+  } catch (error) {
+    await compensatePurchaseDebit({
+      purchaseId: purchase.id,
+      buyerUserId: purchase.buyer_user_id,
+      amount: purchase.amount,
+      currency: purchase.currency,
+    });
+    await settleFailedPurchase({ purchaseId: purchase.id, ticketId: purchase.ticket_id });
+    throw error;
   }
 
-  await fulfillReservedTicket({
-    ticketId: purchase.ticket_id,
-    buyerUserId: purchase.buyer_user_id,
-    purchaseId: purchase.id,
-  });
+  const { error } = await sb
+    .from("purchases")
+    .update({
+      status: "paid",
+      paid_at: purchase.paid_at ?? new Date().toISOString(),
+    })
+    .eq("id", purchase.id);
+  if (error) throw error;
 }
 
 export async function settleFailedPurchase(params: {

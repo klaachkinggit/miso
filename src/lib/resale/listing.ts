@@ -3,6 +3,11 @@
 // TODO V2: trustless on-chain marketplace.
 
 import { createServiceClient } from "@/lib/supabase/service";
+import {
+  compensateResaleBuyerDebit,
+  creditResaleSellerBalance,
+  debitResaleBuyerBalance,
+} from "@/lib/balances/ledger";
 import { demoMarketplaceTransfer } from "@/lib/demo/artifacts";
 import { ensureCustodialWallet } from "@/lib/solana/wallet";
 import { audit } from "@/lib/audit";
@@ -138,7 +143,9 @@ export async function fulfillResale(params: {
     .eq("id", params.listingId)
     .single<ResaleListing>();
   if (!listing) throw new Error("Listing not found");
+  if (listing.status === "sold" && listing.buyer_user_id === params.buyerUserId) return;
   if (listing.status !== "active") throw new Error("Listing not active");
+  if (listing.seller_user_id === params.buyerUserId) throw new Error("Cannot buy your own listing");
 
   const { data: ticket } = await sb
     .from("tickets")
@@ -149,7 +156,26 @@ export async function fulfillResale(params: {
   if (INVALID_FOR_RESALE.has(ticket.status)) {
     throw new Error(`Ticket cannot be transferred (status: ${ticket.status})`);
   }
-  if (ticket.status !== "listed") throw new Error(`Ticket not listed (status: ${ticket.status})`);
+  if (ticket.status !== "listed") {
+    if (ticket.owner_user_id === params.buyerUserId && listing.status === "active") {
+      await creditResaleSellerBalance({
+        listingId: listing.id,
+        sellerUserId: listing.seller_user_id,
+        amount: listing.price,
+        currency: listing.currency,
+      });
+      await sb
+        .from("resale_listings")
+        .update({
+          status: "sold",
+          buyer_user_id: params.buyerUserId,
+          sold_at: new Date().toISOString(),
+        })
+        .eq("id", listing.id);
+      return;
+    }
+    throw new Error(`Ticket not listed (status: ${ticket.status})`);
+  }
 
   const { data: event } = await sb
     .from("events")
@@ -162,15 +188,39 @@ export async function fulfillResale(params: {
   // Ensure buyer wallet.
   const { address: buyerWallet } = await ensureCustodialWallet(params.buyerUserId);
 
+  await debitResaleBuyerBalance({
+    listingId: listing.id,
+    buyerUserId: params.buyerUserId,
+    amount: listing.price,
+    currency: listing.currency,
+  });
+
   // Demo: synthetic thaw/transfer/refreeze signatures only.
   const result = await demoMarketplaceTransfer();
   const signature = result.transfer_signature;
 
-  await transferListedTicketToBuyer({
-    ticketId: ticket.id,
+  try {
+    await transferListedTicketToBuyer({
+      ticketId: ticket.id,
+      listingId: listing.id,
+      buyerUserId: params.buyerUserId,
+      buyerWalletAddress: buyerWallet,
+    });
+  } catch (error) {
+    await compensateResaleBuyerDebit({
+      listingId: listing.id,
+      buyerUserId: params.buyerUserId,
+      amount: listing.price,
+      currency: listing.currency,
+    });
+    throw error;
+  }
+
+  await creditResaleSellerBalance({
     listingId: listing.id,
-    buyerUserId: params.buyerUserId,
-    buyerWalletAddress: buyerWallet,
+    sellerUserId: listing.seller_user_id,
+    amount: listing.price,
+    currency: listing.currency,
   });
 
   await sb

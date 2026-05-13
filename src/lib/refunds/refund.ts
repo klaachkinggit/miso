@@ -6,11 +6,11 @@
 //   - Used tickets cannot be refunded.
 
 import { audit } from "@/lib/audit";
-import { refundMockPayment } from "@/lib/payments/mock";
+import { creditRefundBalance } from "@/lib/balances/ledger";
 import { markPurchaseRefunded } from "@/lib/payments/settlement";
 import { createServiceClient } from "@/lib/supabase/service";
 import { markTicketRefunded } from "@/lib/tickets/lifecycle";
-import type { Purchase, Ticket } from "@/types/db";
+import type { Purchase, ResaleListing, Ticket } from "@/types/db";
 
 export async function refundTicket(params: {
   ticketId: string;
@@ -24,30 +24,45 @@ export async function refundTicket(params: {
   if (ticket.status === "refunded") throw new Error("Already refunded");
   if (ticket.status === "used") throw new Error("Cannot refund a used ticket");
 
-  // Find purchase (use original — for resold tickets we'd ideally refund the last
-  // buyer; MVP refunds the latest paid purchase row).
+  const holderUserId = ticket.owner_user_id;
+
+  const { data: resale } = holderUserId
+    ? await sb
+        .from("resale_listings")
+        .select("*")
+        .eq("ticket_id", ticket.id)
+        .eq("buyer_user_id", holderUserId)
+        .eq("status", "sold")
+        .order("sold_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<ResaleListing>()
+    : { data: null };
+
   const { data: purchase } = await sb
     .from("purchases")
     .select("*")
     .eq("ticket_id", ticket.id)
     .eq("status", "paid")
+    .eq("buyer_user_id", holderUserId ?? "")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle<Purchase>();
 
-  let providerRefundId: string | null = null;
-  if (purchase?.provider_payment_id) {
-    try {
-      const r = await refundMockPayment();
-      providerRefundId = r.providerRefundId;
-    } catch (e) {
-      console.error("Provider refund failed", e);
-    }
-  }
+  const refundAmount = resale?.price ?? purchase?.amount;
+  const refundCurrency = resale?.currency ?? purchase?.currency;
 
   await markTicketRefunded(ticket.id);
 
-  if (purchase) {
+  if (holderUserId && refundAmount && refundCurrency) {
+    await creditRefundBalance({
+      ticketId: ticket.id,
+      holderUserId,
+      amount: refundAmount,
+      currency: refundCurrency,
+    });
+  }
+
+  if (purchase && !resale) {
     await markPurchaseRefunded(purchase.id);
   }
 
@@ -56,6 +71,11 @@ export async function refundTicket(params: {
     action: "ticket.refund",
     entityType: "ticket",
     entityId: ticket.id,
-    metadata: { provider_refund: providerRefundId, reason: params.reason },
+    metadata: {
+      holder_user_id: holderUserId,
+      refund_amount: refundAmount,
+      refund_currency: refundCurrency,
+      reason: params.reason,
+    },
   });
 }
