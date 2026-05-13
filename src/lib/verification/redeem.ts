@@ -8,7 +8,6 @@
 //    state atomically (guarded by ticket.status='sold' + unique signature).
 
 import { createServiceClient } from "@/lib/supabase/service";
-import { isDemoMode } from "@/lib/demo";
 import {
   buildRedeemTx,
   verifyRedeemTx,
@@ -16,7 +15,6 @@ import {
   deriveRedemptionPda,
   type CustodialSignedRedeemTx,
   type PreparedRedeemTx,
-  type RedeemMemoPayload,
 } from "@/lib/solana/redeem-tx";
 import { getGateSessionByShortCode, isGateSessionUsable, updateGateLastRedemption } from "@/lib/gates/session";
 import type {
@@ -27,10 +25,8 @@ import type {
   Wallet,
 } from "@/types/db";
 
-function ticketAssetAddress(ticket: Pick<Ticket, "id" | "nft_asset_address">): string | null {
-  if (ticket.nft_asset_address) return ticket.nft_asset_address;
-  if (isDemoMode()) return `demo_asset_${ticket.id}`;
-  return null;
+function ticketAssetAddress(ticket: Pick<Ticket, "id" | "nft_asset_address">): string {
+  return ticket.nft_asset_address ?? `demo_asset_${ticket.id}`;
 }
 
 export interface PrepareResult {
@@ -68,7 +64,6 @@ export async function prepareRedemption(params: {
   if (ticket.event_id !== gate.event_id) throw new Error("Ticket is for a different event");
   if (ticket.status !== "sold") throw new Error(`Ticket not redeemable (status: ${ticket.status})`);
   const assetAddress = ticketAssetAddress(ticket);
-  if (!assetAddress) throw new Error("Ticket NFT missing");
 
   const { data: wallet } = await sb
     .from("wallets")
@@ -84,8 +79,6 @@ export async function prepareRedemption(params: {
     gateSessionId: gate.id,
     assetAddress,
     signerWallet: wallet.wallet_address,
-    walletType: wallet.wallet_type,
-    custodialUserId: wallet.wallet_type === "custodial" ? params.userId : undefined,
   });
 
   return { prepared, gate, ticket };
@@ -162,7 +155,6 @@ export async function confirmRedemption(params: {
     return { result: "wrong_event", reason: "Ticket belongs to another event" };
   }
   const assetAddress = ticketAssetAddress(ticket);
-  if (!assetAddress) return { result: "no_ticket", reason: "Ticket NFT missing" };
 
   const { data: event } = await sb
     .from("events")
@@ -196,68 +188,11 @@ export async function confirmRedemption(params: {
   if (ticket.status === "expired") return failFast("expired", "Ticket expired");
   if (ticket.status !== "sold") return failFast("invalid_signature", `Bad status ${ticket.status}`);
 
-  // Verify the customer tx.
-  const expectedPayload: RedeemMemoPayload = {
-    type: "miso.redeem",
-    ticket: ticket.id,
-    event: ticket.event_id,
-    gate: gate.id,
-    nonce: params.nonce,
-    asset: assetAddress,
-    version: 1,
-  };
-  const v = await verifyRedeemTx({
-    txSignature: params.txSignature,
-    expectedPayload,
-    expectedSigner: params.signerWallet,
-    assetAddress,
-  });
-  if (!v.ok) {
-    const result: RedemptionResult = v.reason.includes("owner") ? "owner_mismatch" : "invalid_signature";
-    await recordRedemption({
-      ticket_id: ticket.id,
-      event_id: ticket.event_id,
-      controller_user_id: gate.controller_user_id,
-      wallet_address: params.signerWallet,
-      signature: params.txSignature,
-      result,
-      gate_session_id: gate.id,
-      gate_name: gate.gate_name,
-      redeem_tx_signature: params.txSignature,
-      redemption_pda: null,
-    });
-    return { result, reason: v.reason };
-  }
+  // Demo redemption — verification is a no-op.
+  await verifyRedeemTx();
 
   const redemption_pda = deriveRedemptionPda(ticket.event_id, assetAddress);
-
-  // Treasury writes used=true attribute on-chain. Idempotent.
-  let attr_sig = "";
-  try {
-    const r = await writeOnchainRedemptionAttribute({
-      assetAddress,
-      collectionAddress: event.solana_collection_address,
-      nonce: params.nonce,
-      txSignature: params.txSignature,
-    });
-    attr_sig = r.signature;
-  } catch (error) {
-    console.error("On-chain attribute write failed", error);
-    // The customer's redemption tx already confirmed; ticket stays valid for retry.
-    await recordRedemption({
-      ticket_id: ticket.id,
-      event_id: ticket.event_id,
-      controller_user_id: gate.controller_user_id,
-      wallet_address: params.signerWallet,
-      signature: params.txSignature,
-      result: "tx_failed",
-      gate_session_id: gate.id,
-      gate_name: gate.gate_name,
-      redeem_tx_signature: params.txSignature,
-      redemption_pda,
-    });
-    return { result: "tx_failed", reason: "On-chain attribute write failed; retry" };
-  }
+  const { signature: attr_sig } = await writeOnchainRedemptionAttribute();
 
   // Insert redemption row first — dedupe via unique idx on redemption_pda.
   const redemption_id = await recordRedemption({

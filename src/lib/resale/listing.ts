@@ -146,22 +146,17 @@ export async function fulfillResale(params: {
 
   const { data: event } = await sb
     .from("events")
-    .select("solana_collection_address, status, date")
+    .select("status, date")
     .eq("id", ticket.event_id)
-    .single<Pick<EventRow, "solana_collection_address" | "status" | "date">>();
+    .single<Pick<EventRow, "status" | "date">>();
   if (event?.status === "canceled") throw new Error("Event canceled");
   if (event && new Date(event.date).getTime() < Date.now()) throw new Error("Event already passed");
 
   // Ensure buyer wallet.
   const { address: buyerWallet } = await ensureCustodialWallet(params.buyerUserId);
 
-  // Thaw → transfer → refreeze via marketplace authority.
-  const result = await marketplaceTransfer({
-    assetAddress: ticket.nft_asset_address,
-    collectionAddress: event?.solana_collection_address ?? null,
-    sellerUserId: listing.seller_user_id,
-    buyerWallet,
-  });
+  // Demo: synthetic thaw/transfer/refreeze signatures only.
+  const result = await marketplaceTransfer();
   const signature = result.transfer_signature;
 
   // Flip DB.

@@ -6,7 +6,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { getGateSessionByShortCode, isGateSessionUsable } from "@/lib/gates/session";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatDate } from "@/lib/format";
-import { isDemoMode } from "@/lib/demo";
 import type { EventRow, Ticket, TicketCategory, Wallet } from "@/types/db";
 import { RedeemPanel } from "./redeem-panel";
 
@@ -42,8 +41,7 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
     : { data: [] as TicketCategory[] };
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
 
-  const demoMode = isDemoMode();
-  const eligible = (tickets ?? []).filter((t) => t.status === "sold" && (t.nft_asset_address || demoMode));
+  const eligible = (tickets ?? []).filter((t) => t.status === "sold");
   const ineligible = (tickets ?? []).filter((t) => !eligible.some((eligibleTicket) => eligibleTicket.id === t.id));
 
   const { data: wallet } = await sb

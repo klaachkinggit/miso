@@ -109,12 +109,7 @@ async function repairDrift() {
       .single<{ solana_collection_address: string | null }>();
 
     try {
-      await writeOnchainRedemptionAttribute({
-        assetAddress: ticket.nft_asset_address,
-        collectionAddress: event?.solana_collection_address ?? null,
-        nonce: row.redeem_tx_signature ?? "reconcile",
-        txSignature: row.redeem_tx_signature ?? "",
-      });
+      await writeOnchainRedemptionAttribute();
       fixed++;
       console.log(`Reconciled ticket ${ticket.id} (DB valid → chain used)`);
     } catch (error) {

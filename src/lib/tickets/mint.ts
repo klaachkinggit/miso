@@ -2,11 +2,8 @@
 // provider inline) after the buyer's payment has been confirmed.
 
 import { createServiceClient } from "@/lib/supabase/service";
-import { mintTicketNft } from "@/lib/solana/mint";
-import { uploadMetadata } from "@/lib/solana/metadata";
 import { ensureCustodialWallet } from "@/lib/solana/wallet";
 import { audit } from "@/lib/audit";
-import { demoMetadataUri, isDemoMode } from "@/lib/demo";
 import type { Ticket, EventRow, TicketCategory } from "@/types/db";
 
 export class StaleReservationError extends Error {
@@ -48,41 +45,10 @@ export async function fulfillPurchase(params: {
   // Ensure buyer has a custodial wallet.
   const { address: buyerWallet } = await ensureCustodialWallet(params.buyerUserId);
 
-  // Upload metadata JSON (public, no PII).
-  const metadata = {
-    name: `${event.name} — #${ticket.serial_number}`,
-    description: `${category.name} ticket to ${event.name} at ${event.venue_name}, ${event.city}.`,
-    image: event.image_url ?? "",
-    external_url: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/events/${event.id}`,
-    attributes: [
-      { trait_type: "event_id", value: event.id },
-      { trait_type: "ticket_id", value: ticket.id },
-      { trait_type: "category", value: category.name },
-      { trait_type: "serial_number", value: ticket.serial_number },
-      { trait_type: "venue", value: event.venue_name },
-      { trait_type: "city", value: event.city },
-      { trait_type: "date", value: event.date },
-      { trait_type: "status", value: "valid" },
-    ],
-  };
-  const metadataUri = isDemoMode()
-    ? demoMetadataUri("ticket", ticket.id)
-    : await uploadMetadata(`${event.id}/${ticket.id}.json`, metadata);
-
-  // Mint.
-  const demoAssetAddress = `demo_asset_${ticket.id}`;
-  const { assetAddress, signature } = isDemoMode()
-    ? { assetAddress: demoAssetAddress, signature: "demo-mode" }
-    : await mintTicketNft({
-        collectionAddress: event.solana_collection_address,
-        buyerWallet,
-        name: metadata.name,
-        metadataUri,
-        attributes: metadata.attributes.map((a) => ({
-          key: a.trait_type,
-          value: String(a.value),
-        })),
-      });
+  // Demo mint — synthetic asset id + metadata URI, no real NFT minted.
+  const metadataUri = `demo://ticket/${ticket.id}`;
+  const assetAddress = `demo_asset_${ticket.id}`;
+  const signature = "demo-mode";
 
   // Flip ticket → sold only if the original reservation still belongs to this buyer.
   const { data: updatedTicket, error: ticketUpdateError } = await sb
