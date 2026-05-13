@@ -3,9 +3,21 @@ import {
   demoTicketAssetAddress,
   demoTicketMetadataUri,
 } from "@/lib/demo/artifacts";
-import { ensureCustodialWallet } from "@/lib/solana/wallet";
 import { createServiceClient } from "@/lib/supabase/service";
+import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import type { EventRow, Ticket, TicketCategory } from "@/types/db";
+
+async function buyerWalletAddress(userId: string): Promise<string> {
+  const sb = createServiceClient();
+  const { data: profile, error } = await sb
+    .from("profiles")
+    .select("email")
+    .eq("id", userId)
+    .single<{ email: string }>();
+  if (error || !profile?.email) throw new Error("Buyer profile missing email");
+  const { smartAccountAddress } = await ensureUserWallet(userId, profile.email);
+  return smartAccountAddress;
+}
 
 const RESERVATION_TTL_MS = 10 * 60 * 1000;
 
@@ -121,7 +133,7 @@ export async function fulfillReservedTicket(params: {
     .single<TicketCategory>();
   if (!category) throw new Error("Category missing");
 
-  const { address: buyerWallet } = await ensureCustodialWallet(params.buyerUserId);
+  const buyerWallet = await buyerWalletAddress(params.buyerUserId);
   const assetAddress = demoTicketAssetAddress(ticket.id);
   const signature = "demo-mode";
 

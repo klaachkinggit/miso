@@ -9,7 +9,7 @@ import {
   debitResaleBuyerBalance,
 } from "@/lib/balances/ledger";
 import { demoMarketplaceTransfer } from "@/lib/demo/artifacts";
-import { ensureCustodialWallet } from "@/lib/solana/wallet";
+import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { audit } from "@/lib/audit";
 import {
   markTicketListed,
@@ -188,7 +188,16 @@ export async function fulfillResale(params: {
   if (event && new Date(event.date).getTime() < Date.now()) throw new Error("Event already passed");
 
   // Ensure buyer wallet.
-  const { address: buyerWallet } = await ensureCustodialWallet(params.buyerUserId);
+  const { data: buyerProfile } = await sb
+    .from("profiles")
+    .select("email")
+    .eq("id", params.buyerUserId)
+    .single<{ email: string }>();
+  if (!buyerProfile?.email) throw new Error("Buyer profile missing email");
+  const { smartAccountAddress: buyerWallet } = await ensureUserWallet(
+    params.buyerUserId,
+    buyerProfile.email,
+  );
   const listingAmount = Number(listing.price);
 
   if (listingAmount > 0) {

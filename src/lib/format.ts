@@ -79,12 +79,9 @@ export function shortAddress(addr: string | null | undefined, edge = 4): string 
   return `${addr.slice(0, edge)}…${addr.slice(-edge)}`;
 }
 
-export function explorerUrl(
-  kind: "address" | "tx",
-  value: string,
-  cluster: string = "devnet"
-): string {
-  const base = process.env.NEXT_PUBLIC_SOLANA_EXPLORER_BASE ?? "https://explorer.solana.com";
+export function explorerUrl(kind: "address" | "tx", value: string): string {
+  const base =
+    process.env.NEXT_PUBLIC_EXPLORER_BASE ?? "https://sepolia.basescan.org";
   const path = kind === "address" ? "address" : "tx";
-  return `${base}/${path}/${value}?cluster=${cluster}`;
+  return `${base}/${path}/${value}`;
 }

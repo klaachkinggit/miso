@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 
 function withError(message: string) {
   redirect(`/signup?error=${encodeURIComponent(message)}`);
@@ -16,7 +17,7 @@ export async function signupAction(formData: FormData) {
   if (password.length < 6) withError("Password must be at least 6 characters.");
 
   const sb = await createClient();
-  const { error } = await sb.auth.signUp({
+  const { data, error } = await sb.auth.signUp({
     email,
     password,
     options: {
@@ -26,6 +27,15 @@ export async function signupAction(formData: FormData) {
     },
   });
   if (error) withError(error.message);
+
+  const userId = data?.user?.id;
+  if (userId) {
+    try {
+      await ensureUserWallet(userId, email);
+    } catch (err) {
+      console.error("ensureUserWallet failed at signup", err);
+    }
+  }
 
   redirect("/events");
 }

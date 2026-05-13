@@ -17,7 +17,6 @@
 
 import { loadEnvConfig } from "@next/env";
 import { createClient } from "@supabase/supabase-js";
-import { demoCollectionAddress } from "../src/lib/demo/artifacts";
 
 loadEnvConfig(process.cwd());
 
@@ -95,7 +94,6 @@ async function ensureEvent(): Promise<string> {
         sales_enabled: true,
         resale_enabled: true,
         status: "published",
-        solana_collection_address: demoCollectionAddress(existing.id),
       })
       .eq("id", existing.id);
     return existing.id;
@@ -115,15 +113,10 @@ async function ensureEvent(): Promise<string> {
       resale_enabled: true,
       public_sales_counter_enabled: true,
       status: "published",
-      solana_collection_address: null,
     })
     .select("id")
     .single();
   if (error || !data) throw new Error(`Failed to create event: ${error?.message}`);
-  await sb
-    .from("events")
-    .update({ solana_collection_address: demoCollectionAddress(data.id) })
-    .eq("id", data.id);
   return data.id;
 }
 
