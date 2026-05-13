@@ -98,17 +98,6 @@ export async function closeGateSession(
   return data;
 }
 
-export async function expireStaleGateSessions(): Promise<number> {
-  const sb = createServiceClient();
-  const { data } = await sb
-    .from("gate_sessions")
-    .update({ status: "expired", closed_at: new Date().toISOString() })
-    .eq("status", "open")
-    .lt("expires_at", new Date().toISOString())
-    .select("id");
-  return data?.length ?? 0;
-}
-
 export async function updateGateLastRedemption(params: {
   gateSessionId: string;
   redemptionId: string;
