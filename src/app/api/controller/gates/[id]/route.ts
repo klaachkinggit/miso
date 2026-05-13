@@ -4,8 +4,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { createServiceClient } from "@/lib/supabase/service";
-import type { GateSession, TicketRedemption, Ticket } from "@/types/db";
+import { getGatePollForController } from "@/lib/gates/operations";
 
 export async function GET(
   _request: NextRequest,
@@ -18,37 +17,13 @@ export async function GET(
   }
 
   const { id } = await params;
-  const sb = createServiceClient();
-  const { data: session } = await sb
-    .from("gate_sessions")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle<GateSession>();
-
-  if (!session) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
-  if (profile.role !== "admin" && session.controller_user_id !== profile.id) {
+  let poll;
+  try {
+    poll = await getGatePollForController({ gateSessionId: id, profile });
+  } catch {
     return NextResponse.json({ error: "Not your gate." }, { status: 403 });
   }
 
-  let last_redemption: TicketRedemption | null = null;
-  let last_ticket: Pick<Ticket, "id" | "serial_number" | "status"> | null = null;
-
-  if (session.last_redemption_id) {
-    const { data } = await sb
-      .from("ticket_redemptions")
-      .select("*")
-      .eq("id", session.last_redemption_id)
-      .maybeSingle<TicketRedemption>();
-    last_redemption = data;
-  }
-  if (session.last_ticket_id) {
-    const { data } = await sb
-      .from("tickets")
-      .select("id, serial_number, status")
-      .eq("id", session.last_ticket_id)
-      .maybeSingle<Pick<Ticket, "id" | "serial_number" | "status">>();
-    last_ticket = data;
-  }
-
-  return NextResponse.json({ session, last_redemption, last_ticket });
+  if (!poll) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
+  return NextResponse.json(poll);
 }

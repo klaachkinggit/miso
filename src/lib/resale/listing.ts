@@ -3,9 +3,14 @@
 // TODO V2: trustless on-chain marketplace.
 
 import { createServiceClient } from "@/lib/supabase/service";
-import { marketplaceTransfer } from "@/lib/solana/marketplace";
+import { demoMarketplaceTransfer } from "@/lib/demo/artifacts";
 import { ensureCustodialWallet } from "@/lib/solana/wallet";
 import { audit } from "@/lib/audit";
+import {
+  markTicketListed,
+  markTicketResaleCanceled,
+  transferListedTicketToBuyer,
+} from "@/lib/tickets/lifecycle";
 import type { Ticket, EventRow, TicketCategory, ResaleListing, Wallet } from "@/types/db";
 
 const INVALID_FOR_RESALE = new Set([
@@ -71,7 +76,12 @@ export async function createResaleListing(params: {
     .single<ResaleListing>();
   if (error || !listing) throw error ?? new Error("Listing creation failed");
 
-  await sb.from("tickets").update({ status: "listed", current_listing_id: listing.id }).eq("id", ticket.id);
+  try {
+    await markTicketListed({ ticketId: ticket.id, listingId: listing.id });
+  } catch (error) {
+    await sb.from("resale_listings").update({ status: "canceled" }).eq("id", listing.id);
+    throw error;
+  }
 
   await audit({
     actorUserId: params.sellerUserId,
@@ -105,11 +115,7 @@ export async function cancelResaleListing(params: {
     .eq("id", listing.id)
     .eq("status", "active");
 
-  await sb
-    .from("tickets")
-    .update({ status: "sold", current_listing_id: null })
-    .eq("id", listing.ticket_id)
-    .eq("status", "listed");
+  await markTicketResaleCanceled({ ticketId: listing.ticket_id, listingId: listing.id });
 
   await audit({
     actorUserId: params.sellerUserId,
@@ -143,6 +149,7 @@ export async function fulfillResale(params: {
   if (INVALID_FOR_RESALE.has(ticket.status)) {
     throw new Error(`Ticket cannot be transferred (status: ${ticket.status})`);
   }
+  if (ticket.status !== "listed") throw new Error(`Ticket not listed (status: ${ticket.status})`);
 
   const { data: event } = await sb
     .from("events")
@@ -156,19 +163,15 @@ export async function fulfillResale(params: {
   const { address: buyerWallet } = await ensureCustodialWallet(params.buyerUserId);
 
   // Demo: synthetic thaw/transfer/refreeze signatures only.
-  const result = await marketplaceTransfer();
+  const result = await demoMarketplaceTransfer();
   const signature = result.transfer_signature;
 
-  // Flip DB.
-  await sb
-    .from("tickets")
-    .update({
-      owner_user_id: params.buyerUserId,
-      owner_wallet_address: buyerWallet,
-      status: "sold",
-      current_listing_id: null,
-    })
-    .eq("id", ticket.id);
+  await transferListedTicketToBuyer({
+    ticketId: ticket.id,
+    listingId: listing.id,
+    buyerUserId: params.buyerUserId,
+    buyerWalletAddress: buyerWallet,
+  });
 
   await sb
     .from("resale_listings")

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { settlePaidPurchase } from "@/lib/payments/settlement";
 import { createServiceClient } from "@/lib/supabase/service";
-import { fulfillPurchase } from "@/lib/tickets/mint";
 import type { Purchase } from "@/types/db";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -18,13 +18,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   try {
-    await fulfillPurchase({
-      ticketId: purchase.ticket_id,
-      buyerUserId: purchase.buyer_user_id,
-      purchaseId: purchase.id,
-    });
+    await settlePaidPurchase({ purchaseId: purchase.id });
   } catch (error) {
-    target.searchParams.set("error", error instanceof Error ? error.message : "Retry mint failed.");
+    target.searchParams.set("error", error instanceof Error ? error.message : "Retry fulfillment failed.");
   }
 
   return NextResponse.redirect(target);

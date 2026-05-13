@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     const appUrl = getRequestOrigin(request);
 
-    // Mock provider settles synchronously — run the transfer immediately so
+    // Mock checkout settles synchronously — run the transfer immediately so
     // the buyer is redirected to a success page with a real DB-paid resale.
     await fulfillResale({ listingId: listing.id, buyerUserId: profile.id });
     return NextResponse.json({

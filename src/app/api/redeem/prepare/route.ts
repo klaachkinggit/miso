@@ -1,5 +1,5 @@
-// POST /api/redeem/prepare — customer-side: build (and, for custodial wallets,
-// sign+submit) the Solana memo tx that proves NFT ownership.
+// POST /api/redeem/prepare — customer-side: build the demo redeem payload
+// that proves Ticket ownership for the Gate.
 
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";

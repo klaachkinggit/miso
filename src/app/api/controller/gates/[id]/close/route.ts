@@ -2,7 +2,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { closeGateSession } from "@/lib/gates/session";
+import { closeGateForController } from "@/lib/gates/operations";
 
 export async function POST(
   _request: NextRequest,
@@ -15,9 +15,7 @@ export async function POST(
   }
 
   const { id } = await params;
-  const session = await closeGateSession(id, profile.id, {
-    allowAnyController: profile.role === "admin",
-  });
+  const session = await closeGateForController({ gateSessionId: id, profile });
   if (!session) return NextResponse.json({ error: "Gate not closeable." }, { status: 404 });
   return NextResponse.json(session);
 }

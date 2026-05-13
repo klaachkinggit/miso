@@ -2,12 +2,14 @@
 //
 // Policy:
 //   - Mark ticket as refunded in DB.
-//   - Refund issued through the mock PaymentProvider when a payment exists.
+//   - Refund issued through mock payment when a payment exists.
 //   - Used tickets cannot be refunded.
 
 import { audit } from "@/lib/audit";
-import { paymentProvider } from "@/lib/payments";
+import { refundMockPayment } from "@/lib/payments/mock";
+import { markPurchaseRefunded } from "@/lib/payments/settlement";
 import { createServiceClient } from "@/lib/supabase/service";
+import { markTicketRefunded } from "@/lib/tickets/lifecycle";
 import type { Purchase, Ticket } from "@/types/db";
 
 export async function refundTicket(params: {
@@ -36,23 +38,17 @@ export async function refundTicket(params: {
   let providerRefundId: string | null = null;
   if (purchase?.provider_payment_id) {
     try {
-      const r = await paymentProvider().refund({
-        providerPaymentId: purchase.provider_payment_id,
-        reason: params.reason,
-      });
+      const r = await refundMockPayment();
       providerRefundId = r.providerRefundId;
     } catch (e) {
       console.error("Provider refund failed", e);
     }
   }
 
-  await sb
-    .from("tickets")
-    .update({ status: "refunded", refunded_at: new Date().toISOString() })
-    .eq("id", ticket.id);
+  await markTicketRefunded(ticket.id);
 
   if (purchase) {
-    await sb.from("purchases").update({ status: "refunded" }).eq("id", purchase.id);
+    await markPurchaseRefunded(purchase.id);
   }
 
   await audit({

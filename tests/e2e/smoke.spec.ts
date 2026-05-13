@@ -35,7 +35,7 @@ test.describe("Public smoke", () => {
 
   test("signup page renders form", async ({ page }) => {
     await page.goto("/signup");
-    await expect(page.getByRole("heading")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create account" })).toBeVisible();
   });
 
   test("tickets requires auth (redirects to /login)", async ({ page }) => {

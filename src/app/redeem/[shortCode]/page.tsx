@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { getCurrentUser } from "@/lib/auth";
-import { getGateSessionByShortCode, isGateSessionUsable } from "@/lib/gates/session";
+import { demoTicketAssetAddressFor } from "@/lib/demo/artifacts";
+import { getGateSessionByShortCode, isGateSessionUsable } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatDate } from "@/lib/format";
 import type { EventRow, Ticket, TicketCategory, Wallet } from "@/types/db";
@@ -91,7 +92,7 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
             id: ticket.id,
             serial_number: ticket.serial_number,
             category_name: categoryById.get(ticket.category_id)?.name ?? "Ticket",
-            asset_address: ticket.nft_asset_address ?? `demo_asset_${ticket.id}`,
+            asset_address: demoTicketAssetAddressFor(ticket),
           }))}
         />
       )}

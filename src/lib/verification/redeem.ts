@@ -1,22 +1,21 @@
-// Gate-based redemption pipeline (Path B, mpl-core).
+// Gate-based redemption pipeline for the demo branch.
 //
-// 1. Prepare: customer chose ticket, backend builds a Memo tx.
-//      Custodial → backend signs + submits immediately, returns tx_signature.
-//      External  → returns base64 unsigned tx for client signing + submission.
-// 2. Confirm: backend verifies the tx (signature, memo payload, on-chain owner),
-//    writes the on-chain redemption attribute via treasury, then flips DB
-//    state atomically (guarded by ticket.status='sold' + unique signature).
+// 1. Prepare: customer chose ticket, backend builds a synthetic redeem payload.
+// 2. Confirm: backend verifies the demo payload, records a demo attribute
+//    signature, then flips DB state atomically through the Ticket lifecycle.
 
 import { createServiceClient } from "@/lib/supabase/service";
 import {
-  buildRedeemTx,
-  verifyRedeemTx,
-  writeOnchainRedemptionAttribute,
-  deriveRedemptionPda,
-  type CustodialSignedRedeemTx,
-  type PreparedRedeemTx,
-} from "@/lib/solana/redeem-tx";
-import { getGateSessionByShortCode, isGateSessionUsable, updateGateLastRedemption } from "@/lib/gates/session";
+  demoRedemptionPda,
+  demoTicketAssetAddressFor,
+  prepareDemoRedeem,
+  verifyDemoRedeem,
+  writeDemoRedemptionAttribute,
+  type PreparedDemoRedeem,
+  type SignedDemoRedeem,
+} from "@/lib/demo/artifacts";
+import { getGateSessionByShortCode, isGateSessionUsable, updateGateLastRedemption } from "@/lib/gates/operations";
+import { markTicketRedeemed } from "@/lib/tickets/lifecycle";
 import type {
   EventRow,
   GateSession,
@@ -25,12 +24,8 @@ import type {
   Wallet,
 } from "@/types/db";
 
-function ticketAssetAddress(ticket: Pick<Ticket, "id" | "nft_asset_address">): string {
-  return ticket.nft_asset_address ?? `demo_asset_${ticket.id}`;
-}
-
 export interface PrepareResult {
-  prepared: PreparedRedeemTx | CustodialSignedRedeemTx;
+  prepared: PreparedDemoRedeem | SignedDemoRedeem;
   gate: GateSession;
   ticket: Ticket;
 }
@@ -63,7 +58,7 @@ export async function prepareRedemption(params: {
   if (ticket.owner_user_id !== params.userId) throw new Error("Not ticket owner");
   if (ticket.event_id !== gate.event_id) throw new Error("Ticket is for a different event");
   if (ticket.status !== "sold") throw new Error(`Ticket not redeemable (status: ${ticket.status})`);
-  const assetAddress = ticketAssetAddress(ticket);
+  const assetAddress = demoTicketAssetAddressFor(ticket);
 
   const { data: wallet } = await sb
     .from("wallets")
@@ -73,7 +68,7 @@ export async function prepareRedemption(params: {
     .single<Pick<Wallet, "wallet_address" | "wallet_type">>();
   if (!wallet) throw new Error("No wallet for user");
 
-  const prepared = await buildRedeemTx({
+  const prepared = await prepareDemoRedeem({
     ticketId: ticket.id,
     eventId: ticket.event_id,
     gateSessionId: gate.id,
@@ -154,7 +149,7 @@ export async function confirmRedemption(params: {
     });
     return { result: "wrong_event", reason: "Ticket belongs to another event" };
   }
-  const assetAddress = ticketAssetAddress(ticket);
+  const assetAddress = demoTicketAssetAddressFor(ticket);
 
   const { data: event } = await sb
     .from("events")
@@ -188,11 +183,10 @@ export async function confirmRedemption(params: {
   if (ticket.status === "expired") return failFast("expired", "Ticket expired");
   if (ticket.status !== "sold") return failFast("invalid_signature", `Bad status ${ticket.status}`);
 
-  // Demo redemption — verification is a no-op.
-  await verifyRedeemTx();
+  await verifyDemoRedeem();
 
-  const redemption_pda = deriveRedemptionPda(ticket.event_id, assetAddress);
-  const { signature: attr_sig } = await writeOnchainRedemptionAttribute();
+  const redemption_pda = demoRedemptionPda(ticket.event_id, assetAddress);
+  const { signature: attr_sig } = await writeDemoRedemptionAttribute();
 
   // Insert redemption row first — dedupe via unique idx on redemption_pda.
   const redemption_id = await recordRedemption({
@@ -212,21 +206,13 @@ export async function confirmRedemption(params: {
     return { result: "already_used", reason: "Concurrent redeem" };
   }
 
-  // Flip ticket guarded by current status.
-  const { data: flipped } = await sb
-    .from("tickets")
-    .update({
-      status: "used",
-      used_at: new Date().toISOString(),
-      redeem_tx_signature: params.txSignature,
-      redemption_pda,
-      redeemed_wallet_address: params.signerWallet,
-    })
-    .eq("id", ticket.id)
-    .eq("status", "sold")
-    .select("id")
-    .maybeSingle();
-  if (!flipped) {
+  const redeemed = await markTicketRedeemed({
+    ticketId: ticket.id,
+    txSignature: params.txSignature,
+    redemptionPda: redemption_pda,
+    signerWallet: params.signerWallet,
+  });
+  if (!redeemed) {
     // Race: someone else already flipped → mark this row as already_used.
     await sb
       .from("ticket_redemptions")

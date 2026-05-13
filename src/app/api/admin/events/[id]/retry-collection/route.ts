@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth";
+import { assignDemoCollection } from "@/lib/events/setup";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow } from "@/types/db";
 
@@ -20,18 +20,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.redirect(target);
   }
 
-  const collectionAddress = `demo_collection_${event.id}`;
-  await sb
-    .from("events")
-    .update({ solana_collection_address: collectionAddress })
-    .eq("id", event.id);
-  await audit({
-    actorUserId: admin.id,
-    action: "event.collection_demo_retry",
-    entityType: "event",
-    entityId: event.id,
-    metadata: { collection: collectionAddress },
-  });
+  await assignDemoCollection({ eventId: event.id, adminUserId: admin.id });
 
   return NextResponse.redirect(target);
 }

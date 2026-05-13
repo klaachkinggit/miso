@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import { releaseReservation } from "@/lib/tickets/reserve";
+import { releaseReservation } from "@/lib/tickets/lifecycle";
 import type { Ticket } from "@/types/db";
 
 export default async function CheckoutCancelPage({

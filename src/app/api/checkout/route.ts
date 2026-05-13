@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { paymentProvider } from "@/lib/payments";
+import { createMockCheckout } from "@/lib/payments/mock";
+import { settleFailedPurchase, settlePaidPurchase } from "@/lib/payments/settlement";
 import { PurchaseInitSchema } from "@/lib/schemas";
 import { createServiceClient } from "@/lib/supabase/service";
-import { reserveTicket, releaseReservation } from "@/lib/tickets/reserve";
+import { reserveTicket } from "@/lib/tickets/lifecycle";
 import { getRequestOrigin } from "@/lib/url";
 import type { EventRow, Purchase } from "@/types/db";
 
@@ -54,9 +55,7 @@ export async function POST(request: NextRequest) {
     purchaseId = purchase.id;
 
     const appUrl = getRequestOrigin(request);
-    const provider = paymentProvider();
-
-    const checkout = await provider.createCheckout({
+    const checkout = await createMockCheckout({
       purchaseId: purchase.id,
       ticketId: ticket.id,
       buyerUserId: profile.id,
@@ -76,14 +75,21 @@ export async function POST(request: NextRequest) {
       .from("purchases")
       .update({
         provider_session_id: checkout.providerSessionId,
-        payment_provider: provider.id,
+        provider_payment_id: checkout.providerPaymentId,
+        payment_provider: checkout.paymentProvider,
       })
       .eq("id", purchase.id);
 
+    if (checkout.inlineOutcome === "paid") {
+      await settlePaidPurchase({
+        purchaseId: purchase.id,
+        providerPaymentId: checkout.providerPaymentId,
+      });
+    }
+
     return NextResponse.json({ url: checkout.redirectUrl });
   } catch (error) {
-    if (ticketId) await releaseReservation(ticketId);
-    if (purchaseId) await sb.from("purchases").update({ status: "failed" }).eq("id", purchaseId);
+    await settleFailedPurchase({ ticketId, purchaseId });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Checkout failed." },
       { status: 400 },

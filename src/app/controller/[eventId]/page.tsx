@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
+import { canOperateEventGate } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, TicketRedemption } from "@/types/db";
 import { GatePanel } from "./gate-panel";
@@ -17,15 +18,8 @@ export default async function ControllerEventPage({ params }: { params: Promise<
   const { data: event } = await sb.from("events").select("*").eq("id", eventId).single<EventRow>();
   if (!event) notFound();
 
-  if (profile.role !== "admin") {
-    const { data: assignment } = await sb
-      .from("event_controllers")
-      .select("event_id")
-      .eq("event_id", eventId)
-      .eq("user_id", profile.id)
-      .maybeSingle();
-    if (!assignment) redirect("/controller");
-  }
+  const canOperateGate = await canOperateEventGate({ eventId, profile });
+  if (!canOperateGate) redirect("/controller");
 
   const { data: redemptions } = await sb
     .from("ticket_redemptions")

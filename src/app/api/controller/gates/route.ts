@@ -4,9 +4,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { OpenGateSchema } from "@/lib/schemas";
-import { createServiceClient } from "@/lib/supabase/service";
-import { openGateSession } from "@/lib/gates/session";
-import type { GateSession } from "@/types/db";
+import { listGatesForController, openGateForController } from "@/lib/gates/operations";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
@@ -14,18 +12,6 @@ function getErrorMessage(error: unknown, fallback: string) {
     return String((error as { message?: unknown }).message ?? fallback);
   }
   return fallback;
-}
-
-async function assertController(eventId: string, userId: string, role: string) {
-  if (role === "admin") return true;
-  const sb = createServiceClient();
-  const { data } = await sb
-    .from("event_controllers")
-    .select("event_id")
-    .eq("event_id", eventId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  return !!data;
 }
 
 export async function POST(request: NextRequest) {
@@ -39,21 +25,19 @@ export async function POST(request: NextRequest) {
   const parsed = OpenGateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid gate payload." }, { status: 400 });
 
-  const allowed = await assertController(parsed.data.event_id, profile.id, profile.role);
-  if (!allowed) return NextResponse.json({ error: "Not assigned to this event." }, { status: 403 });
-
   try {
-    const session = await openGateSession({
+    const session = await openGateForController({
       eventId: parsed.data.event_id,
-      controllerUserId: profile.id,
+      profile,
       gateName: parsed.data.gate_name ?? null,
       ttlHours: parsed.data.ttl_hours,
     });
     return NextResponse.json(session);
   } catch (error) {
+    const message = getErrorMessage(error, "Could not open gate.");
     return NextResponse.json(
-      { error: getErrorMessage(error, "Could not open gate.") },
-      { status: 400 }
+      { error: message },
+      { status: message === "Not assigned to this event." ? 403 : 400 }
     );
   }
 }
@@ -68,22 +52,13 @@ export async function GET(request: NextRequest) {
   const eventId = request.nextUrl.searchParams.get("event_id");
   if (!eventId) return NextResponse.json({ error: "event_id required." }, { status: 400 });
 
-  const allowed = await assertController(eventId, profile.id, profile.role);
-  if (!allowed) return NextResponse.json({ error: "Not assigned to this event." }, { status: 403 });
-
-  const sb = createServiceClient();
-  let query = sb
-    .from("gate_sessions")
-    .select("*")
-    .eq("event_id", eventId)
-    .order("opened_at", { ascending: false })
-    .limit(20);
-
-  if (profile.role !== "admin") {
-    query = query.eq("controller_user_id", profile.id);
+  try {
+    const sessions = await listGatesForController({ eventId, profile });
+    return NextResponse.json({ sessions });
+  } catch (error) {
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Could not list gates.") },
+      { status: 403 }
+    );
   }
-
-  const { data } = await query.returns<GateSession[]>();
-
-  return NextResponse.json({ sessions: data ?? [] });
 }

@@ -15,6 +15,7 @@
 
 import { loadEnvConfig } from "@next/env";
 import { createClient } from "@supabase/supabase-js";
+import { demoCollectionAddress } from "../src/lib/demo/artifacts";
 
 loadEnvConfig(process.cwd());
 
@@ -77,7 +78,7 @@ async function ensureUser(user: SeedUser): Promise<string> {
   return userId;
 }
 
-async function ensureEvent(adminId: string): Promise<string> {
+async function ensureEvent(): Promise<string> {
   const name = "Miso Demo Night";
   const { data: existing } = await sb
     .from("events")
@@ -91,6 +92,7 @@ async function ensureEvent(adminId: string): Promise<string> {
         sales_enabled: true,
         resale_enabled: true,
         status: "published",
+        solana_collection_address: demoCollectionAddress(existing.id),
       })
       .eq("id", existing.id);
     return existing.id;
@@ -110,12 +112,15 @@ async function ensureEvent(adminId: string): Promise<string> {
       resale_enabled: true,
       public_sales_counter_enabled: true,
       status: "published",
-      // Set demo collection address so checkout works without minting a real collection.
-      solana_collection_address: `demo_collection_${adminId.slice(0, 8)}`,
+      solana_collection_address: null,
     })
     .select("id")
     .single();
   if (error || !data) throw new Error(`Failed to create event: ${error?.message}`);
+  await sb
+    .from("events")
+    .update({ solana_collection_address: demoCollectionAddress(data.id) })
+    .eq("id", data.id);
   return data.id;
 }
 
@@ -189,7 +194,7 @@ async function main() {
     console.log(`  user ${user.email} → ${userIds[user.email]}`);
   }
 
-  const eventId = await ensureEvent(userIds["admin@miso.local"]);
+  const eventId = await ensureEvent();
   console.log(`  event ${eventId}`);
 
   await ensureCategoryWithTickets({ eventId, name: "General", price: 150, supply: 5, currency: "MAD" });
