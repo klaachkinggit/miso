@@ -616,6 +616,7 @@ export type Database = {
           event_id: string
           id: string
           image_url: string | null
+          last_transfer_tx_hash: string | null
           metadata_uri: string | null
           mint_tx_hash: string | null
           minted_at: string | null
@@ -640,6 +641,7 @@ export type Database = {
           event_id: string
           id?: string
           image_url?: string | null
+          last_transfer_tx_hash?: string | null
           metadata_uri?: string | null
           mint_tx_hash?: string | null
           minted_at?: string | null
@@ -664,6 +666,7 @@ export type Database = {
           event_id?: string
           id?: string
           image_url?: string | null
+          last_transfer_tx_hash?: string | null
           metadata_uri?: string | null
           mint_tx_hash?: string | null
           minted_at?: string | null
@@ -1552,3 +1555,4 @@ export type EventController = Tables<"event_controllers">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type RedemptionResult = Enums<"redemption_result">
+export type BalanceMovementType = Enums<"balance_movement_type">

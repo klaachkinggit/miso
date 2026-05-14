@@ -282,6 +282,7 @@ export async function transferListedTicketToBuyer(params: {
   listingId: string;
   buyerUserId: string;
   buyerEvmAddress: string;
+  lastTransferTxHash?: string | null;
 }): Promise<void> {
   const sb = createServiceClient();
   const { data, error } = await sb
@@ -291,6 +292,7 @@ export async function transferListedTicketToBuyer(params: {
       owner_evm_address: params.buyerEvmAddress,
       status: "sold",
       current_listing_id: null,
+      last_transfer_tx_hash: params.lastTransferTxHash ?? null,
     })
     .eq("id", params.ticketId)
     .eq("status", "listed")

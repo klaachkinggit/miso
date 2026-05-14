@@ -1,6 +1,11 @@
 // Internal resale marketplace.
-// Custodial-only in MVP. External-wallet sellers see "transfer to platform first" notice.
-// TODO V2: trustless on-chain marketplace.
+//
+// Sellers list a sold ticket → buyer settles in MAD via Account Balance →
+// backend wallet broadcasts `adminTransfer(seller, buyer, tokenId)` on the
+// event's MisoTicket contract. Users never sign on chain; transfer is
+// authorized by the listing creation itself.
+
+import type { Address } from "viem";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -8,7 +13,13 @@ import {
   creditResaleSellerBalance,
   debitResaleBuyerBalance,
 } from "@/lib/balances/ledger";
-import { demoMarketplaceTransfer } from "@/lib/demo/artifacts";
+import { encodeAdminTransfer } from "@/lib/thirdweb/contracts/misoTicket";
+import {
+  TransactionRevertError,
+  TransactionTimeoutError,
+  waitForTransaction,
+  writeContract,
+} from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { audit } from "@/lib/audit";
 import {
@@ -16,7 +27,7 @@ import {
   markTicketResaleCanceled,
   transferListedTicketToBuyer,
 } from "@/lib/tickets/lifecycle";
-import type { Ticket, EventRow, TicketCategory, ResaleListing, Wallet } from "@/types/db";
+import type { Ticket, EventRow, TicketCategory, ResaleListing } from "@/types/db";
 
 const INVALID_FOR_RESALE = new Set([
   "used",
@@ -52,20 +63,8 @@ export async function createResaleListing(params: {
     .eq("id", ticket.category_id)
     .single<TicketCategory>();
   if (!category?.resale_enabled) throw new Error("Resale not enabled for this category");
-  if (category.max_resale_price && params.price > parseFloat(category.max_resale_price)) {
-    throw new Error(`Resale price exceeds max (${category.max_resale_price})`);
-  }
-
-  const { data: wallet } = await sb
-    .from("wallets")
-    .select("wallet_type")
-    .eq("user_id", params.sellerUserId)
-    .eq("is_primary", true)
-    .single<Pick<Wallet, "wallet_type">>();
-  if (wallet?.wallet_type !== "custodial") {
-    throw new Error(
-      "Resale of external-wallet tickets not supported in MVP. Transfer to platform first."
-    );
+  if (category.max_resale_price !== null && params.price > category.max_resale_price) {
+    throw new Error(`Resale price exceeds max ${category.max_resale_price}`);
   }
 
   const { data: listing, error } = await sb
@@ -152,7 +151,11 @@ export async function fulfillResale(params: {
     .select("*")
     .eq("id", listing.ticket_id)
     .single<Ticket>();
-  if (!ticket?.nft_asset_address) throw new Error("Ticket NFT missing");
+  if (!ticket) throw new Error("Ticket missing");
+  if (!ticket.nft_contract_address || ticket.nft_token_id === null) {
+    throw new Error("Ticket has no on-chain identity");
+  }
+  if (!ticket.owner_evm_address) throw new Error("Seller smart account missing on ticket");
   if (INVALID_FOR_RESALE.has(ticket.status)) {
     throw new Error(`Ticket cannot be transferred (status: ${ticket.status})`);
   }
@@ -187,17 +190,18 @@ export async function fulfillResale(params: {
   if (event?.status === "canceled") throw new Error("Event canceled");
   if (event && new Date(event.date).getTime() < Date.now()) throw new Error("Event already passed");
 
-  // Ensure buyer wallet.
   const { data: buyerProfile } = await sb
     .from("profiles")
     .select("email")
     .eq("id", params.buyerUserId)
     .single<{ email: string }>();
   if (!buyerProfile?.email) throw new Error("Buyer profile missing email");
-  const { smartAccountAddress: buyerWallet } = await ensureUserWallet(
+  const { smartAccountAddress: buyerSmartAccount } = await ensureUserWallet(
     params.buyerUserId,
     buyerProfile.email,
   );
+
+  const sellerSmartAccount = ticket.owner_evm_address;
   const listingAmount = Number(listing.price);
 
   if (listingAmount > 0) {
@@ -209,16 +213,62 @@ export async function fulfillResale(params: {
     });
   }
 
-  // Demo: synthetic thaw/transfer/refreeze signatures only.
-  const result = await demoMarketplaceTransfer();
-  const signature = result.transfer_signature;
+  let transferTxHash: string | null = null;
+  try {
+    const data = encodeAdminTransfer({
+      from: sellerSmartAccount as Address,
+      to: buyerSmartAccount as Address,
+      tokenId: BigInt(ticket.nft_token_id),
+    });
+    const queued = await writeContract({
+      contractAddress: ticket.nft_contract_address as Address,
+      data,
+    });
+    const record = await waitForTransaction(queued.transactionId, {
+      timeoutMs: 180_000,
+    });
+    transferTxHash = record.transactionHash ?? null;
+  } catch (err) {
+    if (listingAmount > 0) {
+      await compensateResaleBuyerDebit({
+        listingId: listing.id,
+        buyerUserId: params.buyerUserId,
+        amount: listing.price,
+        currency: listing.currency,
+      });
+    }
+    const message =
+      err instanceof TransactionRevertError
+        ? `adminTransfer reverted: ${err.record.errorMessage ?? "unknown"}`
+        : err instanceof TransactionTimeoutError
+          ? `adminTransfer timed out (transactionId=${err.transactionId})`
+          : err instanceof Error
+            ? err.message
+            : "adminTransfer failed";
+    await audit({
+      actorUserId: params.buyerUserId,
+      action: "resale.transfer_failed",
+      entityType: "resale_listing",
+      entityId: listing.id,
+      metadata: {
+        ticket_id: ticket.id,
+        contract: ticket.nft_contract_address,
+        token_id: ticket.nft_token_id,
+        from: sellerSmartAccount,
+        to: buyerSmartAccount,
+        error: message,
+      },
+    });
+    throw new Error(message);
+  }
 
   try {
     await transferListedTicketToBuyer({
       ticketId: ticket.id,
       listingId: listing.id,
       buyerUserId: params.buyerUserId,
-      buyerEvmAddress: buyerWallet,
+      buyerEvmAddress: buyerSmartAccount,
+      lastTransferTxHash: transferTxHash,
     });
   } catch (error) {
     if (listingAmount > 0) {
@@ -229,6 +279,17 @@ export async function fulfillResale(params: {
         currency: listing.currency,
       });
     }
+    await audit({
+      actorUserId: params.buyerUserId,
+      action: "resale.db_update_failed",
+      entityType: "resale_listing",
+      entityId: listing.id,
+      metadata: {
+        ticket_id: ticket.id,
+        tx_hash: transferTxHash,
+        error: error instanceof Error ? error.message : "db update failed",
+      },
+    });
     throw error;
   }
 
@@ -255,6 +316,11 @@ export async function fulfillResale(params: {
     action: "resale.fulfill",
     entityType: "resale_listing",
     entityId: listing.id,
-    metadata: { tx: signature, ticket: ticket.id },
+    metadata: {
+      ticket_id: ticket.id,
+      contract: ticket.nft_contract_address,
+      token_id: ticket.nft_token_id,
+      tx_hash: transferTxHash,
+    },
   });
 }
