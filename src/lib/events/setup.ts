@@ -1,8 +1,17 @@
+import type { Address } from "viem";
+
 import { audit } from "@/lib/audit";
-import { demoCollectionAddress } from "@/lib/demo/artifacts";
 import { casablancaInputToIso } from "@/lib/format";
-import { cancelUnsoldTickets, markSoldTicketsRefundPending } from "@/lib/tickets/lifecycle";
 import { createServiceClient } from "@/lib/supabase/service";
+import { cancelUnsoldTickets, markSoldTicketsRefundPending } from "@/lib/tickets/lifecycle";
+import { encodeMisoTicketDeploy } from "@/lib/thirdweb/contracts/misoTicket";
+import { uploadFile } from "@/lib/thirdweb/storage";
+import {
+  deployContract,
+  TransactionRevertError,
+  TransactionTimeoutError,
+  waitForTransaction,
+} from "@/lib/thirdweb/transactions";
 import type { Currency, EventRow, Ticket } from "@/types/db";
 
 export interface EventDetailsInput {
@@ -31,6 +40,12 @@ export interface CategoryInput {
   benefits?: string | null;
 }
 
+function backendWallet(): Address {
+  const raw = process.env.THIRDWEB_BACKEND_WALLET_ADDRESS;
+  if (!raw) throw new Error("Missing THIRDWEB_BACKEND_WALLET_ADDRESS env var");
+  return raw as Address;
+}
+
 export async function createDraftEvent(params: {
   input: EventDetailsInput;
   adminUserId: string;
@@ -40,7 +55,6 @@ export async function createDraftEvent(params: {
     ...params.input,
     date: casablancaInputToIso(params.input.date),
     status: "draft" as const,
-    solana_collection_address: null,
   };
 
   const { data: event, error } = await sb
@@ -58,16 +72,7 @@ export async function createDraftEvent(params: {
     metadata: { name: event.name },
   });
 
-  await assignDemoCollection({
-    eventId: event.id,
-    adminUserId: params.adminUserId,
-    auditAction: "event.collection_demo",
-  });
-
-  return {
-    ...event,
-    solana_collection_address: demoCollectionAddress(event.id),
-  };
+  return event;
 }
 
 export async function updateEventDetails(params: {
@@ -176,6 +181,12 @@ export async function cancelUnsoldInventory(params: {
   });
 }
 
+// Publish flow:
+//   1. Pin image to IPFS if `image_url` set and `image_ipfs_uri` missing.
+//   2. Deploy `MisoTicket(name, "MISO", backendWallet)` if
+//      `nft_contract_address` missing. Wait until mined.
+//   3. Flip status → published.
+// Idempotent: re-running after partial failure resumes from the missing step.
 export async function publishEventSetup(params: {
   eventId: string;
   adminUserId: string;
@@ -186,8 +197,47 @@ export async function publishEventSetup(params: {
     .select("*")
     .eq("id", params.eventId)
     .single<EventRow>();
-  if (!event?.solana_collection_address) {
-    throw new Error("Assign the demo Collection before publishing.");
+  if (!event) throw new Error("Event not found.");
+
+  if (event.image_url && !event.image_ipfs_uri) {
+    const imageUri = await pinImageToIpfs(event.image_url);
+    const { error: imageError } = await sb
+      .from("events")
+      .update({ image_ipfs_uri: imageUri })
+      .eq("id", params.eventId);
+    if (imageError) throw imageError;
+    event.image_ipfs_uri = imageUri;
+    await audit({
+      actorUserId: params.adminUserId,
+      action: "event.image_pinned",
+      entityType: "event",
+      entityId: params.eventId,
+      metadata: { uri: imageUri },
+    });
+  }
+
+  if (!event.nft_contract_address) {
+    const { contractAddress, txHash, transactionId } = await deployMisoTicket({
+      name: event.name,
+      admin: backendWallet(),
+    });
+    const { error: deployError } = await sb
+      .from("events")
+      .update({ nft_contract_address: contractAddress })
+      .eq("id", params.eventId);
+    if (deployError) throw deployError;
+    event.nft_contract_address = contractAddress;
+    await audit({
+      actorUserId: params.adminUserId,
+      action: "event.contract_deployed",
+      entityType: "event",
+      entityId: params.eventId,
+      metadata: {
+        contract: contractAddress,
+        tx_hash: txHash,
+        transaction_id: transactionId,
+      },
+    });
   }
 
   const { error } = await sb
@@ -274,26 +324,53 @@ export async function createTicketCategory(params: {
   return category;
 }
 
-export async function assignDemoCollection(params: {
-  eventId: string;
-  adminUserId: string;
-  auditAction?: string;
-}): Promise<string> {
-  const sb = createServiceClient();
-  const collectionAddress = demoCollectionAddress(params.eventId);
-  const { error } = await sb
-    .from("events")
-    .update({ solana_collection_address: collectionAddress })
-    .eq("id", params.eventId);
-  if (error) throw error;
+async function pinImageToIpfs(imageUrl: string): Promise<string> {
+  const res = await fetch(imageUrl);
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch event image (${imageUrl}): HTTP ${res.status}`,
+    );
+  }
+  const mimeType = res.headers.get("content-type") ?? "application/octet-stream";
+  const blob = await res.blob();
+  return uploadFile({ data: blob, mimeType });
+}
 
-  await audit({
-    actorUserId: params.adminUserId,
-    action: params.auditAction ?? "event.collection_demo_retry",
-    entityType: "event",
-    entityId: params.eventId,
-    metadata: { collection: collectionAddress },
+async function deployMisoTicket(args: {
+  name: string;
+  admin: Address;
+}): Promise<{ contractAddress: Address; txHash: string; transactionId: string }> {
+  const bytecode = encodeMisoTicketDeploy({
+    name: args.name,
+    symbol: "MISO",
+    admin: args.admin,
   });
-
-  return collectionAddress;
+  const queued = await deployContract({ bytecode });
+  try {
+    const record = await waitForTransaction(queued.transactionId, {
+      timeoutMs: 180_000,
+    });
+    if (!record.contractAddress) {
+      throw new Error(
+        `Deploy mined but contract address missing for tx ${queued.transactionId}`,
+      );
+    }
+    return {
+      contractAddress: record.contractAddress,
+      txHash: record.transactionHash ?? "",
+      transactionId: queued.transactionId,
+    };
+  } catch (err) {
+    if (err instanceof TransactionRevertError) {
+      throw new Error(
+        `MisoTicket deploy reverted: ${err.record.errorMessage ?? "unknown"}`,
+      );
+    }
+    if (err instanceof TransactionTimeoutError) {
+      throw new Error(
+        `MisoTicket deploy timed out (transactionId=${queued.transactionId}); rerun publish to resume.`,
+      );
+    }
+    throw err;
+  }
 }

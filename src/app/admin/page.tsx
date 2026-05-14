@@ -111,7 +111,9 @@ export default async function AdminPage({
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <h2 className="text-xl font-semibold">{event.name}</h2>
                     <Badge variant={event.status === "published" ? "success" : "secondary"}>{event.status}</Badge>
-                    {!event.solana_collection_address ? <Badge variant="warning">collection pending</Badge> : null}
+                    {event.status !== "draft" && !event.nft_contract_address ? (
+                      <Badge variant="warning">contract pending</Badge>
+                    ) : null}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {formatDateShort(event.date)} at {event.venue_name}, {event.city}

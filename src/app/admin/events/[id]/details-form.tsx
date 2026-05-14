@@ -85,17 +85,26 @@ export function DetailsForm({ event }: { event: EventRow }) {
       <Card className="glass rounded-lg">
         <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="font-semibold">Solana collection</h3>
+            <h3 className="font-semibold">MisoTicket contract</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              {event.solana_collection_address
-                ? shortAddress(event.solana_collection_address, 6)
-                : "Mint is required before publishing."}
+              {event.nft_contract_address ? (
+                <a
+                  href={`https://sepolia.basescan.org/address/${event.nft_contract_address}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  {shortAddress(event.nft_contract_address, 6)}
+                </a>
+              ) : (
+                "Deployed when the event is published."
+              )}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {!event.solana_collection_address ? (
-              <form action={`/api/admin/events/${event.id}/retry-collection`} method="post">
-                <Button type="submit" variant="outline">Retry collection</Button>
+            {!event.nft_contract_address && event.status !== "draft" ? (
+              <form action={`/api/admin/events/${event.id}/retry-deploy`} method="post">
+                <Button type="submit" variant="outline">Retry deploy</Button>
               </form>
             ) : null}
             {event.status === "published" ? (

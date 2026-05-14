@@ -1531,3 +1531,23 @@ export type CompositeTypes<
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
+// ---- Convenience row aliases for app code ----
+// Generated types above are the source of truth. These aliases keep
+// imports stable across the codebase and survive regeneration.
+
+export type EventRow = Tables<"events">
+export type Profile = Tables<"profiles">
+export type Ticket = Tables<"tickets">
+export type TicketCategory = Tables<"ticket_categories">
+export type TicketRedemption = Tables<"ticket_redemptions">
+export type Purchase = Tables<"purchases">
+export type ResaleListing = Tables<"resale_listings">
+export type Wallet = Tables<"wallets">
+export type AccountBalance = Tables<"account_balances">
+export type BalanceLedgerEntry = Tables<"balance_ledger_entries">
+export type GateSession = Tables<"gate_sessions">
+export type AuditLog = Tables<"audit_logs">
+export type EventController = Tables<"event_controllers">
+
+export type Currency = Enums<"currency">
+export type UserRole = Enums<"user_role">

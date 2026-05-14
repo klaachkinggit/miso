@@ -16,6 +16,10 @@ import {
   encodeFunctionData,
 } from "viem";
 
+import { MISO_TICKET_BYTECODE } from "@/lib/thirdweb/contracts/misoTicket.bytecode";
+
+export { MISO_TICKET_BYTECODE };
+
 export const MISO_TICKET_ABI = [
   {
     type: "constructor",
@@ -85,18 +89,6 @@ export const MISO_TICKET_ABI = [
   },
 ] as const satisfies Abi;
 
-// Filled in after `forge build` / `hardhat compile`. Phase 5 deploys.
-export const MISO_TICKET_BYTECODE: Hex | "" = "";
-
-function requireBytecode(): Hex {
-  if (!MISO_TICKET_BYTECODE) {
-    throw new Error(
-      "MISO_TICKET_BYTECODE is empty — compile contracts/MisoTicket.sol and paste the bytecode into src/lib/thirdweb/contracts/misoTicket.ts",
-    );
-  }
-  return MISO_TICKET_BYTECODE;
-}
-
 export function encodeMisoTicketDeploy(args: {
   name: string;
   symbol: string;
@@ -104,7 +96,7 @@ export function encodeMisoTicketDeploy(args: {
 }): Hex {
   return encodeDeployData({
     abi: MISO_TICKET_ABI,
-    bytecode: requireBytecode(),
+    bytecode: MISO_TICKET_BYTECODE,
     args: [args.name, args.symbol, args.admin],
   });
 }
