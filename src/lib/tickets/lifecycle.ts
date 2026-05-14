@@ -1,9 +1,15 @@
+import type { Address } from "viem";
+
 import { audit } from "@/lib/audit";
-import {
-  demoTicketAssetAddress,
-  demoTicketMetadataUri,
-} from "@/lib/demo/artifacts";
 import { createServiceClient } from "@/lib/supabase/service";
+import { encodeMintTo } from "@/lib/thirdweb/contracts/misoTicket";
+import { uploadJson } from "@/lib/thirdweb/storage";
+import {
+  TransactionRevertError,
+  TransactionTimeoutError,
+  waitForTransaction,
+  writeContract,
+} from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import type { EventRow, Ticket, TicketCategory } from "@/types/db";
 
@@ -96,11 +102,24 @@ export async function releaseReservation(ticketId: string): Promise<void> {
     .eq("status", "reserved");
 }
 
+export interface FulfillReceipt {
+  contractAddress: string;
+  tokenId: number;
+  mintTxHash: string;
+  metadataUri: string;
+  ownerEvmAddress: string;
+}
+
+// Mints an ERC-721 to the buyer's smart account, then flips the reservation
+// row to `sold`. Failure at any step throws — settlement compensates the
+// debit. The DB update is conditional on the row still being the same
+// reservation, so a stale retry can't double-mint silently (a second mint
+// would conflict on the unique (contract, tokenId) index).
 export async function fulfillReservedTicket(params: {
   ticketId: string;
   buyerUserId: string;
   purchaseId: string;
-}): Promise<{ assetAddress: string; signature: string }> {
+}): Promise<FulfillReceipt> {
   const sb = createServiceClient();
 
   const { data: ticket } = await sb
@@ -124,7 +143,10 @@ export async function fulfillReservedTicket(params: {
     .eq("id", ticket.event_id)
     .single<EventRow>();
   if (!event) throw new Error("Event missing");
-  if (!event.solana_collection_address) throw new Error("Event has no collection");
+  if (!event.nft_contract_address) {
+    throw new Error("Event has no deployed contract");
+  }
+  const contractAddress = event.nft_contract_address as Address;
 
   const { data: category } = await sb
     .from("ticket_categories")
@@ -134,17 +156,55 @@ export async function fulfillReservedTicket(params: {
   if (!category) throw new Error("Category missing");
 
   const buyerWallet = await buyerWalletAddress(params.buyerUserId);
-  const assetAddress = demoTicketAssetAddress(ticket.id);
-  const signature = "demo-mode";
+  const buyerAddress = buyerWallet as Address;
+
+  const metadata = {
+    name: `${event.name} — Ticket #${ticket.serial_number}`,
+    description: event.description ?? "",
+    image: event.image_ipfs_uri ?? event.image_url ?? "",
+    attributes: [
+      { trait_type: "Event", value: event.name },
+      { trait_type: "Category", value: category.name },
+      { trait_type: "Serial", value: ticket.serial_number },
+      { trait_type: "Redeemed", value: "false" },
+    ],
+  };
+  const metadataUri = await uploadJson(metadata);
+
+  const tokenId = BigInt(ticket.serial_number);
+  const data = encodeMintTo({ to: buyerAddress, tokenId, uri: metadataUri });
+
+  let mintTxHash: string;
+  try {
+    const queued = await writeContract({ contractAddress, data });
+    const record = await waitForTransaction(queued.transactionId, {
+      timeoutMs: 180_000,
+    });
+    mintTxHash = record.transactionHash ?? "";
+  } catch (err) {
+    if (err instanceof TransactionRevertError) {
+      throw new Error(
+        `Mint reverted for ticket ${ticket.id}: ${err.record.errorMessage ?? "unknown"}`,
+      );
+    }
+    if (err instanceof TransactionTimeoutError) {
+      throw new Error(
+        `Mint timed out for ticket ${ticket.id} (transactionId=${err.transactionId})`,
+      );
+    }
+    throw err;
+  }
 
   const { data: updatedTicket, error: ticketUpdateError } = await sb
     .from("tickets")
     .update({
       status: "sold",
       owner_user_id: params.buyerUserId,
-      owner_wallet_address: buyerWallet,
-      nft_asset_address: assetAddress,
-      metadata_uri: demoTicketMetadataUri(ticket.id),
+      owner_evm_address: buyerWallet,
+      nft_contract_address: contractAddress,
+      nft_token_id: ticket.serial_number,
+      mint_tx_hash: mintTxHash,
+      metadata_uri: metadataUri,
       image_url: event.image_url,
       reserved_until: null,
       minted_at: new Date().toISOString(),
@@ -166,13 +226,26 @@ export async function fulfillReservedTicket(params: {
 
   await audit({
     actorUserId: params.buyerUserId,
-    action: "ticket.fulfill",
+    action: "ticket.mint",
     entityType: "ticket",
     entityId: ticket.id,
-    metadata: { asset: assetAddress, tx: signature, purchase: params.purchaseId },
+    metadata: {
+      contract: contractAddress,
+      token_id: ticket.serial_number,
+      tx_hash: mintTxHash,
+      metadata_uri: metadataUri,
+      owner: buyerWallet,
+      purchase: params.purchaseId,
+    },
   });
 
-  return { assetAddress, signature };
+  return {
+    contractAddress,
+    tokenId: ticket.serial_number,
+    mintTxHash,
+    metadataUri,
+    ownerEvmAddress: buyerWallet,
+  };
 }
 
 export async function markTicketListed(params: {
@@ -208,14 +281,14 @@ export async function transferListedTicketToBuyer(params: {
   ticketId: string;
   listingId: string;
   buyerUserId: string;
-  buyerWalletAddress: string;
+  buyerEvmAddress: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from("tickets")
     .update({
       owner_user_id: params.buyerUserId,
-      owner_wallet_address: params.buyerWalletAddress,
+      owner_evm_address: params.buyerEvmAddress,
       status: "sold",
       current_listing_id: null,
     })
@@ -230,9 +303,7 @@ export async function transferListedTicketToBuyer(params: {
 
 export async function markTicketRedeemed(params: {
   ticketId: string;
-  txSignature: string;
-  redemptionPda: string;
-  signerWallet: string;
+  redeemTxHash?: string | null;
 }): Promise<boolean> {
   const sb = createServiceClient();
   const { data } = await sb
@@ -240,9 +311,7 @@ export async function markTicketRedeemed(params: {
     .update({
       status: "used",
       used_at: new Date().toISOString(),
-      redeem_tx_signature: params.txSignature,
-      redemption_pda: params.redemptionPda,
-      redeemed_wallet_address: params.signerWallet,
+      redeem_tx_hash: params.redeemTxHash ?? null,
     })
     .eq("id", params.ticketId)
     .eq("status", "sold")

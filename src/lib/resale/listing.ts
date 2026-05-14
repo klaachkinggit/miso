@@ -218,7 +218,7 @@ export async function fulfillResale(params: {
       ticketId: ticket.id,
       listingId: listing.id,
       buyerUserId: params.buyerUserId,
-      buyerWalletAddress: buyerWallet,
+      buyerEvmAddress: buyerWallet,
     });
   } catch (error) {
     if (listingAmount > 0) {
