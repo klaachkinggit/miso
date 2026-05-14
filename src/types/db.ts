@@ -1551,3 +1551,4 @@ export type EventController = Tables<"event_controllers">
 
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
+export type RedemptionResult = Enums<"redemption_result">

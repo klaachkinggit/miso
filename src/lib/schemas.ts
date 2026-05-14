@@ -63,9 +63,6 @@ export const OpenGateSchema = z.object({
 export const RedeemConfirmSchema = z.object({
   gate_short_code: z.string().min(4).max(16).trim().toUpperCase(),
   ticket_id: z.string().uuid(),
-  tx_signature: z.string().min(20).max(120),
-  signer_wallet: z.string().min(32).max(48),
-  nonce: z.string().min(8).max(64),
 });
 
 export const RedeemPrepareSchema = z.object({

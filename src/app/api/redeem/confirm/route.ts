@@ -1,6 +1,6 @@
-// POST /api/redeem/confirm — verify a confirmed customer redemption tx and
-// flip the ticket → used. Idempotent at the DB layer via unique indexes on
-// redeem_tx_signature and redemption_pda.
+// POST /api/redeem/confirm — flip the ticket → used and write the on-chain
+// `Redeemed=true` attribute via the backend wallet. DB is the source of truth;
+// on-chain failure is logged for retry but does not block the redemption.
 
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -19,9 +19,6 @@ export async function POST(request: NextRequest) {
     userId: user.id,
     gateShortCode: parsed.data.gate_short_code,
     ticketId: parsed.data.ticket_id,
-    txSignature: parsed.data.tx_signature,
-    signerWallet: parsed.data.signer_wallet,
-    nonce: parsed.data.nonce,
   });
 
   const httpStatus = outcome.result === "valid" ? 200 : 409;

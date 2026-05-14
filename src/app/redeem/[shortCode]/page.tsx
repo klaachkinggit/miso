@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { getCurrentUser } from "@/lib/auth";
-import { demoTicketAssetAddressFor } from "@/lib/demo/artifacts";
 import { getGateSessionByShortCode, isGateSessionUsable } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatDate } from "@/lib/format";
@@ -42,20 +41,29 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
     : { data: [] as TicketCategory[] };
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
 
-  const eligible = (tickets ?? []).filter((t) => t.status === "sold");
-  const ineligible = (tickets ?? []).filter((t) => !eligible.some((eligibleTicket) => eligibleTicket.id === t.id));
+  const eligible = (tickets ?? []).filter(
+    (t) =>
+      t.status === "sold" &&
+      t.nft_contract_address !== null &&
+      t.nft_token_id !== null,
+  );
+  const ineligible = (tickets ?? []).filter(
+    (t) => !eligible.some((eligibleTicket) => eligibleTicket.id === t.id),
+  );
 
   const { data: wallet } = await sb
     .from("wallets")
-    .select("wallet_address, wallet_type")
+    .select("evm_address, smart_account_address")
     .eq("user_id", user.id)
     .eq("is_primary", true)
-    .maybeSingle<Pick<Wallet, "wallet_address" | "wallet_type">>();
+    .maybeSingle<Pick<Wallet, "evm_address" | "smart_account_address">>();
 
   return (
     <div className="container max-w-3xl py-10">
       <header className="mb-8">
-        <Badge variant={usable ? "success" : "destructive"}>{usable ? "Gate open" : `Gate ${gate.status}`}</Badge>
+        <Badge variant={usable ? "success" : "destructive"}>
+          {usable ? "Gate open" : `Gate ${gate.status}`}
+        </Badge>
         <h1 className="mt-3 text-3xl font-semibold">Redeem entry</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {event.name} · {formatDate(event.date)} · {event.venue_name}, {event.city}
@@ -74,25 +82,25 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
           title="No eligible tickets"
           description={
             ineligible.length
-              ? "You hold tickets for this event but none are currently eligible (already used, refunded, or not yet paid)."
+              ? "You hold tickets for this event but none are currently eligible (already used, refunded, or not yet minted)."
               : "You don't own a ticket for this event."
           }
         />
-      ) : !wallet ? (
+      ) : !wallet?.smart_account_address ? (
         <EmptyState
           title="No wallet"
-          description="You must complete a purchase before you can redeem — that creates the wallet that holds the ticket."
+          description="You must complete a purchase before you can redeem — that pregenerates the smart account that holds the ticket."
         />
       ) : (
         <RedeemPanel
           gateShortCode={gate.short_code}
-          walletType={wallet.wallet_type}
-          expectedWalletAddress={wallet.wallet_address}
+          expectedSmartAccount={wallet.smart_account_address}
           tickets={eligible.map((ticket) => ({
             id: ticket.id,
             serial_number: ticket.serial_number,
             category_name: categoryById.get(ticket.category_id)?.name ?? "Ticket",
-            asset_address: demoTicketAssetAddressFor(ticket),
+            contract_address: ticket.nft_contract_address as string,
+            token_id: ticket.nft_token_id as number,
           }))}
         />
       )}

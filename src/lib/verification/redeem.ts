@@ -1,31 +1,63 @@
-// Gate-based redemption pipeline for the demo branch.
+// Gate-based redemption pipeline.
 //
-// 1. Prepare: customer chose ticket, backend builds a synthetic redeem payload.
-// 2. Confirm: backend verifies the demo payload, records a demo attribute
-//    signature, then flips DB state atomically through the Ticket lifecycle.
+// 1. Prepare: customer scans the gate QR. Server validates ownership + state
+//    and returns a non-binding redemption intent (nonce + ticket/gate ids).
+//    No on-chain operation happens here.
+// 2. Confirm: server flips the ticket → used (DB source of truth) and then
+//    writes the on-chain `Redeemed=true` attribute via the backend wallet.
+//    Users never sign on chain.
+//
+// The DB flip is the source of truth: if the on-chain attribute write fails,
+// the redemption still counts. The attribute can be backfilled by an admin
+// retry tool. Dedup of concurrent flips relies on the conditional
+// `status='sold'` update inside `markTicketRedeemed`.
 
-import { createServiceClient } from "@/lib/supabase/service";
-import {
-  demoRedemptionPda,
-  demoTicketAssetAddressFor,
-  prepareDemoRedeem,
-  verifyDemoRedeem,
-  writeDemoRedemptionAttribute,
-  type PreparedDemoRedeem,
-  type SignedDemoRedeem,
-} from "@/lib/demo/artifacts";
+import { randomBytes } from "node:crypto";
+
+import type { Address } from "viem";
+
+import { audit } from "@/lib/audit";
 import { getGateSessionByShortCode, isGateSessionUsable, updateGateLastRedemption } from "@/lib/gates/operations";
+import { createServiceClient } from "@/lib/supabase/service";
+import { encodeSetAttribute } from "@/lib/thirdweb/contracts/misoTicket";
+import {
+  TransactionRevertError,
+  TransactionTimeoutError,
+  waitForTransaction,
+  writeContract,
+} from "@/lib/thirdweb/transactions";
+import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { markTicketRedeemed } from "@/lib/tickets/lifecycle";
 import type {
   EventRow,
   GateSession,
   RedemptionResult,
   Ticket,
-  Wallet,
 } from "@/types/db";
 
+export interface RedemptionIntent {
+  type: "miso.redeem";
+  ticket: string;
+  event: string;
+  gate: string;
+  nonce: string;
+  contract: string;
+  token_id: number;
+  version: 2;
+}
+
+export interface PreparedRedemption {
+  payload: RedemptionIntent;
+  signer_wallet: string;
+  tx_signature: string;
+  signed: true;
+  serialized_tx_b64: "";
+  recent_blockhash: "";
+  redemption_pda: "";
+}
+
 export interface PrepareResult {
-  prepared: PreparedDemoRedeem | SignedDemoRedeem;
+  prepared: PreparedRedemption;
   gate: GateSession;
   ticket: Ticket;
 }
@@ -36,6 +68,18 @@ export interface ConfirmOutcome {
   redemption_id?: string;
   redeem_tx_signature?: string;
   attr_tx_signature?: string;
+}
+
+async function buyerSmartAccount(userId: string): Promise<string> {
+  const sb = createServiceClient();
+  const { data: profile } = await sb
+    .from("profiles")
+    .select("email")
+    .eq("id", userId)
+    .single<{ email: string }>();
+  if (!profile?.email) throw new Error("Profile missing email");
+  const { smartAccountAddress } = await ensureUserWallet(userId, profile.email);
+  return smartAccountAddress;
 }
 
 export async function prepareRedemption(params: {
@@ -58,23 +102,31 @@ export async function prepareRedemption(params: {
   if (ticket.owner_user_id !== params.userId) throw new Error("Not ticket owner");
   if (ticket.event_id !== gate.event_id) throw new Error("Ticket is for a different event");
   if (ticket.status !== "sold") throw new Error(`Ticket not redeemable (status: ${ticket.status})`);
-  const assetAddress = demoTicketAssetAddressFor(ticket);
+  if (!ticket.nft_contract_address || ticket.nft_token_id === null) {
+    throw new Error("Ticket has no on-chain identity");
+  }
 
-  const { data: wallet } = await sb
-    .from("wallets")
-    .select("wallet_address, wallet_type")
-    .eq("user_id", params.userId)
-    .eq("is_primary", true)
-    .single<Pick<Wallet, "wallet_address" | "wallet_type">>();
-  if (!wallet) throw new Error("No wallet for user");
+  const smartAccount = await buyerSmartAccount(params.userId);
+  const nonce = randomBytes(12).toString("hex");
 
-  const prepared = await prepareDemoRedeem({
-    ticketId: ticket.id,
-    eventId: ticket.event_id,
-    gateSessionId: gate.id,
-    assetAddress,
-    signerWallet: wallet.wallet_address,
-  });
+  const prepared: PreparedRedemption = {
+    payload: {
+      type: "miso.redeem",
+      ticket: ticket.id,
+      event: ticket.event_id,
+      gate: gate.id,
+      nonce,
+      contract: ticket.nft_contract_address,
+      token_id: ticket.nft_token_id,
+      version: 2,
+    },
+    signer_wallet: smartAccount,
+    tx_signature: nonce,
+    signed: true,
+    serialized_tx_b64: "",
+    recent_blockhash: "",
+    redemption_pda: "",
+  };
 
   return { prepared, gate, ticket };
 }
@@ -83,13 +135,11 @@ async function recordRedemption(args: {
   ticket_id: string;
   event_id: string;
   controller_user_id: string;
-  wallet_address: string;
-  signature: string | null;
+  evm_address: string;
   result: RedemptionResult;
   gate_session_id: string | null;
   gate_name: string | null;
-  redeem_tx_signature: string | null;
-  redemption_pda: string | null;
+  redeem_tx_hash: string | null;
 }): Promise<string | null> {
   const sb = createServiceClient();
   const { data } = await sb
@@ -98,13 +148,11 @@ async function recordRedemption(args: {
       ticket_id: args.ticket_id,
       event_id: args.event_id,
       controller_user_id: args.controller_user_id,
-      wallet_address: args.wallet_address,
-      signature: args.signature,
+      evm_address: args.evm_address,
       result: args.result,
       gate_session_id: args.gate_session_id,
       gate_name: args.gate_name,
-      redeem_tx_signature: args.redeem_tx_signature,
-      redemption_pda: args.redemption_pda,
+      redeem_tx_hash: args.redeem_tx_hash,
     })
     .select("id")
     .maybeSingle<{ id: string }>();
@@ -115,9 +163,6 @@ export async function confirmRedemption(params: {
   userId: string;
   gateShortCode: string;
   ticketId: string;
-  txSignature: string;
-  signerWallet: string;
-  nonce: string;
 }): Promise<ConfirmOutcome> {
   const sb = createServiceClient();
 
@@ -134,22 +179,22 @@ export async function confirmRedemption(params: {
   if (ticket.owner_user_id !== params.userId) {
     return { result: "owner_mismatch", reason: "Not ticket owner" };
   }
+
+  const smartAccount = await buyerSmartAccount(params.userId);
+
   if (ticket.event_id !== gate.event_id) {
     await recordRedemption({
       ticket_id: ticket.id,
       event_id: gate.event_id,
       controller_user_id: gate.controller_user_id,
-      wallet_address: params.signerWallet,
-      signature: params.txSignature,
+      evm_address: smartAccount,
       result: "wrong_event",
       gate_session_id: gate.id,
       gate_name: gate.gate_name,
-      redeem_tx_signature: params.txSignature,
-      redemption_pda: null,
+      redeem_tx_hash: null,
     });
     return { result: "wrong_event", reason: "Ticket belongs to another event" };
   }
-  const assetAddress = demoTicketAssetAddressFor(ticket);
 
   const { data: event } = await sb
     .from("events")
@@ -158,19 +203,16 @@ export async function confirmRedemption(params: {
     .single<EventRow>();
   if (!event) return { result: "no_ticket", reason: "Event missing" };
 
-  // Pre-status checks.
   const failFast = (result: RedemptionResult, reason: string) =>
     recordRedemption({
       ticket_id: ticket.id,
       event_id: ticket.event_id,
       controller_user_id: gate.controller_user_id,
-      wallet_address: params.signerWallet,
-      signature: params.txSignature,
+      evm_address: smartAccount,
       result,
       gate_session_id: gate.id,
       gate_name: gate.gate_name,
-      redeem_tx_signature: params.txSignature,
-      redemption_pda: null,
+      redeem_tx_hash: null,
     }).then(() => ({ result, reason }));
 
   if (ticket.status === "used") return failFast("already_used", "Ticket already used");
@@ -182,62 +224,125 @@ export async function confirmRedemption(params: {
   }
   if (ticket.status === "expired") return failFast("expired", "Ticket expired");
   if (ticket.status !== "sold") return failFast("invalid_signature", `Bad status ${ticket.status}`);
+  if (!ticket.nft_contract_address || ticket.nft_token_id === null) {
+    return failFast("invalid_signature", "Ticket has no on-chain identity");
+  }
 
-  await verifyDemoRedeem();
+  // Flip DB first — conditional on status='sold' so only one redemption wins.
+  const flipped = await markTicketRedeemed({ ticketId: ticket.id });
+  if (!flipped) {
+    const redemption_id = await recordRedemption({
+      ticket_id: ticket.id,
+      event_id: ticket.event_id,
+      controller_user_id: gate.controller_user_id,
+      evm_address: smartAccount,
+      result: "already_used",
+      gate_session_id: gate.id,
+      gate_name: gate.gate_name,
+      redeem_tx_hash: null,
+    });
+    if (redemption_id) {
+      await updateGateLastRedemption({
+        gateSessionId: gate.id,
+        redemptionId: redemption_id,
+        ticketId: ticket.id,
+        result: "already_used",
+      });
+    }
+    return { result: "already_used", reason: "Concurrent redeem", redemption_id: redemption_id ?? undefined };
+  }
 
-  const redemption_pda = demoRedemptionPda(ticket.event_id, assetAddress);
-  const { signature: attr_sig } = await writeDemoRedemptionAttribute();
-
-  // Insert redemption row first — dedupe via unique idx on redemption_pda.
   const redemption_id = await recordRedemption({
     ticket_id: ticket.id,
     event_id: ticket.event_id,
     controller_user_id: gate.controller_user_id,
-    wallet_address: params.signerWallet,
-    signature: params.txSignature,
+    evm_address: smartAccount,
     result: "valid",
     gate_session_id: gate.id,
     gate_name: gate.gate_name,
-    redeem_tx_signature: params.txSignature,
-    redemption_pda,
+    redeem_tx_hash: null,
   });
-  if (!redemption_id) {
-    // Race lost: another redemption already inserted for this PDA.
-    return { result: "already_used", reason: "Concurrent redeem" };
+
+  // On-chain attribute write — DB flip already committed. Failure logs
+  // an audit entry; admin retry tool can backfill the attribute.
+  let redeemTxHash: string | null = null;
+  try {
+    const data = encodeSetAttribute({
+      tokenId: BigInt(ticket.nft_token_id),
+      key: "Redeemed",
+      value: "true",
+    });
+    const queued = await writeContract({
+      contractAddress: ticket.nft_contract_address as Address,
+      data,
+    });
+    const record = await waitForTransaction(queued.transactionId, {
+      timeoutMs: 180_000,
+    });
+    redeemTxHash = record.transactionHash ?? null;
+  } catch (err) {
+    const message =
+      err instanceof TransactionRevertError
+        ? `setAttribute reverted: ${err.record.errorMessage ?? "unknown"}`
+        : err instanceof TransactionTimeoutError
+          ? `setAttribute timed out (transactionId=${err.transactionId})`
+          : err instanceof Error
+            ? err.message
+            : "setAttribute failed";
+    await audit({
+      actorUserId: gate.controller_user_id,
+      action: "redemption.attribute_failed",
+      entityType: "ticket",
+      entityId: ticket.id,
+      metadata: {
+        contract: ticket.nft_contract_address,
+        token_id: ticket.nft_token_id,
+        gate_session_id: gate.id,
+        redemption_id,
+        error: message,
+      },
+    });
   }
 
-  const redeemed = await markTicketRedeemed({
-    ticketId: ticket.id,
-    txSignature: params.txSignature,
-    redemptionPda: redemption_pda,
-    signerWallet: params.signerWallet,
-  });
-  if (!redeemed) {
-    // Race: someone else already flipped → mark this row as already_used.
+  if (redeemTxHash) {
     await sb
-      .from("ticket_redemptions")
-      .update({ result: "already_used" })
-      .eq("id", redemption_id);
+      .from("tickets")
+      .update({ redeem_tx_hash: redeemTxHash })
+      .eq("id", ticket.id);
+    if (redemption_id) {
+      await sb
+        .from("ticket_redemptions")
+        .update({ redeem_tx_hash: redeemTxHash })
+        .eq("id", redemption_id);
+    }
+    await audit({
+      actorUserId: gate.controller_user_id,
+      action: "redemption.attribute_set",
+      entityType: "ticket",
+      entityId: ticket.id,
+      metadata: {
+        contract: ticket.nft_contract_address,
+        token_id: ticket.nft_token_id,
+        tx_hash: redeemTxHash,
+        gate_session_id: gate.id,
+        redemption_id,
+      },
+    });
+  }
+
+  if (redemption_id) {
     await updateGateLastRedemption({
       gateSessionId: gate.id,
       redemptionId: redemption_id,
       ticketId: ticket.id,
-      result: "already_used",
+      result: "valid",
     });
-    return { result: "already_used", redemption_id, redeem_tx_signature: params.txSignature };
   }
-
-  await updateGateLastRedemption({
-    gateSessionId: gate.id,
-    redemptionId: redemption_id,
-    ticketId: ticket.id,
-    result: "valid",
-  });
 
   return {
     result: "valid",
-    redemption_id,
-    redeem_tx_signature: params.txSignature,
-    attr_tx_signature: attr_sig,
+    redemption_id: redemption_id ?? undefined,
+    redeem_tx_signature: redeemTxHash ?? undefined,
+    attr_tx_signature: redeemTxHash ?? undefined,
   };
 }
