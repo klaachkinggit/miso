@@ -27,12 +27,12 @@ export function ListForResaleButton({
 }: {
   ticketId: string;
   currency: Currency;
-  maxResalePrice: string | null;
-  defaultPrice: string;
+  maxResalePrice: number | null;
+  defaultPrice: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [price, setPrice] = useState(defaultPrice);
+  const [price, setPrice] = useState(String(defaultPrice));
   const [loading, setLoading] = useState(false);
 
   async function submit() {

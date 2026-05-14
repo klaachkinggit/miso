@@ -27,6 +27,7 @@ For the previous synthetic demo language, see git history on the
 | **Event image IPFS URI** | Event image pinned to IPFS at event publish; persisted in `events.image_ipfs_uri` and referenced by every Ticket's metadata. |
 | **Mint tx hash** | The Base-Sepolia transaction hash of a Ticket's `mintTo` call. Persisted in `tickets.mint_tx_hash`. |
 | **Redeem tx hash** | The transaction hash of the `setAttribute("Redeemed","true")` call. Persisted in `tickets.redeem_tx_hash`. |
+| **Transfer tx hash** | The transaction hash of the most recent `adminTransfer` call for a resold Ticket. Persisted in `tickets.last_transfer_tx_hash`; overwritten on each successful resale. |
 | **Issuer-controlled trust** | The architectural assumption that Miso (via the backend wallet) is the sole authority for mint, metadata, and transfer operations. Compromise of the backend wallet = full takeover of all tickets. Acceptable for v1 ticketing where the issuer is already a central authority. |
 
 ## Domain language (carry-over from off-chain layer)
@@ -42,7 +43,7 @@ For the previous synthetic demo language, see git history on the
 | **Gate operations** | The controller-facing actions and queries for Gates, including opening, listing, polling, closing, and the admin/controller authorization rules for each operation. |
 | **Redemption** | The act of consuming a ticket at a gate. Records a row in `ticket_redemptions`, flips the ticket from `sold` to `used`. |
 | **Ticket lifecycle** | The allowed status changes for a Ticket, including the guarded database writes and timestamp/cleanup fields that make each transition valid. |
-| **Event setup** | The admin-owned mutations that prepare an Event for sale: draft creation, synthetic Collection assignment, Category creation, Ticket seeding, inventory cancellation, and publish state. |
+| **Event setup** | The admin-owned mutations that prepare an Event for sale: draft creation, MisoTicket contract deployment, Category creation, Ticket seeding, inventory cancellation, and publish state. |
 | **Purchase settlement** | The balance-backed decision that turns a pending purchase outcome into Purchase and Ticket lifecycle changes. |
 | **Balance settlement** | The debit-first decision that reserves Account Balance credit before fulfilling a ticket or resale purchase, with automatic compensating credit if fulfillment fails. |
 | **External funding rail** | The out-of-scope real-money boundary where a Holder would charge or cash out Account Balance; it may be visible in UI but must fail as not implemented while intra-app settlement uses real ledger movement. |

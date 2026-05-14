@@ -3,7 +3,7 @@ import { EmptyState } from "@/components/site/empty-state";
 import { TicketCard } from "@/components/tickets/ticket-card";
 import { getCurrentProfile } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, ResaleListing, Ticket, TicketCategory, Wallet } from "@/types/db";
+import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
 export default async function TicketsPage() {
   const profile = await getCurrentProfile();
@@ -29,7 +29,7 @@ export default async function TicketsPage() {
     ),
   ];
 
-  const [{ data: events }, { data: categories }, { data: listings }, { data: primaryWallet }] = await Promise.all([
+  const [{ data: events }, { data: categories }, { data: listings }] = await Promise.all([
     eventIds.length
       ? sb.from("events").select("*").in("id", eventIds).returns<EventRow[]>()
       : Promise.resolve({ data: [] as EventRow[] }),
@@ -39,18 +39,11 @@ export default async function TicketsPage() {
     listingIds.length
       ? sb.from("resale_listings").select("*").in("id", listingIds).returns<ResaleListing[]>()
       : Promise.resolve({ data: [] as ResaleListing[] }),
-    sb
-      .from("wallets")
-      .select("wallet_type")
-      .eq("user_id", profile.id)
-      .eq("is_primary", true)
-      .maybeSingle<Pick<Wallet, "wallet_type">>(),
   ]);
 
   const eventById = new Map((events ?? []).map((event) => [event.id, event]));
   const categoryById = new Map((categories ?? []).map((category) => [category.id, category]));
   const listingById = new Map((listings ?? []).map((listing) => [listing.id, listing]));
-  const isCustodial = primaryWallet?.wallet_type === "custodial";
 
   return (
     <div className="container py-10">
@@ -69,7 +62,6 @@ export default async function TicketsPage() {
               : null;
             const eventFuture = new Date(event.date).getTime() > Date.now();
             const canList =
-              isCustodial &&
               ticket.status === "sold" &&
               event.status === "published" &&
               event.resale_enabled &&

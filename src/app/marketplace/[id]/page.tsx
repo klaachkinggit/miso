@@ -120,8 +120,9 @@ export default async function MarketplaceListingPage({
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
             <p>
-              Purchase routes through the Miso treasury. After payment, the NFT thaws, transfers
-              to your wallet, and refreezes. The ticket cannot be transferred outside this flow.
+              Purchase settles in MAD via your Account Balance. The Miso backend wallet then
+              broadcasts an on-chain `adminTransfer` from the seller&apos;s smart account to
+              yours on the event&apos;s MisoTicket contract — you never sign.
             </p>
             <Separator />
             <div className="grid gap-2 sm:grid-cols-2">
@@ -130,9 +131,9 @@ export default async function MarketplaceListingPage({
                 <p className="font-mono text-foreground">#{ticket.serial_number}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">NFT</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Token</p>
                 <p className="font-mono text-foreground">
-                  {shortAddress(ticket.nft_asset_address)}
+                  {shortAddress(ticket.nft_contract_address)}#{ticket.nft_token_id ?? "?"}
                 </p>
               </div>
             </div>

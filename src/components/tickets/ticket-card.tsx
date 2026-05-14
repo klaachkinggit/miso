@@ -98,7 +98,7 @@ export function TicketCard({
           </div>
           <div>
             <p className="text-muted-foreground">Wallet</p>
-            <p className="font-mono">{shortAddress(ticket.owner_wallet_address)}</p>
+            <p className="font-mono">{shortAddress(ticket.owner_evm_address)}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Price</p>
@@ -106,9 +106,9 @@ export function TicketCard({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {ticket.nft_asset_address ? (
+          {ticket.nft_contract_address && ticket.mint_tx_hash ? (
             <Button asChild variant="outline">
-              <a href={explorerUrl("address", ticket.nft_asset_address)} target="_blank" rel="noreferrer">
+              <a href={explorerUrl("tx", ticket.mint_tx_hash)} target="_blank" rel="noreferrer">
                 Explorer <ExternalLink className="h-4 w-4" />
               </a>
             </Button>

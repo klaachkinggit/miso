@@ -39,7 +39,7 @@ export function RefundsPanel({
                     <Badge variant={statusVariant}>{ticket.status}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Owner {shortAddress(ticket.owner_wallet_address)} · Minted {ticket.minted_at ? formatDateShort(ticket.minted_at) : "pending"}
+                    Owner {shortAddress(ticket.owner_evm_address)} · Minted {ticket.minted_at ? formatDateShort(ticket.minted_at) : "pending"}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

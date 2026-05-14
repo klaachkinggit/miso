@@ -45,6 +45,22 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
+## Shipped phases
+
+| Phase | Commit | Status |
+|-------|--------|--------|
+| 0 — Docs + branch | initial pivot commits | ✓ |
+| 1 — Deps + env | `deps: swap Solana stack for Thirdweb v5` | ✓ |
+| 2 — DB EVM schema | `db: migrate schema to EVM identifiers` | ✓ |
+| 3 — Wallet via Thirdweb | `wallet: replace custodial Solana with Thirdweb In-App pregenerate` | ✓ |
+| 4 — Engine + Storage client | `engine: typed Thirdweb Transactions API + IPFS Storage client` | ✓ |
+| 5 — Event deploys contract | `events: deploy MisoTicket ERC-721 contract per event` | ✓ |
+| 6 — Mint on fulfillment | `tickets: mint ERC-721 on fulfillment` | ✓ |
+| 7 — Redeemed attribute | `redemption: write redeemed attribute on chain` | ✓ |
+| 8 — Resale admin transfer | `resale: admin-transfer on chain via ADMIN_TRANSFER_ROLE` | ✓ |
+| 9 — Tests | `tests: live Sepolia smoke + tests/README` | ✓ |
+| 10 — Cleanup | `cleanup: remove demo artifacts and finalize domain docs` | ✓ |
+
 ## QA sanity checklist (final state)
 
 - Admin publishes event → real `MisoTicket` contract deployed; address
