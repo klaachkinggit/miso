@@ -262,11 +262,9 @@ export async function fulfillReservedTicket(params: {
     mintTxHash = txHash;
   } catch (err) {
     // ONLY an explicit TransactionRevertError is safe to treat as a
-    // pre-mined terminal failure. Anything else — timeout, network
-    // error during wait, RPC exception — may have left a broadcasted
-    // tx that mines later. Releasing/compensating here is the bug from
-    // the Codex audit (CRIT). Leave state in `minting` and propagate
-    // as in-flight so settlement quarantines the purchase.
+    // pre-mined terminal failure. Anything else can leave a broadcasted
+    // tx that mines later, so keep the ticket in `minting` and let
+    // settlement quarantine the purchase.
     if (err instanceof TransactionRevertError) {
       await sb
         .from("tickets")
@@ -372,7 +370,7 @@ export async function fulfillReservedTicket(params: {
       },
     });
     // Token is on chain. Throw a typed repair error so settlement
-    // does NOT compensate the debit (CRIT 3 from Codex audit).
+    // does not compensate the debit.
     throw new ChainOpRepairError(op.id, mintTxHash, message);
   }
 }

@@ -14,7 +14,6 @@ import {
   debitResaleBuyerBalance,
 } from "@/lib/balances/ledger";
 import {
-  ChainOpInFlightError,
   ChainOpRepairError,
   markChainOpMined,
   markChainOpRepairNeeded,
@@ -157,6 +156,57 @@ export class ResaleTransferPendingError extends Error {
   }
 }
 
+export class ResaleCheckoutPreflightError extends Error {
+  constructor(
+    message: string,
+    readonly status: number = 400,
+  ) {
+    super(message);
+    this.name = "ResaleCheckoutPreflightError";
+  }
+}
+
+export async function getResaleCheckoutListing(params: {
+  listingId: string;
+  buyerUserId: string;
+}): Promise<ResaleListing> {
+  const sb = createServiceClient();
+
+  const { data: listing } = await sb
+    .from("resale_listings")
+    .select("*")
+    .eq("id", params.listingId)
+    .maybeSingle<ResaleListing>();
+  if (!listing) throw new ResaleCheckoutPreflightError("Listing not found.", 404);
+  if (listing.status !== "active") {
+    throw new ResaleCheckoutPreflightError("Listing is not active.");
+  }
+  if (listing.seller_user_id === params.buyerUserId) {
+    throw new ResaleCheckoutPreflightError("Cannot buy your own listing.");
+  }
+
+  const { data: ticket } = await sb
+    .from("tickets")
+    .select("status")
+    .eq("id", listing.ticket_id)
+    .maybeSingle<Pick<Ticket, "status">>();
+  if (!ticket) throw new ResaleCheckoutPreflightError("Ticket missing.");
+  if (ticket.status !== "listed") {
+    throw new ResaleCheckoutPreflightError(`Ticket is ${ticket.status}.`);
+  }
+
+  return listing;
+}
+
+export async function checkoutResaleListing(params: {
+  listingId: string;
+  buyerUserId: string;
+}): Promise<ResaleListing> {
+  const listing = await getResaleCheckoutListing(params);
+  await fulfillResale({ listingId: listing.id, buyerUserId: params.buyerUserId });
+  return listing;
+}
+
 export async function fulfillResale(params: {
   listingId: string;
   buyerUserId: string;
@@ -230,8 +280,7 @@ export async function fulfillResale(params: {
   // Resume-after-finalize-fail: a prior attempt's chain tx mined and
   // the ticket was already flipped to sold under this buyer, but the
   // seller credit / listing finalize threw. Skip the chain path; jump
-  // straight to finalize so the listing closes cleanly. (H 4 from
-  // Codex audit.)
+  // straight to finalize so the listing closes cleanly.
   if (
     isResumable &&
     ticket.status === "sold" &&
@@ -363,8 +412,8 @@ export async function fulfillResale(params: {
   } catch (err) {
     // ONLY a TransactionRevertError is a definitive pre-mined terminal
     // failure. Timeout, network errors during wait, RPC exceptions etc
-    // may have a broadcasted tx mining underneath — compensating /
-    // releasing on those would lose the NFT. (CRIT 2 from Codex audit.)
+    // may have a broadcasted tx mining underneath; compensating or
+    // releasing on those failures would lose the NFT.
     if (err instanceof TransactionRevertError) {
       if (listingAmount > 0) {
         await compensateResaleBuyerDebit({

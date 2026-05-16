@@ -3,27 +3,22 @@
 // without holding open a websocket.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireApiControllerProfile } from "@/lib/api/auth";
+import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { getGatePollForController } from "@/lib/gates/operations";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const profile = await getCurrentProfile();
-  if (!profile) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (!["controller", "admin"].includes(profile.role)) {
-    return NextResponse.json({ error: "Controller role required." }, { status: 403 });
-  }
-
-  const { id } = await params;
-  let poll;
   try {
-    poll = await getGatePollForController({ gateSessionId: id, profile });
-  } catch {
+    const profile = await requireApiControllerProfile();
+    const { id } = await params;
+    const poll = await getGatePollForController({ gateSessionId: id, profile });
+    if (!poll) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
+    return NextResponse.json(poll);
+  } catch (error) {
+    if (error instanceof ApiRouteError) return apiErrorResponse(error);
     return NextResponse.json({ error: "Not your gate." }, { status: 403 });
   }
-
-  if (!poll) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
-  return NextResponse.json(poll);
 }

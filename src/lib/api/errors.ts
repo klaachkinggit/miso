@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+
 // Mapping layer for user-facing API errors. Internal `Error.message`
 // values can leak DB column names, Thirdweb error payloads, etc. The
 // HTTP routes call `safeErrorMessage(err)` so callers get a stable,
@@ -7,6 +9,16 @@
 export interface SafeErrorOptions {
   // Override the default "Request failed" when no rule matches.
   fallback?: string;
+}
+
+export class ApiRouteError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiRouteError";
+  }
 }
 
 const PASSTHROUGH_PATTERNS: RegExp[] = [
@@ -28,6 +40,14 @@ const PASSTHROUGH_PATTERNS: RegExp[] = [
   /^Already refunded/i,
 ];
 
+export function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err) {
+    return String((err as { message?: unknown }).message ?? fallback);
+  }
+  return fallback;
+}
+
 export function safeErrorMessage(err: unknown, opts: SafeErrorOptions = {}): string {
   const fallback = opts.fallback ?? "Request failed.";
   if (!(err instanceof Error)) return fallback;
@@ -39,4 +59,31 @@ export function safeErrorMessage(err: unknown, opts: SafeErrorOptions = {}): str
   // — never expose it to the client.
   console.error("[api] suppressed error:", err);
   return fallback;
+}
+
+export function apiErrorResponse(
+  err: unknown,
+  opts: SafeErrorOptions & { status?: number } = {},
+): NextResponse<{ error: string }> {
+  if (err instanceof ApiRouteError) {
+    return NextResponse.json({ error: err.message }, { status: err.status });
+  }
+  return NextResponse.json(
+    { error: safeErrorMessage(err, opts) },
+    { status: opts.status ?? 400 },
+  );
+}
+
+export function chainPendingResponse(): NextResponse<{
+  error: string;
+  status: "pending";
+}> {
+  return NextResponse.json(
+    {
+      error:
+        "Your purchase is pending on chain. We're retrying — check back shortly.",
+      status: "pending",
+    },
+    { status: 202 },
+  );
 }

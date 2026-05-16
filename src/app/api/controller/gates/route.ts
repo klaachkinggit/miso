@@ -2,39 +2,26 @@
 // GET  /api/controller/gates?event_id=... — list this controller's open gates.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireApiControllerProfile } from "@/lib/api/auth";
+import { ApiRouteError, apiErrorResponse, errorMessage } from "@/lib/api/errors";
+import { parseJsonBody } from "@/lib/api/request";
 import { OpenGateSchema } from "@/lib/schemas";
 import { listGatesForController, openGateForController } from "@/lib/gates/operations";
 
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === "object" && "message" in error) {
-    return String((error as { message?: unknown }).message ?? fallback);
-  }
-  return fallback;
-}
-
 export async function POST(request: NextRequest) {
-  const profile = await getCurrentProfile();
-  if (!profile) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (!["controller", "admin"].includes(profile.role)) {
-    return NextResponse.json({ error: "Controller role required." }, { status: 403 });
-  }
-
-  const body = await request.json();
-  const parsed = OpenGateSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid gate payload." }, { status: 400 });
-
   try {
+    const profile = await requireApiControllerProfile();
+    const body = await parseJsonBody(request, OpenGateSchema, "Invalid gate payload.");
     const session = await openGateForController({
-      eventId: parsed.data.event_id,
+      eventId: body.event_id,
       profile,
-      gateName: parsed.data.gate_name ?? null,
-      ttlHours: parsed.data.ttl_hours,
+      gateName: body.gate_name ?? null,
+      ttlHours: body.ttl_hours,
     });
     return NextResponse.json(session);
   } catch (error) {
-    const message = getErrorMessage(error, "Could not open gate.");
+    if (error instanceof ApiRouteError) return apiErrorResponse(error);
+    const message = errorMessage(error, "Could not open gate.");
     return NextResponse.json(
       { error: message },
       { status: message === "Not assigned to this event." ? 403 : 400 }
@@ -43,21 +30,17 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const profile = await getCurrentProfile();
-  if (!profile) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (!["controller", "admin"].includes(profile.role)) {
-    return NextResponse.json({ error: "Controller role required." }, { status: 403 });
-  }
-
-  const eventId = request.nextUrl.searchParams.get("event_id");
-  if (!eventId) return NextResponse.json({ error: "event_id required." }, { status: 400 });
-
   try {
+    const profile = await requireApiControllerProfile();
+    const eventId = request.nextUrl.searchParams.get("event_id");
+    if (!eventId) return NextResponse.json({ error: "event_id required." }, { status: 400 });
+
     const sessions = await listGatesForController({ eventId, profile });
     return NextResponse.json({ sessions });
   } catch (error) {
+    if (error instanceof ApiRouteError) return apiErrorResponse(error);
     return NextResponse.json(
-      { error: getErrorMessage(error, "Could not list gates.") },
+      { error: errorMessage(error, "Could not list gates.") },
       { status: 403 }
     );
   }

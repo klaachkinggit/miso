@@ -1,7 +1,7 @@
 -- Migration 0010 — EVM schema swap.
 --
--- Replaces synthetic Solana identifiers with real on-chain ERC-721 fields.
--- Demo data is wiped first; the demo branch had no production rows.
+-- Replaces legacy chain identifiers with real on-chain ERC-721 fields.
+-- Seed data is wiped first; this migration is not intended for production data.
 --
 -- After this migration:
 --   events.nft_contract_address  text  -- deployed MisoTicket per event
@@ -15,7 +15,7 @@
 --   wallets.evm_address          text  -- EOA from Thirdweb In-App Wallet
 --   wallets.smart_account_address text -- smart account that owns NFTs
 
--- ===== Wipe demo data =======================================================
+-- ===== Wipe seed data =======================================================
 truncate table
   balance_ledger_entries,
   account_balances,

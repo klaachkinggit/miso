@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
-import { safeErrorMessage } from "@/lib/api/errors";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireApiNonControllerProfile } from "@/lib/api/auth";
+import { apiErrorResponse } from "@/lib/api/errors";
 import { cancelResaleListing } from "@/lib/resale/listing";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const profile = await getCurrentProfile();
-  if (!profile) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (profile.role === "controller") {
-    return NextResponse.json({ error: "Controllers cannot use the marketplace." }, { status: 403 });
-  }
-
   try {
+    const profile = await requireApiNonControllerProfile(
+      "Controllers cannot use the marketplace.",
+    );
     const { id } = await params;
     await cancelResaleListing({ listingId: id, sellerUserId: profile.id });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json(
-      { error: safeErrorMessage(error, { fallback: "Cancel failed." }) },
-      { status: 400 },
-    );
+    return apiErrorResponse(error, { fallback: "Cancel failed." });
   }
 }

@@ -2,24 +2,20 @@
 // that proves Ticket ownership for the Gate.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { safeErrorMessage } from "@/lib/api/errors";
-import { getCurrentUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/api/auth";
+import { apiErrorResponse } from "@/lib/api/errors";
+import { parseJsonBody } from "@/lib/api/request";
 import { RedeemPrepareSchema } from "@/lib/schemas";
 import { prepareRedemption } from "@/lib/verification/redeem";
 
 export async function POST(request: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-
-  const body = await request.json();
-  const parsed = RedeemPrepareSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid redeem payload." }, { status: 400 });
-
   try {
+    const user = await requireApiUser();
+    const body = await parseJsonBody(request, RedeemPrepareSchema, "Invalid redeem payload.");
     const { prepared, gate, ticket } = await prepareRedemption({
       userId: user.id,
-      gateShortCode: parsed.data.gate_short_code,
-      ticketId: parsed.data.ticket_id,
+      gateShortCode: body.gate_short_code,
+      ticketId: body.ticket_id,
     });
     return NextResponse.json({
       prepared,
@@ -27,9 +23,6 @@ export async function POST(request: NextRequest) {
       ticket: { id: ticket.id, serial_number: ticket.serial_number },
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: safeErrorMessage(error, { fallback: "Could not prepare redemption." }) },
-      { status: 400 }
-    );
+    return apiErrorResponse(error, { fallback: "Could not prepare redemption." });
   }
 }

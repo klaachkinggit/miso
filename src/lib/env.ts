@@ -12,7 +12,7 @@ const ServerEnv = z.object({
   CHAIN_ID: z.string().regex(/^\d+$/),
   NEXT_PUBLIC_CHAIN_ID: z.string().regex(/^\d+$/),
   NEXT_PUBLIC_EXPLORER_BASE: z.string().url().default("https://sepolia.basescan.org"),
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3002"),
+  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
 });
 
 let cached: z.infer<typeof ServerEnv> | undefined;
@@ -35,6 +35,6 @@ export function publicEnv() {
     chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "84532"),
     explorerBase:
       process.env.NEXT_PUBLIC_EXPLORER_BASE ?? "https://sepolia.basescan.org",
-    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002",
+    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   };
 }

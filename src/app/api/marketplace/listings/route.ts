@@ -1,34 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { safeErrorMessage } from "@/lib/api/errors";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireApiNonControllerProfile } from "@/lib/api/auth";
+import { apiErrorResponse } from "@/lib/api/errors";
+import { parseJsonBody } from "@/lib/api/request";
 import { createResaleListing } from "@/lib/resale/listing";
 import { ResellInitSchema } from "@/lib/schemas";
 
 export async function POST(request: NextRequest) {
-  const profile = await getCurrentProfile();
-  if (!profile) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (profile.role === "controller") {
-    return NextResponse.json({ error: "Controllers cannot use the marketplace." }, { status: 403 });
-  }
-
   try {
-    const body = await request.json();
-    const parsed = ResellInitSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid listing request." }, { status: 400 });
-    }
+    const profile = await requireApiNonControllerProfile(
+      "Controllers cannot use the marketplace.",
+    );
+    const body = await parseJsonBody(request, ResellInitSchema, "Invalid listing request.");
 
     const listing = await createResaleListing({
-      ticketId: parsed.data.ticket_id,
+      ticketId: body.ticket_id,
       sellerUserId: profile.id,
-      price: parsed.data.price,
+      price: body.price,
     });
 
     return NextResponse.json({ listing });
   } catch (error) {
-    return NextResponse.json(
-      { error: safeErrorMessage(error, { fallback: "Listing failed." }) },
-      { status: 400 },
-    );
+    return apiErrorResponse(error, { fallback: "Listing failed." });
   }
 }

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireApiNonControllerProfile } from "@/lib/api/auth";
+import { apiErrorResponse } from "@/lib/api/errors";
 
 export async function POST() {
-  const profile = await getCurrentProfile();
-  if (!profile) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  if (profile.role === "controller") {
-    return NextResponse.json({ error: "Controllers cannot charge Account Balance." }, { status: 403 });
+  try {
+    await requireApiNonControllerProfile("Controllers cannot charge Account Balance.");
+  } catch (error) {
+    return apiErrorResponse(error);
   }
+
   return NextResponse.json({ error: "Charging Account Balance is not implemented yet." }, { status: 501 });
 }

@@ -31,7 +31,7 @@ export default async function ControllerEventPage({ params }: { params: Promise<
 
   const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
-  const host = hdrs.get("host") ?? "localhost:3002";
+  const host = hdrs.get("host") ?? "localhost:3000";
   const origin = `${proto}://${host}`;
 
   return (
