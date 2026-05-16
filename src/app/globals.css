@@ -4,26 +4,26 @@
 
 @layer base {
   :root {
-    --background: 222 28% 5%;
-    --foreground: 42 30% 96%;
-    --card: 220 22% 8%;
-    --card-foreground: 42 30% 96%;
-    --popover: 220 22% 8%;
-    --popover-foreground: 42 30% 96%;
-    --primary: 162 82% 48%;
-    --primary-foreground: 220 30% 6%;
-    --secondary: 220 16% 13%;
-    --secondary-foreground: 42 30% 96%;
-    --muted: 220 14% 14%;
-    --muted-foreground: 220 10% 66%;
-    --accent: 37 92% 57%;
-    --accent-foreground: 0 0% 98%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 72 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 72 100% 50%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 14% 19%;
-    --input: 220 14% 19%;
-    --ring: 162 82% 48%;
-    --radius: 0.5rem;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 72 100% 50%;
+    --radius: 0.25rem;
   }
 }
 
@@ -31,22 +31,22 @@
   * { @apply border-border; }
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
-    background:
-      radial-gradient(900px 520px at 10% -120px, hsl(162 80% 24% / 0.24), transparent 62%),
-      radial-gradient(720px 420px at 92% 8%, hsl(37 92% 42% / 0.13), transparent 58%),
-      linear-gradient(180deg, hsl(222 28% 6%) 0%, hsl(222 28% 4%) 100%),
-      hsl(var(--background));
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    background: hsl(var(--background));
     min-height: 100vh;
+  }
+  ::selection {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
   }
 }
 
 @layer components {
   .glass {
-    @apply border border-white/[0.08] bg-white/[0.045] shadow-[0_20px_80px_-48px_rgba(0,0,0,0.85)] backdrop-blur-xl;
+    @apply border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl;
   }
   .gradient-text {
-    background-image: linear-gradient(135deg, hsl(162 82% 58%) 0%, hsl(37 92% 64%) 100%);
+    background-image: linear-gradient(135deg, hsl(72 100% 60%) 0%, hsl(72 100% 90%) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -55,10 +55,28 @@
     background:
       linear-gradient(120deg,
         transparent 0%,
-        hsl(270 90% 70% / 0.18) 30%,
-        hsl(220 90% 70% / 0.18) 50%,
-        hsl(160 90% 70% / 0.18) 70%,
+        hsl(72 100% 60% / 0.20) 30%,
+        hsl(0 0% 100% / 0.10) 50%,
+        hsl(72 100% 60% / 0.20) 70%,
         transparent 100%);
     background-size: 200% 100%;
+  }
+  .display {
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+  }
+  .mono-stub {
+    @apply font-mono text-[11px] uppercase tracking-wider;
+  }
+  .marquee-track {
+    animation: marquee 30s linear infinite;
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track { animation: none; }
   }
 }
