@@ -58,8 +58,17 @@ test.describe("Live Base Sepolia smoke", () => {
     });
     expect(deployed.address, "contract deployed").toBeTruthy();
     const contractAddress = deployed.address;
+    const deployRecord = await waitForTransaction(deployed.transactionId, {
+      timeoutMs: 4 * 60 * 1000,
+    });
+    expect(deployRecord.transactionHash, "deploy mined").toBeTruthy();
     // eslint-disable-next-line no-console
-    console.log("[live] deployed:", contractAddress, "tx:", deployed.transactionId);
+    console.log(
+      "[live] deployed:",
+      contractAddress,
+      "tx:",
+      deployRecord.transactionHash,
+    );
 
     const buyerEmail = `live+${Date.now()}@miso.test`;
     const pregen = await thirdwebFetch<{ result?: { address?: string } }>(

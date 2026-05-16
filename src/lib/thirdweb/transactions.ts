@@ -9,7 +9,18 @@
 // Server Wallet EOA — defaulted from THIRDWEB_BACKEND_WALLET_ADDRESS so
 // callers don't repeat it.
 
-import type { Abi, Address, Hex } from "viem";
+import {
+  createPublicClient,
+  decodeAbiParameters,
+  http,
+  keccak256,
+  toHex,
+  type Abi,
+  type Address,
+  type Hex,
+  type TransactionReceipt,
+} from "viem";
+import { base, baseSepolia } from "viem/chains";
 
 import { ThirdwebError, thirdwebFetch } from "@/lib/thirdweb/client";
 
@@ -127,6 +138,7 @@ export interface WriteContractCall {
   method: string;
   params: unknown[];
   value?: bigint;
+  gasLimit?: number | bigint;
 }
 
 export interface WriteContractParams extends WriteContractCall {
@@ -141,6 +153,20 @@ interface WriteResponse {
   };
 }
 
+const DEFAULT_WRITE_GAS_LIMIT = 500_000;
+const RECEIPT_CHECK_TIMEOUT_MS = 60_000;
+const USER_OPERATION_EVENT_TOPIC = keccak256(
+  toHex("UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)"),
+);
+
+function normalizeGasLimit(value: number | bigint): number {
+  const n = typeof value === "bigint" ? Number(value) : value;
+  if (!Number.isSafeInteger(n) || n <= 0) {
+    throw new Error(`Invalid gasLimit: ${value.toString()}`);
+  }
+  return n;
+}
+
 export async function writeContract(
   params: WriteContractParams,
 ): Promise<QueuedTransaction> {
@@ -150,6 +176,10 @@ export async function writeContract(
     params: params.params.map((p) => (typeof p === "bigint" ? p.toString() : p)),
   };
   if (params.value !== undefined) call.value = params.value.toString();
+  // Thirdweb can under-estimate ERC-4337 callGasLimit for contract writes
+  // (observed 27,955 gas for ERC721 mint needing ~160k), producing a
+  // successful EntryPoint tx with a failed inner user operation.
+  call.gasLimit = normalizeGasLimit(params.gasLimit ?? DEFAULT_WRITE_GAS_LIMIT);
 
   const body: Record<string, unknown> = {
     calls: [call],
@@ -269,6 +299,85 @@ export class TransactionRevertError extends Error {
   }
 }
 
+function publicChain() {
+  switch (chainId()) {
+    case baseSepolia.id:
+      return baseSepolia;
+    case base.id:
+      return base;
+    default:
+      return null;
+  }
+}
+
+async function minedReceipt(record: TransactionRecord): Promise<TransactionReceipt | null> {
+  if (!record.transactionHash) return null;
+  const chain = publicChain();
+  if (!chain) return null;
+  const client = createPublicClient({ chain, transport: http() });
+  try {
+    return await client.waitForTransactionReceipt({
+      hash: record.transactionHash,
+      timeout: RECEIPT_CHECK_TIMEOUT_MS,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function topicAddress(topic: Hex | undefined): Address | null {
+  if (!topic) return null;
+  return `0x${topic.slice(-40)}` as Address;
+}
+
+function failedUserOperationMessage(receipt: TransactionReceipt): string | null {
+  for (const log of receipt.logs) {
+    if (log.topics[0] !== USER_OPERATION_EVENT_TOPIC) continue;
+    const [nonce, success, , actualGasUsed] = decodeAbiParameters(
+      [
+        { type: "uint256" },
+        { type: "bool" },
+        { type: "uint256" },
+        { type: "uint256" },
+      ],
+      log.data,
+    );
+    if (success) continue;
+    const sender = topicAddress(log.topics[2]);
+    const details = [
+      sender ? `sender ${sender}` : null,
+      log.topics[1] ? `userOpHash ${log.topics[1]}` : null,
+      `nonce ${nonce.toString()}`,
+      `actualGasUsed ${actualGasUsed.toString()}`,
+    ].filter(Boolean).join(", ");
+    return `ERC-4337 user operation reverted (${details})`;
+  }
+  return null;
+}
+
+async function assertMinedTransactionSucceeded(
+  transactionId: string,
+  record: TransactionRecord,
+): Promise<void> {
+  const receipt = await minedReceipt(record);
+  if (!receipt) return;
+  if (receipt.status === "reverted") {
+    throw new TransactionRevertError(transactionId, {
+      ...record,
+      status: "ERRORED",
+      errorMessage: "Transaction receipt status is reverted",
+    });
+  }
+  const userOpFailure = failedUserOperationMessage(receipt);
+  if (userOpFailure) {
+    throw new TransactionRevertError(transactionId, {
+      ...record,
+      status: "ERRORED",
+      errorMessage: userOpFailure,
+    });
+  }
+}
+
 export async function waitForTransaction(
   transactionId: string,
   options: WaitOptions = {},
@@ -279,7 +388,10 @@ export async function waitForTransaction(
 
   while (Date.now() < deadline) {
     const record = await getTransaction(transactionId);
-    if (record.status === "MINED") return record;
+    if (record.status === "MINED") {
+      await assertMinedTransactionSucceeded(transactionId, record);
+      return record;
+    }
     if (record.status === "ERRORED" || record.status === "CANCELLED") {
       throw new TransactionRevertError(transactionId, record);
     }
