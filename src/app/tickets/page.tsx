@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/site/empty-state";
+import { PageHeader } from "@/components/site/page-header";
 import { TicketCard } from "@/components/tickets/ticket-card";
 import { getCurrentProfile } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -47,10 +48,11 @@ export default async function TicketsPage() {
 
   return (
     <div className="container py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold">My tickets</h1>
-        <p className="mt-2 text-muted-foreground">Your purchased NFT tickets and entry codes.</p>
-      </div>
+      <PageHeader
+        title="Wallet"
+        description="Your NFT tickets, QR access, resale status, and event ownership history."
+        className="mb-8"
+      />
       {tickets?.length ? (
         <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {tickets.map((ticket) => {

@@ -93,7 +93,7 @@ export function TicketCard({
             <p className="font-mono">#{ticket.serial_number}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">Category</p>
+            <p className="text-muted-foreground">Ticket tier</p>
             <Badge variant="secondary">{category?.name ?? "Ticket"}</Badge>
           </div>
           <div>

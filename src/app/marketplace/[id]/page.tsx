@@ -72,7 +72,7 @@ export default async function MarketplaceListingPage({
       : eventPast
       ? "Event has passed"
       : !event.resale_enabled
-      ? "Resale disabled"
+      ? "Exchange disabled"
       : null
     : insufficientBalance
       ? `Balance ${formatPrice(availableBalance, listing.currency)}`
@@ -85,9 +85,10 @@ export default async function MarketplaceListingPage({
           {event.image_url ? (
             <Image src={event.image_url} alt={event.name} fill priority sizes="100vw" className="object-cover" />
           ) : null}
+          <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212_0%,#2b2620_52%,#E6D8C9_130%)]" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
           <Badge className="absolute left-4 top-4" variant="secondary">
-            Resale listing
+            Resale ticket
           </Badge>
         </div>
 
@@ -115,14 +116,13 @@ export default async function MarketplaceListingPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
-              Official Miso transfer
+              Official MISO exchange
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
             <p>
-              Purchase settles in MAD via your Account Balance. The Miso backend wallet then
-              broadcasts an on-chain `adminTransfer` from the seller&apos;s smart account to
-              yours on the event&apos;s MisoTicket contract — you never sign.
+              Purchase settles in MAD via your account balance. MISO handles the NFT ticket transfer after
+              payment, keeping resale inside the official anti-scalping flow.
             </p>
             <Separator />
             <div className="grid gap-2 sm:grid-cols-2">
@@ -150,7 +150,7 @@ export default async function MarketplaceListingPage({
             </div>
             <BuyListingButton listingId={listing.id} disabled={!purchasable || insufficientBalance} reason={reason} />
             <Link href="/marketplace" className="block text-center text-xs text-muted-foreground hover:text-foreground">
-              ← Back to marketplace
+              Back to exchange
             </Link>
           </CardContent>
         </Card>

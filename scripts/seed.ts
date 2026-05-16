@@ -9,8 +9,8 @@
 //   - buyer@miso.local       password: misobuyer
 //   - seller@miso.local      password: misoseller
 //   - controller@miso.local  password: misocontroller
-//   - one published event ("Miso Demo Night") with two categories
-//   - 5 GA + 3 VIP tickets seeded as `available`
+//   - published events across tonight, this week, weekend, and next month
+//   - NFT ticket tiers seeded as `available`
 //
 // Run with: npm run demo:seed.
 // The script loads .env.local itself, matching the Next.js runtime.
@@ -47,6 +47,176 @@ const users: SeedUser[] = [
   { email: "controller@miso.local", password: "misocontroller", display_name: "Demo Controller", role: "controller" },
 ];
 
+interface SeedEvent {
+  name: string;
+  date: Date;
+  venue_name: string;
+  city: string;
+  capacity: number;
+  description: string;
+  categories: Array<{
+    name: string;
+    description: string;
+    benefits: string;
+    price: number;
+    supply: number;
+  }>;
+}
+
+function atTime(base: Date, hour: number, minute = 0) {
+  const date = new Date(base);
+  date.setHours(hour, minute, 0, 0);
+  return date;
+}
+
+function addDays(base: Date, days: number) {
+  const date = new Date(base);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function nextWeekday(base: Date, weekday: number, minimumDaysAway = 1) {
+  const today = base.getDay();
+  let days = (weekday - today + 7) % 7;
+  if (days < minimumDaysAway) days += 7;
+  return addDays(base, days);
+}
+
+function nextMonthDate(base: Date, dayOfMonth: number, hour: number, minute = 0) {
+  return new Date(base.getFullYear(), base.getMonth() + 1, dayOfMonth, hour, minute, 0, 0);
+}
+
+function buildSeedEvents(): SeedEvent[] {
+  const now = new Date();
+  const tonight = atTime(now, 20, 30);
+  if (tonight <= now) tonight.setTime(now.getTime() + 2 * 60 * 60 * 1000);
+  const weekend = atTime(nextWeekday(now, 6, 0), 22, 0);
+  if (weekend <= now) weekend.setDate(weekend.getDate() + 7);
+
+  return [
+    {
+      name: "Midnight Frequency",
+      date: tonight,
+      venue_name: "The Black Room",
+      city: "Casablanca",
+      capacity: 900,
+      description: "A members-only electronic night with cinematic lighting, token-gated access, and collectible NFT tickets.",
+      categories: [
+        {
+          name: "General NFT",
+          description: "Entry ticket minted to your event wallet.",
+          benefits: "QR check-in, NFT proof of attendance, and official resale eligibility.",
+          price: 180,
+          supply: 36,
+        },
+        {
+          name: "Gold Circle",
+          description: "Premium floor access with a limited collectible design.",
+          benefits: "Priority entry, collector artwork, and member-only bar access.",
+          price: 520,
+          supply: 12,
+        },
+      ],
+    },
+    {
+      name: "Casa Rooftop Signal",
+      date: atTime(addDays(now, 2), 19, 0),
+      venue_name: "Anfa Skyline",
+      city: "Casablanca",
+      capacity: 420,
+      description: "A curated rooftop concert blending fashion, music, and clean digital ownership.",
+      categories: [
+        {
+          name: "Skyline Entry",
+          description: "Standard access with NFT ticket ownership.",
+          benefits: "Fast QR scan, on-chain ticket identity, and secure transfer history.",
+          price: 220,
+          supply: 28,
+        },
+        {
+          name: "Balcony Member",
+          description: "Elevated viewing and limited member collectible.",
+          benefits: "Balcony access, private check-in lane, and loyalty reward drop.",
+          price: 680,
+          supply: 8,
+        },
+      ],
+    },
+    {
+      name: "Friday Boiler Set",
+      date: atTime(nextWeekday(now, 5), 21, 30),
+      venue_name: "Medina Warehouse",
+      city: "Marrakech",
+      capacity: 650,
+      description: "A raw warehouse performance with premium access control and anti-scalping resale limits.",
+      categories: [
+        {
+          name: "Floor Token",
+          description: "Main floor access for the live set.",
+          benefits: "NFT ticket, verified QR entry, and official marketplace protection.",
+          price: 260,
+          supply: 34,
+        },
+        {
+          name: "Backstage Ledger",
+          description: "Limited backstage access with collector metadata.",
+          benefits: "Backstage wristband, priority gate, artist drop eligibility, and resale cap protection.",
+          price: 900,
+          supply: 6,
+        },
+      ],
+    },
+    {
+      name: "Atlantic Festival Afterdark",
+      date: weekend,
+      venue_name: "Ain Diab Stage",
+      city: "Casablanca",
+      capacity: 2500,
+      description: "A weekend festival afterparty with collectible tickets, VIP access, and secure member resale.",
+      categories: [
+        {
+          name: "Festival Pass",
+          description: "Afterdark festival entry.",
+          benefits: "Mobile QR, NFT ownership, and festival wallet history.",
+          price: 340,
+          supply: 60,
+        },
+        {
+          name: "VIP Membership",
+          description: "VIP lounge and loyalty-linked access.",
+          benefits: "VIP lane, private platform, loyalty reward, and limited gold ticket art.",
+          price: 1200,
+          supply: 10,
+        },
+      ],
+    },
+    {
+      name: "MISO Access Forum",
+      date: nextMonthDate(now, 8, 18, 30),
+      venue_name: "MISO Members House",
+      city: "Casablanca",
+      capacity: 300,
+      description: "A private culture and technology evening for promoters, artists, collectors, and nightlife members.",
+      categories: [
+        {
+          name: "Member Access",
+          description: "Forum entry with digital identity activation.",
+          benefits: "Talks, wallet setup, NFT ticket, and loyalty program preview.",
+          price: 120,
+          supply: 40,
+        },
+        {
+          name: "Founders NFT",
+          description: "Limited membership pass for early MISO supporters.",
+          benefits: "Priority seating, founders collectible, VIP marketplace access, and future reward eligibility.",
+          price: 480,
+          supply: 14,
+        },
+      ],
+    },
+  ];
+}
+
 async function ensureUser(user: SeedUser): Promise<string> {
   const { data: existing } = await sb
     .from("profiles")
@@ -80,35 +250,67 @@ async function ensureUser(user: SeedUser): Promise<string> {
   return userId;
 }
 
-async function ensureEvent(): Promise<string> {
-  const name = "Miso Demo Night";
+async function hideThrowawayTestEvents() {
+  const fixturePrefixes = ["Authz Fixture", "ChainOps Fixture", "Invariant Cancel"];
+  for (const prefix of fixturePrefixes) {
+    const { error } = await sb
+      .from("events")
+      .update({ status: "canceled", sales_enabled: false, resale_enabled: false })
+      .like("name", `${prefix}%`);
+    if (error) throw new Error(`Failed to hide ${prefix} events: ${error.message}`);
+  }
+  const legacyDemoNames = [
+    "Miso Demo Night",
+    "Casa Rooftop Sessions",
+    "Friday Medina Live",
+    "Weekend Beach Afterparty",
+    "Miso Launch Forum",
+    "After Hours Reset",
+    "Morning Pilates Club",
+    "Friday Breathwork Salon",
+    "Weekend Sauna Circuit",
+    "The Urban Calm Forum",
+  ];
+  const { error } = await sb
+    .from("events")
+    .update({ status: "canceled", sales_enabled: false, resale_enabled: false })
+    .in("name", legacyDemoNames);
+  if (error) throw new Error(`Failed to hide legacy demo events: ${error.message}`);
+}
+
+async function ensureEvent(event: SeedEvent): Promise<string> {
   const { data: existing } = await sb
     .from("events")
     .select("id")
-    .eq("name", name)
+    .eq("name", event.name)
     .maybeSingle();
   if (existing) {
     await sb
       .from("events")
       .update({
+        date: event.date.toISOString(),
+        venue_name: event.venue_name,
+        city: event.city,
+        capacity: event.capacity,
+        description: event.description,
         sales_enabled: true,
         resale_enabled: true,
+        public_sales_counter_enabled: true,
         status: "published",
       })
       .eq("id", existing.id);
     return existing.id;
   }
 
-  const inTwoWeeks = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await sb
     .from("events")
     .insert({
-      name,
-      date: inTwoWeeks,
-      venue_name: "Demo Hall",
-      city: "Casablanca",
-      capacity: 100,
-      description: "Demo event seeded by scripts/seed.ts.",
+      name: event.name,
+      date: event.date.toISOString(),
+      venue_name: event.venue_name,
+      city: event.city,
+      capacity: event.capacity,
+      description: event.description,
       sales_enabled: true,
       resale_enabled: true,
       public_sales_counter_enabled: true,
@@ -123,6 +325,8 @@ async function ensureEvent(): Promise<string> {
 async function ensureCategoryWithTickets(args: {
   eventId: string;
   name: string;
+  description: string;
+  benefits: string;
   price: number;
   supply: number;
   currency: "MAD";
@@ -141,6 +345,8 @@ async function ensureCategoryWithTickets(args: {
       .update({
         price: args.price,
         currency: args.currency,
+        description: args.description,
+        benefits: args.benefits,
         resale_enabled: true,
         supply: existing.supply + ticketsToAdd,
       })
@@ -160,6 +366,8 @@ async function ensureCategoryWithTickets(args: {
     .insert({
       event_id: args.eventId,
       name: args.name,
+      description: args.description,
+      benefits: args.benefits,
       price: args.price,
       currency: args.currency,
       supply: args.supply,
@@ -246,15 +454,27 @@ async function main() {
     console.log(`  user ${user.email} → ${userIds[user.email]}`);
   }
 
-  const eventId = await ensureEvent();
-  console.log(`  event ${eventId}`);
+  await hideThrowawayTestEvents();
+  console.log("  throwaway test events hidden");
 
-  await ensureCategoryWithTickets({ eventId, name: "General", price: 150, supply: 5, currency: "MAD" });
-  await ensureCategoryWithTickets({ eventId, name: "VIP", price: 400, supply: 3, currency: "MAD" });
-  console.log("  categories + tickets seeded");
-
-  await ensureController(eventId, userIds["controller@miso.local"]);
-  console.log("  controller assigned");
+  const events = buildSeedEvents();
+  for (const event of events) {
+    const eventId = await ensureEvent(event);
+    console.log(`  event ${eventId} — ${event.name} (${event.date.toLocaleString()})`);
+    for (const category of event.categories) {
+      await ensureCategoryWithTickets({
+        eventId,
+        name: category.name,
+        description: category.description,
+        benefits: category.benefits,
+        price: category.price,
+        supply: category.supply,
+        currency: "MAD",
+      });
+    }
+    await ensureController(eventId, userIds["controller@miso.local"]);
+  }
+  console.log("  events, categories, tickets, and controllers seeded");
 
   await ensureSeedBalance({
     userId: userIds["buyer@miso.local"],

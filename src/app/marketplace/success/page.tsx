@@ -36,11 +36,11 @@ export default async function MarketplaceSuccessPage({
         <CardContent className="grid gap-5 p-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-secondary">
             {sold ? (
-              <CheckCircle2 className="h-7 w-7 text-emerald-300" />
+              <CheckCircle2 className="h-7 w-7 text-accent" />
             ) : canceled ? (
               <XCircle className="h-7 w-7 text-destructive" />
             ) : (
-              <Clock className="h-7 w-7 text-amber-300" />
+              <Clock className="h-7 w-7 text-accent" />
             )}
           </div>
           <div>
@@ -56,18 +56,18 @@ export default async function MarketplaceSuccessPage({
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {sold
-                ? "The NFT has been transferred to your wallet. Find it under My Tickets."
+                ? "The NFT ticket has been transferred to your account. Find it in Wallet."
                 : canceled
-                  ? "This listing was canceled or expired. Browse other listings on the marketplace."
+                  ? "This listing was canceled or expired. Browse other tickets on the exchange."
                   : "This page will update once the transfer completes."}
             </p>
           </div>
           <div className="flex justify-center gap-3">
             <Button asChild>
-              <Link href="/tickets">My tickets</Link>
+              <Link href="/tickets">Wallet</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/marketplace">Marketplace</Link>
+              <Link href="/marketplace">Exchange</Link>
             </Button>
           </div>
         </CardContent>

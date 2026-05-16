@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/site/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
@@ -30,15 +31,12 @@ export default async function BalancePage() {
 
   return (
     <div className="container py-10">
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold">Account Balance</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Internal Miso credit for ticket purchases, resale, and refunds.
-          </p>
-        </div>
-        <FundingActions />
-      </div>
+      <PageHeader
+        title="Account balance"
+        description="Internal MISO credit for ticket drops, official resale, and refunds."
+        actions={<FundingActions />}
+        className="mb-8"
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         {balances.length ? (
@@ -81,7 +79,7 @@ export default async function BalancePage() {
                       {formatDate(entry.created_at)} · {entry.reference_type}:{entry.reference_id}
                     </p>
                   </div>
-                  <p className={movementSign(entry) === "-" ? "font-semibold text-destructive" : "font-semibold text-emerald-300"}>
+                  <p className={movementSign(entry) === "-" ? "font-semibold text-destructive" : "font-semibold text-accent"}>
                     {movementSign(entry)}
                     {formatPrice(entry.amount, entry.currency)}
                   </p>

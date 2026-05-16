@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
+import { PageHeader } from "@/components/site/page-header";
 import { formatDate, formatPrice } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
@@ -54,12 +55,11 @@ export default async function MarketplacePage() {
 
   return (
     <div className="container py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold">Marketplace</h1>
-        <p className="mt-2 text-muted-foreground">
-          Resale tickets from other holders. Transfers run through the official Miso flow.
-        </p>
-      </div>
+      <PageHeader
+        title="Resale exchange"
+        description="Verified NFT tickets listed by members through the official MISO anti-scalping marketplace."
+        className="mb-8"
+      />
       {sellable.length ? (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {sellable.map((listing) => {
@@ -79,7 +79,7 @@ export default async function MarketplacePage() {
                         className="object-cover"
                       />
                     ) : (
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(270_95%_70%/.3),transparent_35%),linear-gradient(135deg,hsl(240_10%_10%),hsl(220_40%_12%))]" />
+                      <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212_0%,#2b2620_52%,#E6D8C9_130%)]" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/10 to-transparent" />
                     <Badge className="absolute left-4 top-4" variant="secondary">
@@ -124,8 +124,8 @@ export default async function MarketplacePage() {
         </div>
       ) : (
         <EmptyState
-          title="No resale tickets right now"
-          description="When holders list tickets for resale, they show up here."
+          title="No tickets listed right now"
+          description="When members list a ticket, it will appear here."
         />
       )}
     </div>

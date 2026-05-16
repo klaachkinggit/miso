@@ -130,7 +130,7 @@ export default async function AdminPage({
           ))}
         </div>
       ) : (
-        <EmptyState title="No events yet" description="Create the first event and mint its Solana collection.">
+        <EmptyState title="No events yet" description="Create the first event and deploy its on-chain ticket contract.">
           <Button asChild>
             <Link href="/admin/events/new">Create event</Link>
           </Button>

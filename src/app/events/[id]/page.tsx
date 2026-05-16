@@ -4,7 +4,7 @@ import { Calendar, MapPin, ShieldCheck, Ticket } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatDate, formatPrice } from "@/lib/format";
+import { formatDate, formatDateShort, formatPrice } from "@/lib/format";
 import { getCurrentProfile } from "@/lib/auth";
 import { getAccountBalanceAmount } from "@/lib/balances/ledger";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -51,30 +51,34 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     );
   }
 
+  const cheapest = enriched.filter((c) => c.remaining > 0).sort((a, b) => Number(a.price) - Number(b.price))[0];
+
   return (
-    <div>
-      <section className="relative min-h-[420px] overflow-hidden">
-        <div className="absolute inset-0 bg-secondary">
+    <div className="pb-24 md:pb-12">
+      <section className="relative min-h-[520px] overflow-hidden md:min-h-[640px]">
+        <div className="absolute inset-0 bg-black">
           {event.image_url ? (
             <Image src={event.image_url} alt={event.name} fill priority sizes="100vw" className="object-cover" />
           ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/20" />
         </div>
-        <div className="container relative flex min-h-[420px] items-end pb-10 pt-28">
-          <div className="max-w-3xl">
-            <Badge variant="success" className="mb-4">Published</Badge>
-            <h1 className="text-4xl font-semibold leading-tight md:text-6xl">{event.name}</h1>
-            <div className="mt-5 flex flex-wrap gap-4 text-sm text-muted-foreground">
+        <div className="container relative flex min-h-[520px] items-end pb-12 pt-28 md:min-h-[640px] md:pb-16">
+          <div className="max-w-4xl">
+            <span className="mono-stub mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[#E6D8C9] px-3 py-1 text-[#121212]">
+              {formatDateShort(event.date)}
+            </span>
+            <h1 className="display text-5xl text-[#F5F3EE] md:text-7xl lg:text-8xl">{event.name}</h1>
+            <div className="mono-stub mt-6 flex flex-wrap gap-4 text-[#E6D8C9]/80">
               <span className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-3.5 w-3.5" />
                 {formatDate(event.date)}
               </span>
               <span className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
+                <MapPin className="h-3.5 w-3.5" />
                 {event.venue_name}, {event.city}
               </span>
               <span className="flex items-center gap-2">
-                <Ticket className="h-4 w-4" />
+                <Ticket className="h-3.5 w-3.5" />
                 {event.capacity.toLocaleString()} capacity
               </span>
             </div>
@@ -110,14 +114,14 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm leading-6 text-muted-foreground">
-              After checkout, your ticket appears in My Tickets. At the gate, open the ticket and show the live
-              code — it refreshes every minute and is bound to your account, so screenshots will not work.
+              After checkout, your NFT ticket appears in Wallet. At the gate, open the digital pass for QR
+              verification while MISO keeps ownership and resale history tied to the ticket.
             </CardContent>
           </Card>
         </div>
 
-        <aside className="space-y-4">
-          <h2 className="text-xl font-semibold">Tickets</h2>
+        <aside id="tickets" className="space-y-4">
+          <h2 className="text-xl font-medium">Tickets</h2>
           {enriched.length ? (
             enriched.map((category) => {
               const availableBalance = profile ? balancesByCurrency.get(category.currency) ?? 0 : null;
@@ -162,11 +166,28 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
             })
           ) : (
             <Card className="glass rounded-lg">
-              <CardContent className="p-5 text-sm text-muted-foreground">No ticket categories are available.</CardContent>
+              <CardContent className="p-5 text-sm text-muted-foreground">No ticket tiers are available.</CardContent>
             </Card>
           )}
         </aside>
       </div>
+
+      {cheapest ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-between gap-3 border-t border-border bg-background/95 px-4 backdrop-blur-xl md:hidden">
+          <div className="flex flex-col">
+            <span className="mono-stub text-muted-foreground">From</span>
+            <span className="text-base font-bold">
+              {formatPrice(cheapest.price, cheapest.currency)}
+            </span>
+          </div>
+          <a
+            href="#tickets"
+            className="inline-flex h-11 items-center rounded-md bg-primary px-6 text-sm font-bold text-primary-foreground"
+          >
+            Get ticket
+          </a>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -9,10 +9,10 @@ export function SignupForm({ error }: { error?: string }) {
   return (
     <form action={signupAction} className="grid gap-5">
       <div>
-        <p className="mb-3 text-sm font-medium text-primary">Get started</p>
+        <p className="mb-3 text-sm font-medium text-primary">Join the list</p>
         <h1 className="text-3xl font-semibold tracking-tight">Create account</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Buy tickets with your card. Your ticket lives on your phone and proves itself at entry.
+          Buy premium event tickets and keep every NFT pass ready on your phone.
         </p>
       </div>
       {error ? (
