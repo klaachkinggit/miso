@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { safeErrorMessage } from "@/lib/api/errors";
 import { getCurrentProfile } from "@/lib/auth";
 import { createResaleListing } from "@/lib/resale/listing";
 import { ResellInitSchema } from "@/lib/schemas";
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ listing });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Listing failed." },
+      { error: safeErrorMessage(error, { fallback: "Listing failed." }) },
       { status: 400 },
     );
   }

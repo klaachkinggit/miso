@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getCurrentProfile } from "@/lib/auth";
-import { fulfillResale } from "@/lib/resale/listing";
+import { safeErrorMessage } from "@/lib/api/errors";
+import {
+  ChainOpInFlightError,
+  ChainOpRepairError,
+} from "@/lib/chain/ops";
+import { fulfillResale, ResaleTransferPendingError } from "@/lib/resale/listing";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRequestOrigin } from "@/lib/url";
 import type { ResaleListing, Ticket } from "@/types/db";
@@ -55,8 +60,26 @@ export async function POST(request: NextRequest) {
       url: `${appUrl}/marketplace/success?listing_id=${listing.id}&mock=1`,
     });
   } catch (error) {
+    // Chain in-flight (timeout, unknown wait error) OR mined-then-DB
+    // failed (repair). Surface 202 so the client polls; admin retry
+    // resumes. Do NOT collapse these into 400 — the buyer's NFT may
+    // be (or already is) on chain.
+    if (
+      error instanceof ResaleTransferPendingError ||
+      error instanceof ChainOpInFlightError ||
+      error instanceof ChainOpRepairError
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Your purchase is pending on chain. We're retrying — check back shortly.",
+          status: "pending",
+        },
+        { status: 202 },
+      );
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Checkout failed." },
+      { error: safeErrorMessage(error, { fallback: "Checkout failed." }) },
       { status: 400 },
     );
   }

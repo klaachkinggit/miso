@@ -4,9 +4,13 @@ import { audit } from "@/lib/audit";
 import { casablancaInputToIso } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cancelUnsoldTickets, markSoldTicketsRefundPending } from "@/lib/tickets/lifecycle";
-import { encodeMisoTicketDeploy } from "@/lib/thirdweb/contracts/misoTicket";
+import {
+  MISO_TICKET_ABI,
+  MISO_TICKET_BYTECODE,
+} from "@/lib/thirdweb/contracts/misoTicket";
 import { uploadFile } from "@/lib/thirdweb/storage";
 import {
+  backendWallet,
   deployContract,
   TransactionRevertError,
   TransactionTimeoutError,
@@ -40,11 +44,6 @@ export interface CategoryInput {
   benefits?: string | null;
 }
 
-function backendWallet(): Address {
-  const raw = process.env.THIRDWEB_BACKEND_WALLET_ADDRESS;
-  if (!raw) throw new Error("Missing THIRDWEB_BACKEND_WALLET_ADDRESS env var");
-  return raw as Address;
-}
 
 export async function createDraftEvent(params: {
   input: EventDetailsInput;
@@ -217,16 +216,25 @@ export async function publishEventSetup(params: {
   }
 
   if (!event.nft_contract_address) {
+    const admin = await backendWallet();
     const { contractAddress, txHash, transactionId } = await deployMisoTicket({
       name: event.name,
-      admin: backendWallet(),
+      admin,
     });
+    // role_admin_address pins the wallet that holds admin roles on the
+    // deployed contract. Future mints/transfers/setAttribute use this
+    // as `from`. For events deployed before this column existed it is
+    // NULL and chain writes fall back to backendWallet().
     const { error: deployError } = await sb
       .from("events")
-      .update({ nft_contract_address: contractAddress })
+      .update({
+        nft_contract_address: contractAddress,
+        role_admin_address: admin,
+      })
       .eq("id", params.eventId);
     if (deployError) throw deployError;
     event.nft_contract_address = contractAddress;
+    event.role_admin_address = admin;
     await audit({
       actorUserId: params.adminUserId,
       action: "event.contract_deployed",
@@ -234,6 +242,7 @@ export async function publishEventSetup(params: {
       entityId: params.eventId,
       metadata: {
         contract: contractAddress,
+        role_admin: admin,
         tx_hash: txHash,
         transaction_id: transactionId,
       },
@@ -324,15 +333,74 @@ export async function createTicketCategory(params: {
   return category;
 }
 
+// Hard limits for admin-supplied event image URLs. Even though this
+// runs admin-only, the fetch happens server-side so we still need to
+// block SSRF vectors: private/link-local hosts, non-HTTP(S) schemes,
+// oversized payloads, and non-image content types.
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_IMAGE_MIME = /^image\/(png|jpe?g|webp|gif|avif)$/i;
+
+function isPrivateOrLocalHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost")) return true;
+  // IPv6 loopback / link-local
+  if (h === "::1" || h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")) {
+    return true;
+  }
+  // Numeric IPv4
+  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 10) return true;                         // 10.0.0.0/8
+    if (a === 127) return true;                        // 127.0.0.0/8
+    if (a === 169 && b === 254) return true;           // 169.254.0.0/16 link-local
+    if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16.0.0/12
+    if (a === 192 && b === 168) return true;           // 192.168.0.0/16
+    if (a === 0) return true;                          // 0.0.0.0/8
+    if (a >= 224) return true;                         // multicast / reserved
+  }
+  return false;
+}
+
 async function pinImageToIpfs(imageUrl: string): Promise<string> {
-  const res = await fetch(imageUrl);
+  let url: URL;
+  try {
+    url = new URL(imageUrl);
+  } catch {
+    throw new Error("Event image URL is malformed");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("Event image URL must be http(s)");
+  }
+  if (isPrivateOrLocalHost(url.hostname)) {
+    throw new Error("Event image URL host is not allowed");
+  }
+
+  const res = await fetch(imageUrl, { redirect: "follow" });
   if (!res.ok) {
     throw new Error(
       `Failed to fetch event image (${imageUrl}): HTTP ${res.status}`,
     );
   }
+  // If `fetch` followed redirects, recheck the final host. Public DNS
+  // can resolve to a private IP via redirect; that would land here.
+  const finalUrl = new URL(res.url);
+  if (isPrivateOrLocalHost(finalUrl.hostname)) {
+    throw new Error("Event image URL redirected to a private host");
+  }
   const mimeType = res.headers.get("content-type") ?? "application/octet-stream";
-  const blob = await res.blob();
+  if (!ALLOWED_IMAGE_MIME.test(mimeType.split(";")[0]!.trim())) {
+    throw new Error(`Event image MIME type not allowed: ${mimeType}`);
+  }
+  const declaredLength = Number(res.headers.get("content-length") ?? "0");
+  if (declaredLength > MAX_IMAGE_BYTES) {
+    throw new Error("Event image exceeds 5 MB cap");
+  }
+  const buffer = await res.arrayBuffer();
+  if (buffer.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error("Event image exceeds 5 MB cap");
+  }
+  const blob = new Blob([buffer], { type: mimeType });
   return uploadFile({ data: blob, mimeType });
 }
 
@@ -340,25 +408,23 @@ async function deployMisoTicket(args: {
   name: string;
   admin: Address;
 }): Promise<{ contractAddress: Address; txHash: string; transactionId: string }> {
-  const bytecode = encodeMisoTicketDeploy({
-    name: args.name,
-    symbol: "MISO",
-    admin: args.admin,
+  const deployed = await deployContract({
+    bytecode: MISO_TICKET_BYTECODE,
+    abi: MISO_TICKET_ABI as unknown as import("viem").Abi,
+    constructorParams: {
+      name_: args.name,
+      symbol_: "MISO",
+      admin: args.admin,
+    },
   });
-  const queued = await deployContract({ bytecode });
   try {
-    const record = await waitForTransaction(queued.transactionId, {
+    const record = await waitForTransaction(deployed.transactionId, {
       timeoutMs: 180_000,
     });
-    if (!record.contractAddress) {
-      throw new Error(
-        `Deploy mined but contract address missing for tx ${queued.transactionId}`,
-      );
-    }
     return {
-      contractAddress: record.contractAddress,
+      contractAddress: deployed.address,
       txHash: record.transactionHash ?? "",
-      transactionId: queued.transactionId,
+      transactionId: deployed.transactionId,
     };
   } catch (err) {
     if (err instanceof TransactionRevertError) {
@@ -368,7 +434,7 @@ async function deployMisoTicket(args: {
     }
     if (err instanceof TransactionTimeoutError) {
       throw new Error(
-        `MisoTicket deploy timed out (transactionId=${queued.transactionId}); rerun publish to resume.`,
+        `MisoTicket deploy timed out (transactionId=${err.transactionId}); rerun publish to resume.`,
       );
     }
     throw err;

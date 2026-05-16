@@ -13,19 +13,22 @@ import {
   creditResaleSellerBalance,
   debitResaleBuyerBalance,
 } from "@/lib/balances/ledger";
-import { encodeAdminTransfer } from "@/lib/thirdweb/contracts/misoTicket";
 import {
+  ChainOpInFlightError,
+  ChainOpRepairError,
+  markChainOpMined,
+  markChainOpRepairNeeded,
+  openOrResumeChainOp,
+  runChainOp,
   TransactionRevertError,
   TransactionTimeoutError,
-  waitForTransaction,
-  writeContract,
-} from "@/lib/thirdweb/transactions";
+} from "@/lib/chain/ops";
+import { backendWallet } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { audit } from "@/lib/audit";
 import {
   markTicketListed,
   markTicketResaleCanceled,
-  transferListedTicketToBuyer,
 } from "@/lib/tickets/lifecycle";
 import type { Ticket, EventRow, TicketCategory, ResaleListing } from "@/types/db";
 
@@ -35,6 +38,9 @@ const INVALID_FOR_RESALE = new Set([
   "refund_pending",
   "canceled",
   "expired",
+  "minting",
+  "transferring",
+  "repair_needed",
 ]);
 
 export async function createResaleListing(params: {
@@ -113,11 +119,22 @@ export async function cancelResaleListing(params: {
   if (listing.seller_user_id !== params.sellerUserId) throw new Error("Not listing owner");
   if (listing.status !== "active") throw new Error(`Listing not cancelable (status: ${listing.status})`);
 
-  await sb
+  // Atomic transition active → canceled. If a concurrent buyer just
+  // claimed the listing (active → transferring) the UPDATE returns
+  // zero rows; refuse to flip the ticket back to `sold` in that case
+  // or we'd race against fulfillResale.
+  const { data: canceled } = await sb
     .from("resale_listings")
     .update({ status: "canceled" })
     .eq("id", listing.id)
-    .eq("status", "active");
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+  if (!canceled) {
+    throw new Error(
+      "Listing is no longer cancelable — another buyer has claimed it.",
+    );
+  }
 
   await markTicketResaleCanceled({ ticketId: listing.ticket_id, listingId: listing.id });
 
@@ -130,21 +147,74 @@ export async function cancelResaleListing(params: {
   });
 }
 
+// Thrown when an adminTransfer timed out without a terminal answer.
+// Caller (HTTP route) must NOT compensate or release: chain may still
+// mine. Admin retry tool resumes the same transactionId.
+export class ResaleTransferPendingError extends Error {
+  constructor(readonly listingId: string, readonly transactionId?: string) {
+    super(`Resale transfer for listing ${listingId} is pending on chain.`);
+    this.name = "ResaleTransferPendingError";
+  }
+}
+
 export async function fulfillResale(params: {
   listingId: string;
   buyerUserId: string;
 }) {
   const sb = createServiceClient();
 
-  const { data: listing } = await sb
+  // Load listing + ticket but treat them as advisory: the atomic claim
+  // below is what actually wins the race.
+  const { data: listingPeek } = await sb
     .from("resale_listings")
     .select("*")
     .eq("id", params.listingId)
     .single<ResaleListing>();
-  if (!listing) throw new Error("Listing not found");
-  if (listing.status === "sold" && listing.buyer_user_id === params.buyerUserId) return;
-  if (listing.status !== "active") throw new Error("Listing not active");
-  if (listing.seller_user_id === params.buyerUserId) throw new Error("Cannot buy your own listing");
+  if (!listingPeek) throw new Error("Listing not found");
+
+  // Already-sold short-circuit (idempotent re-entry).
+  if (listingPeek.status === "sold" && listingPeek.buyer_user_id === params.buyerUserId) {
+    return;
+  }
+  if (listingPeek.seller_user_id === params.buyerUserId) {
+    throw new Error("Cannot buy your own listing");
+  }
+
+  // ---- Atomic listing claim (active → transferring | resumable) -----------
+  // Only one writer wins. Two parallel buyers cannot both pass this point.
+  const isResumable =
+    listingPeek.status === "transferring" &&
+    listingPeek.buyer_user_id === params.buyerUserId;
+  if (!isResumable && listingPeek.status !== "active") {
+    throw new Error(`Listing not active (status: ${listingPeek.status})`);
+  }
+  if (!isResumable) {
+    const { data: claimed } = await sb
+      .from("resale_listings")
+      .update({ status: "transferring", buyer_user_id: params.buyerUserId })
+      .eq("id", listingPeek.id)
+      .eq("status", "active")
+      .select("id")
+      .maybeSingle();
+    if (!claimed) {
+      // Someone else claimed it. Re-read to give a clean error.
+      const { data: fresh } = await sb
+        .from("resale_listings")
+        .select("status, buyer_user_id")
+        .eq("id", listingPeek.id)
+        .single<{ status: string; buyer_user_id: string | null }>();
+      if (fresh?.status === "sold" && fresh.buyer_user_id === params.buyerUserId) return;
+      throw new Error("Listing not active");
+    }
+  }
+
+  // Re-read listing post-claim.
+  const { data: listing } = await sb
+    .from("resale_listings")
+    .select("*")
+    .eq("id", listingPeek.id)
+    .single<ResaleListing>();
+  if (!listing) throw new Error("Listing disappeared after claim");
 
   const { data: ticket } = await sb
     .from("tickets")
@@ -156,37 +226,65 @@ export async function fulfillResale(params: {
     throw new Error("Ticket has no on-chain identity");
   }
   if (!ticket.owner_evm_address) throw new Error("Seller smart account missing on ticket");
+
+  // Resume-after-finalize-fail: a prior attempt's chain tx mined and
+  // the ticket was already flipped to sold under this buyer, but the
+  // seller credit / listing finalize threw. Skip the chain path; jump
+  // straight to finalize so the listing closes cleanly. (H 4 from
+  // Codex audit.)
+  if (
+    isResumable &&
+    ticket.status === "sold" &&
+    ticket.owner_user_id === params.buyerUserId
+  ) {
+    const listingAmount = Number(listing.price);
+    if (listingAmount > 0) {
+      await creditResaleSellerBalance({
+        listingId: listing.id,
+        sellerUserId: listing.seller_user_id,
+        amount: listing.price,
+        currency: listing.currency,
+      });
+    }
+    await sb
+      .from("resale_listings")
+      .update({
+        status: "sold",
+        buyer_user_id: params.buyerUserId,
+        sold_at: new Date().toISOString(),
+      })
+      .eq("id", listing.id)
+      .in("status", ["transferring", "active"]);
+    return;
+  }
+
   if (INVALID_FOR_RESALE.has(ticket.status)) {
     throw new Error(`Ticket cannot be transferred (status: ${ticket.status})`);
   }
-  if (ticket.status !== "listed") {
-    if (ticket.owner_user_id === params.buyerUserId && listing.status === "active") {
-      if (Number(listing.price) > 0) {
-        await creditResaleSellerBalance({
-          listingId: listing.id,
-          sellerUserId: listing.seller_user_id,
-          amount: listing.price,
-          currency: listing.currency,
-        });
-      }
-      await sb
-        .from("resale_listings")
-        .update({
-          status: "sold",
-          buyer_user_id: params.buyerUserId,
-          sold_at: new Date().toISOString(),
-        })
-        .eq("id", listing.id);
-      return;
+
+  // Claim the ticket into `transferring` so a parallel cancel / refund
+  // path cannot mutate it mid-transfer. Allow resume from already-transferring.
+  if (ticket.status === "listed" && ticket.current_listing_id === listing.id) {
+    const { data: ticketClaimed } = await sb
+      .from("tickets")
+      .update({ status: "transferring" })
+      .eq("id", ticket.id)
+      .eq("status", "listed")
+      .eq("current_listing_id", listing.id)
+      .select("id")
+      .maybeSingle();
+    if (!ticketClaimed) {
+      throw new Error("Ticket no longer listable for this listing");
     }
-    throw new Error(`Ticket not listed (status: ${ticket.status})`);
+  } else if (ticket.status !== "transferring" || ticket.current_listing_id !== listing.id) {
+    throw new Error(`Ticket not in a transferable state (${ticket.status})`);
   }
 
   const { data: event } = await sb
     .from("events")
-    .select("status, date")
+    .select("status, date, role_admin_address")
     .eq("id", ticket.event_id)
-    .single<Pick<EventRow, "status" | "date">>();
+    .single<Pick<EventRow, "status" | "date" | "role_admin_address">>();
   if (event?.status === "canceled") throw new Error("Event canceled");
   if (event && new Date(event.date).getTime() < Date.now()) throw new Error("Event already passed");
 
@@ -203,82 +301,179 @@ export async function fulfillResale(params: {
 
   const sellerSmartAccount = ticket.owner_evm_address;
   const listingAmount = Number(listing.price);
+  const roleAdmin = (event?.role_admin_address ?? (await backendWallet())) as Address;
 
+  // Debit AFTER the atomic claim — the debit RPC is idempotent on
+  // (profile, currency, movement, ref_type, ref_id) so retries are
+  // safe; the chain_op below has its own per-attempt key.
   if (listingAmount > 0) {
-    await debitResaleBuyerBalance({
-      listingId: listing.id,
-      buyerUserId: params.buyerUserId,
-      amount: listing.price,
-      currency: listing.currency,
-    });
-  }
-
-  let transferTxHash: string | null = null;
-  try {
-    const data = encodeAdminTransfer({
-      from: sellerSmartAccount as Address,
-      to: buyerSmartAccount as Address,
-      tokenId: BigInt(ticket.nft_token_id),
-    });
-    const queued = await writeContract({
-      contractAddress: ticket.nft_contract_address as Address,
-      data,
-    });
-    const record = await waitForTransaction(queued.transactionId, {
-      timeoutMs: 180_000,
-    });
-    transferTxHash = record.transactionHash ?? null;
-  } catch (err) {
-    if (listingAmount > 0) {
-      await compensateResaleBuyerDebit({
+    try {
+      await debitResaleBuyerBalance({
         listingId: listing.id,
         buyerUserId: params.buyerUserId,
         amount: listing.price,
         currency: listing.currency,
       });
+    } catch (err) {
+      // Debit failed before any chain call. Roll claim back to active.
+      await sb
+        .from("tickets")
+        .update({ status: "listed" })
+        .eq("id", ticket.id)
+        .eq("status", "transferring")
+        .eq("current_listing_id", listing.id);
+      await sb
+        .from("resale_listings")
+        .update({ status: "active", buyer_user_id: null })
+        .eq("id", listing.id)
+        .eq("status", "transferring");
+      throw err;
     }
-    const message =
-      err instanceof TransactionRevertError
-        ? `adminTransfer reverted: ${err.record.errorMessage ?? "unknown"}`
-        : err instanceof TransactionTimeoutError
-          ? `adminTransfer timed out (transactionId=${err.transactionId})`
-          : err instanceof Error
-            ? err.message
-            : "adminTransfer failed";
+  }
+
+  // Open or resume the chain_op for this listing.
+  const { op, resumed } = await openOrResumeChainOp({
+    opType: "transfer",
+    listingId: listing.id,
+    ticketId: ticket.id,
+    contractAddress: ticket.nft_contract_address,
+    tokenId: ticket.nft_token_id,
+    fromAddress: sellerSmartAccount,
+    toAddress: buyerSmartAccount,
+  });
+
+  let transferTxHash: string | null = null;
+  try {
+    const { txHash } = await runChainOp({
+      op,
+      resumed,
+      from: roleAdmin,
+      call: {
+        contractAddress: ticket.nft_contract_address as Address,
+        method:
+          "function adminTransfer(address from, address to, uint256 tokenId)",
+        params: [
+          sellerSmartAccount as Address,
+          buyerSmartAccount as Address,
+          BigInt(ticket.nft_token_id),
+        ],
+      },
+    });
+    transferTxHash = txHash;
+  } catch (err) {
+    // ONLY a TransactionRevertError is a definitive pre-mined terminal
+    // failure. Timeout, network errors during wait, RPC exceptions etc
+    // may have a broadcasted tx mining underneath — compensating /
+    // releasing on those would lose the NFT. (CRIT 2 from Codex audit.)
+    if (err instanceof TransactionRevertError) {
+      if (listingAmount > 0) {
+        await compensateResaleBuyerDebit({
+          listingId: listing.id,
+          buyerUserId: params.buyerUserId,
+          amount: listing.price,
+          currency: listing.currency,
+        });
+      }
+      await sb
+        .from("tickets")
+        .update({ status: "listed" })
+        .eq("id", ticket.id)
+        .eq("status", "transferring")
+        .eq("current_listing_id", listing.id);
+      await sb
+        .from("resale_listings")
+        .update({ status: "active", buyer_user_id: null })
+        .eq("id", listing.id)
+        .eq("status", "transferring");
+
+      const message = `adminTransfer reverted: ${err.record.errorMessage ?? "unknown"}`;
+      await audit({
+        actorUserId: params.buyerUserId,
+        action: "resale.transfer_failed",
+        entityType: "resale_listing",
+        entityId: listing.id,
+        metadata: {
+          ticket_id: ticket.id,
+          chain_op: op.id,
+          contract: ticket.nft_contract_address,
+          token_id: ticket.nft_token_id,
+          from: sellerSmartAccount,
+          to: buyerSmartAccount,
+          error: message,
+        },
+      });
+      throw new Error(message);
+    }
+
+    // In-flight / unknown — leave claimed, hand off to admin retry.
     await audit({
       actorUserId: params.buyerUserId,
-      action: "resale.transfer_failed",
+      action: "resale.transfer_pending",
       entityType: "resale_listing",
       entityId: listing.id,
       metadata: {
         ticket_id: ticket.id,
-        contract: ticket.nft_contract_address,
-        token_id: ticket.nft_token_id,
-        from: sellerSmartAccount,
-        to: buyerSmartAccount,
-        error: message,
+        chain_op: op.id,
+        transaction_id:
+          err instanceof TransactionTimeoutError
+            ? err.transactionId
+            : op.transaction_id,
+        reason: err instanceof Error ? err.message : "unknown",
       },
     });
-    throw new Error(message);
+    if (err instanceof TransactionTimeoutError) {
+      throw new ResaleTransferPendingError(listing.id, err.transactionId);
+    }
+    throw new ResaleTransferPendingError(
+      listing.id,
+      op.transaction_id ?? undefined,
+    );
   }
 
+  // ---- Chain tx mined. No compensation past this point. -------------------
   try {
-    await transferListedTicketToBuyer({
-      ticketId: ticket.id,
-      listingId: listing.id,
-      buyerUserId: params.buyerUserId,
-      buyerEvmAddress: buyerSmartAccount,
-      lastTransferTxHash: transferTxHash,
-    });
-  } catch (error) {
-    if (listingAmount > 0) {
-      await compensateResaleBuyerDebit({
-        listingId: listing.id,
-        buyerUserId: params.buyerUserId,
-        amount: listing.price,
-        currency: listing.currency,
-      });
+    // Move ticket from transferring → sold under the new owner.
+    const { data: updated, error: ticketUpdateError } = await sb
+      .from("tickets")
+      .update({
+        owner_user_id: params.buyerUserId,
+        owner_evm_address: buyerSmartAccount,
+        status: "sold",
+        current_listing_id: null,
+        last_transfer_tx_hash: transferTxHash,
+      })
+      .eq("id", ticket.id)
+      .eq("status", "transferring")
+      .eq("current_listing_id", listing.id)
+      .select("id")
+      .maybeSingle();
+    if (ticketUpdateError) throw ticketUpdateError;
+    if (!updated) {
+      // Could be a duplicate mined retry where the ticket already
+      // moved to sold. Tolerate; do not error.
+      const { data: check } = await sb
+        .from("tickets")
+        .select("status, owner_user_id")
+        .eq("id", ticket.id)
+        .single<{ status: string; owner_user_id: string | null }>();
+      if (!(check?.status === "sold" && check.owner_user_id === params.buyerUserId)) {
+        throw new Error("Ticket transfer DB update failed");
+      }
     }
+  } catch (dbErr) {
+    // Chain owner already moved. Do NOT compensate. Mark repair_needed.
+    const message = dbErr instanceof Error ? dbErr.message : "db update failed";
+    await sb
+      .from("tickets")
+      .update({ status: "repair_needed" })
+      .eq("id", ticket.id)
+      .eq("status", "transferring");
+    await sb
+      .from("resale_listings")
+      .update({ status: "repair_needed" })
+      .eq("id", listing.id)
+      .eq("status", "transferring");
+    await markChainOpRepairNeeded(op.id, message);
     await audit({
       actorUserId: params.buyerUserId,
       action: "resale.db_update_failed",
@@ -286,41 +481,66 @@ export async function fulfillResale(params: {
       entityId: listing.id,
       metadata: {
         ticket_id: ticket.id,
+        chain_op: op.id,
         tx_hash: transferTxHash,
-        error: error instanceof Error ? error.message : "db update failed",
+        error: message,
       },
     });
-    throw error;
+    throw new ChainOpRepairError(op.id, transferTxHash, message);
   }
 
-  if (listingAmount > 0) {
-    await creditResaleSellerBalance({
-      listingId: listing.id,
-      sellerUserId: listing.seller_user_id,
-      amount: listing.price,
-      currency: listing.currency,
+  // Seller credit + listing finalize. These are best-effort idempotent
+  // (credit RPC dedups by ref); a failure here also lands as repair_needed.
+  try {
+    if (listingAmount > 0) {
+      await creditResaleSellerBalance({
+        listingId: listing.id,
+        sellerUserId: listing.seller_user_id,
+        amount: listing.price,
+        currency: listing.currency,
+      });
+    }
+
+    await sb
+      .from("resale_listings")
+      .update({
+        status: "sold",
+        buyer_user_id: params.buyerUserId,
+        sold_at: new Date().toISOString(),
+      })
+      .eq("id", listing.id)
+      .in("status", ["transferring", "active"]);
+
+    await markChainOpMined(op.id, transferTxHash);
+
+    await audit({
+      actorUserId: params.buyerUserId,
+      action: "resale.fulfill",
+      entityType: "resale_listing",
+      entityId: listing.id,
+      metadata: {
+        ticket_id: ticket.id,
+        chain_op: op.id,
+        contract: ticket.nft_contract_address,
+        token_id: ticket.nft_token_id,
+        tx_hash: transferTxHash,
+      },
     });
+  } catch (finalErr) {
+    const message = finalErr instanceof Error ? finalErr.message : "finalize failed";
+    await markChainOpRepairNeeded(op.id, message);
+    await audit({
+      actorUserId: params.buyerUserId,
+      action: "resale.finalize_failed",
+      entityType: "resale_listing",
+      entityId: listing.id,
+      metadata: {
+        ticket_id: ticket.id,
+        chain_op: op.id,
+        tx_hash: transferTxHash,
+        error: message,
+      },
+    });
+    throw new ChainOpRepairError(op.id, transferTxHash, message);
   }
-
-  await sb
-    .from("resale_listings")
-    .update({
-      status: "sold",
-      buyer_user_id: params.buyerUserId,
-      sold_at: new Date().toISOString(),
-    })
-    .eq("id", listing.id);
-
-  await audit({
-    actorUserId: params.buyerUserId,
-    action: "resale.fulfill",
-    entityType: "resale_listing",
-    entityId: listing.id,
-    metadata: {
-      ticket_id: ticket.id,
-      contract: ticket.nft_contract_address,
-      token_id: ticket.nft_token_id,
-      tx_hash: transferTxHash,
-    },
-  });
 }

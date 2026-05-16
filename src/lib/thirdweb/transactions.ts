@@ -1,14 +1,15 @@
-// Thirdweb Transactions API client (server-only).
+// Thirdweb api.thirdweb.com client (server-only).
 //
-// Path 2 / api.thirdweb.com style: every transaction is queued by the
-// backend wallet (`x-backend-wallet-address`) and authorized by the
-// account secret (`x-secret-key`). Both headers ship via the shared
-// `thirdwebFetch` wrapper.
+// Three operations:
+//   - deployContract → POST /v1/contracts          ({bytecode, abi, constructorParams})
+//   - writeContract  → POST /v1/contracts/write    ({contractAddress, method, params})
+//   - waitForTransaction → polls /v1/transactions/{id} until MINED
 //
-// We send raw encoded calldata so this module stays independent of
-// individual contract endpoints — viem encodes, Thirdweb broadcasts.
+// Auth: `x-secret-key` header (configured in client.ts). `from` is the
+// Server Wallet EOA — defaulted from THIRDWEB_BACKEND_WALLET_ADDRESS so
+// callers don't repeat it.
 
-import type { Address, Hex } from "viem";
+import type { Abi, Address, Hex } from "viem";
 
 import { ThirdwebError, thirdwebFetch } from "@/lib/thirdweb/client";
 
@@ -20,86 +21,156 @@ function chainId(): number {
   return parsed;
 }
 
-export interface SendTransactionParams {
-  to?: Address | null;
-  data: Hex;
-  value?: bigint;
+// Resolves the wallet whose msg.sender will appear at the target contract.
+// Thirdweb's api.thirdweb.com routes EOA-typed Server Wallets through a
+// 7702 → bundler path where msg.sender at the destination is the project's
+// ERC-4337 smart account, NOT the EOA. Admin roles must therefore live on
+// the smart wallet, and `from` on every write must be the smart wallet.
+//
+// THIRDWEB_BACKEND_SMART_WALLET_ADDRESS is the preferred env. We fall back
+// to fetching /v1/wallets/server once on first use and cache the result.
+let cachedFrom: Address | undefined;
+let cachedFromPromise: Promise<Address> | undefined;
+
+async function fetchSmartWallet(): Promise<Address> {
+  const { thirdwebFetch } = await import("@/lib/thirdweb/client");
+  const resp = await thirdwebFetch<{
+    result?: {
+      wallets?: Array<{ address?: string; smartWalletAddress?: string }>;
+    };
+  }>("/v1/wallets/server", { method: "GET" });
+  const wallet = resp.result?.wallets?.[0];
+  const smart = wallet?.smartWalletAddress as Address | undefined;
+  if (!smart) {
+    throw new Error("No smartWalletAddress on the project's Server Wallet");
+  }
+  return smart;
+}
+
+export async function backendWallet(): Promise<Address> {
+  if (cachedFrom) return cachedFrom;
+  const envSmart = process.env.THIRDWEB_BACKEND_SMART_WALLET_ADDRESS;
+  if (envSmart) {
+    cachedFrom = envSmart as Address;
+    return cachedFrom;
+  }
+  if (!cachedFromPromise) {
+    cachedFromPromise = fetchSmartWallet().then((addr) => {
+      cachedFrom = addr;
+      return addr;
+    }).catch((err) => {
+      cachedFromPromise = undefined;
+      throw err;
+    });
+  }
+  return cachedFromPromise;
 }
 
 export interface QueuedTransaction {
   transactionId: string;
 }
 
-interface SendTxResponse {
-  result?: {
-    transactionIds?: string[];
-    transactionId?: string;
-  };
-  transactionIds?: string[];
-  transactionId?: string;
-}
-
-function pickTransactionId(res: SendTxResponse): string {
-  const ids =
-    res.result?.transactionIds ??
-    res.transactionIds ??
-    (res.result?.transactionId ? [res.result.transactionId] : undefined) ??
-    (res.transactionId ? [res.transactionId] : undefined);
-  if (!ids || ids.length === 0) {
-    throw new ThirdwebError(
-      "Thirdweb send response missing transactionId",
-      0,
-      res,
-    );
-  }
-  return ids[0];
-}
-
-export async function sendTransaction(
-  params: SendTransactionParams,
-): Promise<QueuedTransaction> {
-  const tx: Record<string, unknown> = { data: params.data };
-  if (params.to) tx.to = params.to;
-  if (params.value !== undefined) tx.value = params.value.toString();
-
-  const response = await thirdwebFetch<SendTxResponse>("/v1/transactions", {
-    method: "POST",
-    body: { chainId: chainId(), transactions: [tx] },
-  });
-
-  return { transactionId: pickTransactionId(response) };
-}
-
 export interface DeployContractParams {
   bytecode: Hex;
-  /**
-   * Already-encoded constructor args appended to the bytecode? Most callers
-   * should pre-encode the full deploy data via `viem.encodeDeployData` and
-   * pass it as `bytecode`. Constructor-args field is kept null for now to
-   * avoid double-encoding.
-   */
+  abi: Abi;
+  constructorParams: Record<string, unknown>;
+  chainId?: number;
+  from?: Address;
+  salt?: string;
+}
+
+export interface DeployContractResult {
+  address: Address;
+  transactionId: string;
+}
+
+interface DeployResponse {
+  result?: {
+    address?: string;
+    transactionId?: string;
+    chainId?: number;
+  };
 }
 
 export async function deployContract(
   params: DeployContractParams,
-): Promise<QueuedTransaction> {
-  return sendTransaction({ to: null, data: params.bytecode });
+): Promise<DeployContractResult> {
+  const body: Record<string, unknown> = {
+    chainId: params.chainId ?? chainId(),
+    bytecode: params.bytecode,
+    abi: params.abi,
+    constructorParams: params.constructorParams,
+    from: params.from ?? (await backendWallet()),
+  };
+  if (params.salt) body.salt = params.salt;
+
+  const response = await thirdwebFetch<DeployResponse>("/v1/contracts", {
+    method: "POST",
+    body,
+  });
+  const result = response.result;
+  if (!result?.address || !result.transactionId) {
+    throw new ThirdwebError(
+      "Thirdweb /v1/contracts response missing address or transactionId",
+      0,
+      response,
+    );
+  }
+  return {
+    address: result.address as Address,
+    transactionId: result.transactionId,
+  };
 }
 
-export interface WriteContractParams {
+export interface WriteContractCall {
   contractAddress: Address;
-  data: Hex;
+  method: string;
+  params: unknown[];
   value?: bigint;
+}
+
+export interface WriteContractParams extends WriteContractCall {
+  chainId?: number;
+  from?: Address;
+  idempotencyKey?: string;
+}
+
+interface WriteResponse {
+  result?: {
+    transactionIds?: string[];
+  };
 }
 
 export async function writeContract(
   params: WriteContractParams,
 ): Promise<QueuedTransaction> {
-  return sendTransaction({
-    to: params.contractAddress,
-    data: params.data,
-    value: params.value,
+  const call: Record<string, unknown> = {
+    contractAddress: params.contractAddress,
+    method: params.method,
+    params: params.params.map((p) => (typeof p === "bigint" ? p.toString() : p)),
+  };
+  if (params.value !== undefined) call.value = params.value.toString();
+
+  const body: Record<string, unknown> = {
+    calls: [call],
+    chainId: params.chainId ?? chainId(),
+    from: params.from ?? (await backendWallet()),
+  };
+  if (params.idempotencyKey) body.idempotencyKey = params.idempotencyKey;
+
+  const response = await thirdwebFetch<WriteResponse>("/v1/contracts/write", {
+    method: "POST",
+    body,
   });
+  const ids = response.result?.transactionIds;
+  if (!ids || ids.length === 0) {
+    throw new ThirdwebError(
+      "Thirdweb /v1/contracts/write response missing transactionIds",
+      0,
+      response,
+    );
+  }
+  return { transactionId: ids[0] };
 }
 
 export type TransactionStatus =
@@ -147,6 +218,7 @@ function normalizeStatus(raw: string | undefined): TransactionStatus {
       return "CANCELLED";
     case "SENT":
     case "SUBMITTED":
+    case "PENDING":
       return "SENT";
     default:
       return "QUEUED";

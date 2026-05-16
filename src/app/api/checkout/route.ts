@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { settleFailedPurchase, settlePaidPurchase } from "@/lib/payments/settlement";
+import { safeErrorMessage } from "@/lib/api/errors";
+import {
+  FulfillmentPendingError,
+  settleFailedPurchase,
+  settlePaidPurchase,
+} from "@/lib/payments/settlement";
 import { PurchaseInitSchema } from "@/lib/schemas";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reserveTicket } from "@/lib/tickets/lifecycle";
@@ -25,6 +30,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 });
     }
 
+    // Idempotency: clients can submit `Idempotency-Key` and we'll
+    // return the original purchase's success URL on retry. Without
+    // the header the route is non-idempotent (back-compat).
+    const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 128);
+    if (idempotencyKey) {
+      const { data: prior } = await sb
+        .from("purchases")
+        .select("id, status")
+        .eq("buyer_user_id", profile.id)
+        .eq("provider_session_id", idempotencyKey)
+        .maybeSingle<{ id: string; status: string }>();
+      if (prior) {
+        const appUrl = getRequestOrigin(request);
+        return NextResponse.json(
+          {
+            url: `${appUrl}/checkout/success?purchase_id=${prior.id}`,
+            status: prior.status,
+          },
+          { status: prior.status === "paid" ? 200 : 202 },
+        );
+      }
+    }
+
     const { ticket, category } = await reserveTicket({
       categoryId: parsed.data.category_id,
       buyerUserId: profile.id,
@@ -47,6 +75,7 @@ export async function POST(request: NextRequest) {
         amount: category.price,
         currency: category.currency,
         status: "pending",
+        provider_session_id: idempotencyKey ?? null,
       })
       .select("*")
       .single<Purchase>();
@@ -58,9 +87,19 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: `${appUrl}/checkout/success?purchase_id=${purchase.id}` });
   } catch (error) {
+    if (error instanceof FulfillmentPendingError) {
+      return NextResponse.json(
+        {
+          error:
+            "Your purchase is pending on chain. We're retrying — check back shortly.",
+          status: "pending",
+        },
+        { status: 202 },
+      );
+    }
     await settleFailedPurchase({ ticketId, purchaseId });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Checkout failed." },
+      { error: safeErrorMessage(error, { fallback: "Checkout failed." }) },
       { status: 400 },
     );
   }

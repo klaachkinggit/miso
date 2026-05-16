@@ -6,8 +6,10 @@
 
 import { ThirdwebError } from "@/lib/thirdweb/client";
 
+// IPFS upload lives on the legacy `storage.thirdweb.com` host, not
+// api.thirdweb.com (which has no /v1/ipfs/upload route).
 const STORAGE_BASE =
-  process.env.THIRDWEB_API_URL ?? "https://api.thirdweb.com";
+  process.env.THIRDWEB_STORAGE_URL ?? "https://storage.thirdweb.com";
 
 interface IpfsUploadResponse {
   IpfsHash?: string;
@@ -41,7 +43,7 @@ function pickCid(res: IpfsUploadResponse): string {
 }
 
 async function postMultipart(form: FormData): Promise<string> {
-  const res = await fetch(`${STORAGE_BASE}/v1/ipfs/upload`, {
+  const res = await fetch(`${STORAGE_BASE}/ipfs/upload`, {
     method: "POST",
     headers: {
       "x-secret-key": requireSecret(),

@@ -51,8 +51,13 @@ export async function refundTicket(params: {
   const refundAmount = resale?.price ?? purchase?.amount;
   const refundCurrency = resale?.currency ?? purchase?.currency;
 
-  await markTicketRefunded(ticket.id);
-
+  // Credit first — the RPC dedups on (profile, currency, movement,
+  // ref_type, ref_id) so retrying is a no-op. If we flipped the ticket
+  // first and then the credit failed, retry would hit "Cannot refund
+  // this ticket in its current state" and the buyer would be left
+  // refund-less with status=refunded. Crediting first makes the whole
+  // chain idempotent: credit → markTicketRefunded → markPurchaseRefunded
+  // can be re-driven safely on any partial failure.
   if (holderUserId && refundAmount && refundCurrency && Number(refundAmount) > 0) {
     await creditRefundBalance({
       ticketId: ticket.id,
@@ -61,6 +66,8 @@ export async function refundTicket(params: {
       currency: refundCurrency,
     });
   }
+
+  await markTicketRefunded(ticket.id);
 
   if (purchase && !resale) {
     await markPurchaseRefunded(purchase.id);

@@ -1,8 +1,7 @@
 // Shared Thirdweb HTTP client. Server-only.
 //
-// Auth: `x-secret-key` (account secret) + `x-backend-wallet-address`
-// (which server wallet signs). Both are server-only — never ship to
-// the client.
+// Auth: `x-secret-key` (project secret). The signing wallet is passed
+// per-request as `from` in the body, not via a header.
 
 const THIRDWEB_API_URL =
   process.env.THIRDWEB_API_URL ?? "https://api.thirdweb.com";
@@ -27,7 +26,6 @@ export class ThirdwebError extends Error {
 export interface ThirdwebFetchOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
-  includeBackendWallet?: boolean;
 }
 
 export async function thirdwebFetch<T>(
@@ -40,11 +38,6 @@ export async function thirdwebFetch<T>(
     "content-type": "application/json",
     accept: "application/json",
   };
-  if (opts.includeBackendWallet !== false) {
-    headers["x-backend-wallet-address"] = requireEnv(
-      "THIRDWEB_BACKEND_WALLET_ADDRESS",
-    );
-  }
 
   const url = `${THIRDWEB_API_URL}${path}`;
   const res = await fetch(url, {

@@ -1,15 +1,19 @@
 import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
-import { createServiceClient } from "@/lib/supabase/service";
-import { encodeMintTo } from "@/lib/thirdweb/contracts/misoTicket";
-import { uploadJson } from "@/lib/thirdweb/storage";
 import {
+  ChainOpInFlightError,
+  ChainOpRepairError,
+  markChainOpMined,
+  markChainOpRepairNeeded,
+  openOrResumeChainOp,
+  runChainOp,
   TransactionRevertError,
   TransactionTimeoutError,
-  waitForTransaction,
-  writeContract,
-} from "@/lib/thirdweb/transactions";
+} from "@/lib/chain/ops";
+import { createServiceClient } from "@/lib/supabase/service";
+import { uploadJson } from "@/lib/thirdweb/storage";
+import { backendWallet } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import type { EventRow, Ticket, TicketCategory } from "@/types/db";
 
@@ -89,6 +93,9 @@ export async function reserveTicket(params: {
   throw new Error("Ticket no longer available, retry");
 }
 
+// Releases a reservation to `available`. Refuses to touch tickets that
+// are `minting`, `sold`, or `repair_needed`: those have either an
+// in-flight chain op or a mined token attached.
 export async function releaseReservation(ticketId: string): Promise<void> {
   const sb = createServiceClient();
   await sb
@@ -110,11 +117,20 @@ export interface FulfillReceipt {
   ownerEvmAddress: string;
 }
 
-// Mints an ERC-721 to the buyer's smart account, then flips the reservation
-// row to `sold`. Failure at any step throws — settlement compensates the
-// debit. The DB update is conditional on the row still being the same
-// reservation, so a stale retry can't double-mint silently (a second mint
-// would conflict on the unique (contract, tokenId) index).
+// Mints an ERC-721 to the buyer's smart account, then flips the row to
+// `sold`. The reservation is first claimed into a `minting` state and a
+// `chain_ops` row is persisted BEFORE the chain call. On retry the
+// existing chain_ops row is resumed (reusing the original transactionId)
+// so a timeout-then-retry can never double-mint.
+//
+// Failure modes:
+//   * Pre-broadcast error → ticket released back to `available`,
+//     chain_op marked errored; settlement compensates the debit.
+//   * Timeout              → ticket stays `minting`, chain_op stays
+//     `sent`. Retry resumes the same tx. No compensation.
+//   * Mined-then-DB-fail   → chain_op + ticket → `repair_needed`. Owner
+//     and tokenId may already exist on chain; do NOT compensate. Admin
+//     tool re-runs the DB update idempotently.
 export async function fulfillReservedTicket(params: {
   ticketId: string;
   buyerUserId: string;
@@ -128,12 +144,35 @@ export async function fulfillReservedTicket(params: {
     .eq("id", params.ticketId)
     .single<Ticket>();
   if (!ticket) throw new Error("Ticket missing");
-  if (
-    ticket.status !== "reserved" ||
-    ticket.owner_user_id !== params.buyerUserId ||
-    !ticket.reserved_until ||
-    new Date(ticket.reserved_until).getTime() < Date.now()
-  ) {
+
+  // Fast-path: a prior attempt already minted + flipped to sold for this
+  // exact purchase. Treat as success — settlement can record paid.
+  if (ticket.status === "sold" && ticket.original_purchase_id === params.purchaseId) {
+    return {
+      contractAddress: ticket.nft_contract_address ?? "",
+      tokenId: ticket.nft_token_id ?? ticket.serial_number,
+      mintTxHash: ticket.mint_tx_hash ?? "",
+      metadataUri: ticket.metadata_uri ?? "",
+      ownerEvmAddress: ticket.owner_evm_address ?? "",
+    };
+  }
+
+  if (ticket.status === "repair_needed") {
+    throw new Error(
+      `Ticket ${ticket.id} is in repair_needed — admin must reconcile chain vs DB.`,
+    );
+  }
+
+  // Allow resume from `minting` if the chain_op already exists for this
+  // purchase; otherwise require a fresh `reserved` row.
+  const isResumable =
+    ticket.status === "minting" && ticket.owner_user_id === params.buyerUserId;
+  const isReserved =
+    ticket.status === "reserved" &&
+    ticket.owner_user_id === params.buyerUserId &&
+    !!ticket.reserved_until &&
+    new Date(ticket.reserved_until).getTime() >= Date.now();
+  if (!isResumable && !isReserved) {
     throw new StaleReservationError();
   }
 
@@ -143,6 +182,13 @@ export async function fulfillReservedTicket(params: {
     .eq("id", ticket.event_id)
     .single<EventRow>();
   if (!event) throw new Error("Event missing");
+  // Re-check status right before the chain call — the event may have
+  // been canceled between reservation and mint. cancelEventSetup flips
+  // sold/listed/etc to refund_pending but cannot recall an in-flight
+  // mint, so we refuse to broadcast at all.
+  if (event.status === "canceled") {
+    throw new Error("Event has been canceled — refusing to mint.");
+  }
   if (!event.nft_contract_address) {
     throw new Error("Event has no deployed contract");
   }
@@ -158,6 +204,19 @@ export async function fulfillReservedTicket(params: {
   const buyerWallet = await buyerWalletAddress(params.buyerUserId);
   const buyerAddress = buyerWallet as Address;
 
+  // Atomically claim reserved → minting if we're not already in minting.
+  if (isReserved) {
+    const { data: claimed } = await sb
+      .from("tickets")
+      .update({ status: "minting" })
+      .eq("id", ticket.id)
+      .eq("status", "reserved")
+      .eq("owner_user_id", params.buyerUserId)
+      .select("id")
+      .maybeSingle();
+    if (!claimed) throw new StaleReservationError();
+  }
+
   const metadata = {
     name: `${event.name} — Ticket #${ticket.serial_number}`,
     description: event.description ?? "",
@@ -169,83 +228,153 @@ export async function fulfillReservedTicket(params: {
       { trait_type: "Redeemed", value: "false" },
     ],
   };
-  const metadataUri = await uploadJson(metadata);
+  // Only upload metadata for a fresh op (resumed ops already have one).
+  const metadataUri =
+    ticket.metadata_uri && isResumable
+      ? ticket.metadata_uri
+      : await uploadJson(metadata);
 
   const tokenId = BigInt(ticket.serial_number);
-  const data = encodeMintTo({ to: buyerAddress, tokenId, uri: metadataUri });
+  const roleAdmin = (event.role_admin_address ?? (await backendWallet())) as Address;
+
+  const { op, resumed } = await openOrResumeChainOp({
+    opType: "mint",
+    purchaseId: params.purchaseId,
+    ticketId: ticket.id,
+    contractAddress,
+    tokenId: ticket.serial_number,
+    toAddress: buyerWallet,
+    metadataUri,
+  });
 
   let mintTxHash: string;
   try {
-    const queued = await writeContract({ contractAddress, data });
-    const record = await waitForTransaction(queued.transactionId, {
-      timeoutMs: 180_000,
+    const { txHash } = await runChainOp({
+      op,
+      resumed,
+      from: roleAdmin,
+      call: {
+        contractAddress,
+        method: "function mintTo(address to, uint256 tokenId, string uri)",
+        params: [buyerAddress, tokenId, op.metadata_uri ?? metadataUri],
+      },
     });
-    mintTxHash = record.transactionHash ?? "";
+    mintTxHash = txHash;
   } catch (err) {
+    // ONLY an explicit TransactionRevertError is safe to treat as a
+    // pre-mined terminal failure. Anything else — timeout, network
+    // error during wait, RPC exception — may have left a broadcasted
+    // tx that mines later. Releasing/compensating here is the bug from
+    // the Codex audit (CRIT). Leave state in `minting` and propagate
+    // as in-flight so settlement quarantines the purchase.
     if (err instanceof TransactionRevertError) {
+      await sb
+        .from("tickets")
+        .update({
+          status: "available",
+          owner_user_id: null,
+          reserved_until: null,
+        })
+        .eq("id", ticket.id)
+        .eq("status", "minting");
       throw new Error(
         `Mint reverted for ticket ${ticket.id}: ${err.record.errorMessage ?? "unknown"}`,
       );
     }
-    if (err instanceof TransactionTimeoutError) {
-      throw new Error(
-        `Mint timed out for ticket ${ticket.id} (transactionId=${err.transactionId})`,
-      );
-    }
-    throw err;
+    if (err instanceof TransactionTimeoutError) throw err;
+    throw new ChainOpInFlightError(
+      op.id,
+      op.transaction_id,
+      err instanceof Error ? err : new Error(String(err)),
+    );
   }
 
-  const { data: updatedTicket, error: ticketUpdateError } = await sb
-    .from("tickets")
-    .update({
-      status: "sold",
-      owner_user_id: params.buyerUserId,
-      owner_evm_address: buyerWallet,
-      nft_contract_address: contractAddress,
-      nft_token_id: ticket.serial_number,
-      mint_tx_hash: mintTxHash,
-      metadata_uri: metadataUri,
-      image_url: event.image_url,
-      reserved_until: null,
-      minted_at: new Date().toISOString(),
-      original_purchase_id: params.purchaseId,
-    })
-    .eq("id", ticket.id)
-    .eq("status", "reserved")
-    .eq("owner_user_id", params.buyerUserId)
-    .select("id")
-    .maybeSingle();
+  // Tx mined. From this point, NO compensation: the token exists on chain.
+  // A DB-update failure → repair_needed for an admin to reconcile.
+  try {
+    const { data: updatedTicket, error: ticketUpdateError } = await sb
+      .from("tickets")
+      .update({
+        status: "sold",
+        owner_user_id: params.buyerUserId,
+        owner_evm_address: buyerWallet,
+        nft_contract_address: contractAddress,
+        nft_token_id: ticket.serial_number,
+        mint_tx_hash: mintTxHash,
+        metadata_uri: op.metadata_uri ?? metadataUri,
+        image_url: event.image_url,
+        reserved_until: null,
+        minted_at: new Date().toISOString(),
+        original_purchase_id: params.purchaseId,
+      })
+      .eq("id", ticket.id)
+      .in("status", ["minting", "sold"])
+      .eq("owner_user_id", params.buyerUserId)
+      .select("id")
+      .maybeSingle();
 
-  if (ticketUpdateError) throw ticketUpdateError;
-  if (!updatedTicket) throw new StaleReservationError();
+    if (ticketUpdateError) throw ticketUpdateError;
+    if (!updatedTicket) {
+      throw new Error(
+        `Ticket ${ticket.id} could not be flipped to sold after mint`,
+      );
+    }
 
-  await sb
-    .from("ticket_categories")
-    .update({ sold_count: category.sold_count + 1 })
-    .eq("id", category.id);
+    await sb
+      .from("ticket_categories")
+      .update({ sold_count: category.sold_count + 1 })
+      .eq("id", category.id);
 
-  await audit({
-    actorUserId: params.buyerUserId,
-    action: "ticket.mint",
-    entityType: "ticket",
-    entityId: ticket.id,
-    metadata: {
-      contract: contractAddress,
-      token_id: ticket.serial_number,
-      tx_hash: mintTxHash,
-      metadata_uri: metadataUri,
-      owner: buyerWallet,
-      purchase: params.purchaseId,
-    },
-  });
+    await markChainOpMined(op.id, mintTxHash);
 
-  return {
-    contractAddress,
-    tokenId: ticket.serial_number,
-    mintTxHash,
-    metadataUri,
-    ownerEvmAddress: buyerWallet,
-  };
+    await audit({
+      actorUserId: params.buyerUserId,
+      action: "ticket.mint",
+      entityType: "ticket",
+      entityId: ticket.id,
+      metadata: {
+        contract: contractAddress,
+        token_id: ticket.serial_number,
+        tx_hash: mintTxHash,
+        metadata_uri: op.metadata_uri ?? metadataUri,
+        owner: buyerWallet,
+        purchase: params.purchaseId,
+        chain_op: op.id,
+      },
+    });
+
+    return {
+      contractAddress,
+      tokenId: ticket.serial_number,
+      mintTxHash,
+      metadataUri: op.metadata_uri ?? metadataUri,
+      ownerEvmAddress: buyerWallet,
+    };
+  } catch (dbErr) {
+    const message = dbErr instanceof Error ? dbErr.message : "db update failed";
+    await sb
+      .from("tickets")
+      .update({ status: "repair_needed" })
+      .eq("id", ticket.id)
+      .eq("status", "minting");
+    await markChainOpRepairNeeded(op.id, message);
+    await audit({
+      actorUserId: params.buyerUserId,
+      action: "ticket.mint_repair_needed",
+      entityType: "ticket",
+      entityId: ticket.id,
+      metadata: {
+        contract: contractAddress,
+        token_id: ticket.serial_number,
+        tx_hash: mintTxHash,
+        chain_op: op.id,
+        error: message,
+      },
+    });
+    // Token is on chain. Throw a typed repair error so settlement
+    // does NOT compensate the debit (CRIT 3 from Codex audit).
+    throw new ChainOpRepairError(op.id, mintTxHash, message);
+  }
 }
 
 export async function markTicketListed(params: {
@@ -322,19 +451,37 @@ export async function markTicketRedeemed(params: {
   return !!data;
 }
 
+// Refunds the ticket from a terminal-safe state only. Blocks `minting`
+// and `transferring`: those have an in-flight chain op whose outcome
+// is unknown — refunding now races the mined tx. `repair_needed` is
+// allowed (admin already chose to refund after reconciliation).
 export async function markTicketRefunded(ticketId: string): Promise<void> {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from("tickets")
     .update({ status: "refunded", refunded_at: new Date().toISOString() })
     .eq("id", ticketId)
-    .not("status", "eq", "used")
+    .in("status", [
+      "sold",
+      "listed",
+      "refund_pending",
+      "repair_needed",
+      "canceled",
+      "available",
+      "reserved",
+      "expired",
+    ])
     .select("id")
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Cannot refund a used ticket");
+  if (!data) throw new Error("Cannot refund this ticket in its current state");
 }
 
+// Cancels rows that have NOT touched chain yet. Tickets in `minting`,
+// `transferring`, or `repair_needed` have a mined or in-flight NFT
+// behind them and must be reconciled by an admin tool — not silently
+// flipped to `canceled`. Those are picked up by
+// markSoldTicketsRefundPending instead so the buyer gets refunded.
 export async function cancelUnsoldTickets(params: {
   eventId: string;
   categoryId?: string | null;
@@ -350,12 +497,17 @@ export async function cancelUnsoldTickets(params: {
   if (error) throw error;
 }
 
+// Sweeps every state that has (or may have) an on-chain NFT for the
+// event into `refund_pending`. Includes the in-flight states because
+// their chain side is committed (or may commit imminently) and the
+// holder is owed a refund. The admin reconcile tool resolves the
+// chain/DB delta before final refund.
 export async function markSoldTicketsRefundPending(eventId: string): Promise<void> {
   const sb = createServiceClient();
   const { error } = await sb
     .from("tickets")
     .update({ status: "refund_pending" })
     .eq("event_id", eventId)
-    .in("status", ["sold", "listed"]);
+    .in("status", ["sold", "listed", "minting", "transferring", "repair_needed"]);
   if (error) throw error;
 }

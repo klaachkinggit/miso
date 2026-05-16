@@ -1,36 +1,26 @@
-// Live Sepolia smoke test. Gated by LIVE_CHAIN=true so CI stays offline by
-// default. Run with:
-//
-//   LIVE_CHAIN=true \
-//   THIRDWEB_CLIENT_ID=... \
-//   THIRDWEB_SECRET_KEY=... \
-//   THIRDWEB_BACKEND_WALLET_ADDRESS=0x... \
-//   CHAIN_ID=84532 \
-//   npx playwright test tests/live-chain.spec.ts
-//
-// Deploys a fresh MisoTicket contract, mints one token to a generated
-// In-App Wallet, then reads ownerOf + tokenURI back over the wire. Asserts
-// the backend wallet is correctly funded and the Thirdweb client wiring
-// works against the real api.thirdweb.com endpoint.
+// Live Sepolia smoke test. Gated by LIVE_CHAIN=true so CI stays offline
+// by default. Deploys a fresh MisoTicket contract, mints one token to a
+// generated In-App Wallet, then reads ownerOf + tokenURI back over RPC.
 
 import { expect, test } from "@playwright/test";
 import {
   createPublicClient,
-  encodeDeployData,
   http,
+  type Abi,
   type Address,
-  type Hex,
 } from "viem";
 import { baseSepolia } from "viem/chains";
 
-import { MISO_TICKET_ABI, MISO_TICKET_BYTECODE } from "@/lib/thirdweb/contracts/misoTicket";
+import { thirdwebFetch } from "@/lib/thirdweb/client";
+import {
+  MISO_TICKET_ABI,
+  MISO_TICKET_BYTECODE,
+} from "@/lib/thirdweb/contracts/misoTicket";
 import {
   deployContract,
   waitForTransaction,
   writeContract,
 } from "@/lib/thirdweb/transactions";
-import { encodeMintTo } from "@/lib/thirdweb/contracts/misoTicket";
-import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 
 const liveEnabled = process.env.LIVE_CHAIN === "true";
 
@@ -39,43 +29,76 @@ test.describe("Live Base Sepolia smoke", () => {
   test.setTimeout(10 * 60 * 1000);
 
   test("deploys MisoTicket → mints → reads ownerOf + tokenURI", async () => {
-    const admin = process.env.THIRDWEB_BACKEND_WALLET_ADDRESS as Address;
-    expect(admin, "THIRDWEB_BACKEND_WALLET_ADDRESS required").toBeTruthy();
+    // Discover the project's smart wallet (ERC-4337) — that's the address
+    // whose role checks must pass when Thirdweb routes contract writes.
+    const serverList = await thirdwebFetch<{
+      result?: {
+        wallets?: Array<{ address?: string; smartWalletAddress?: string }>;
+      };
+    }>("/v1/wallets/server", { method: "GET" });
+    const wallet = serverList.result?.wallets?.[0];
+    const eoa = wallet?.address as Address | undefined;
+    const smart = wallet?.smartWalletAddress as Address | undefined;
+    expect(eoa, "Server wallet EOA").toBeTruthy();
+    expect(smart, "Server smart wallet").toBeTruthy();
+    // eslint-disable-next-line no-console
+    console.log("[live] EOA:", eoa, "smart:", smart);
 
-    const deployData = encodeDeployData({
-      abi: MISO_TICKET_ABI,
+    const admin = smart as Address;
+
+    const deployed = await deployContract({
       bytecode: MISO_TICKET_BYTECODE,
-      args: ["MisoLive", "MISO", admin],
-    }) as Hex;
-
-    const deployQueued = await deployContract({ bytecode: deployData });
-    const deployRecord = await waitForTransaction(deployQueued.transactionId, {
-      timeoutMs: 4 * 60 * 1000,
+      abi: MISO_TICKET_ABI as unknown as Abi,
+      constructorParams: {
+        name_: "MisoLive",
+        symbol_: "MISO",
+        admin,
+      },
+      from: smart,
     });
-    expect(deployRecord.contractAddress, "contract deployed").toBeTruthy();
-    const contractAddress = deployRecord.contractAddress as Address;
+    expect(deployed.address, "contract deployed").toBeTruthy();
+    const contractAddress = deployed.address;
+    // eslint-disable-next-line no-console
+    console.log("[live] deployed:", contractAddress, "tx:", deployed.transactionId);
 
-    const buyerUserId = `live-${Date.now()}`;
     const buyerEmail = `live+${Date.now()}@miso.test`;
-    const { smartAccountAddress } = await ensureUserWallet(buyerUserId, buyerEmail);
-    const buyer = smartAccountAddress as Address;
-    expect(buyer).toBeTruthy();
+    const pregen = await thirdwebFetch<{ result?: { address?: string } }>(
+      "/v1/wallets/user",
+      {
+        method: "POST",
+        body: { type: "email", email: buyerEmail },
+      },
+    );
+    const buyer = pregen.result?.address as Address;
+    expect(buyer, "buyer EOA pregenerated").toBeTruthy();
+    // eslint-disable-next-line no-console
+    console.log("[live] buyer EOA:", buyer);
 
     const tokenId = BigInt(Date.now());
     const uri = `ipfs://bafylivesmoke-${tokenId}`;
 
     const mintQueued = await writeContract({
       contractAddress,
-      data: encodeMintTo({ to: buyer, tokenId, uri }),
+      method: "function mintTo(address to, uint256 tokenId, string uri)",
+      params: [buyer, tokenId, uri],
+      from: smart,
     });
     const mintRecord = await waitForTransaction(mintQueued.transactionId, {
       timeoutMs: 4 * 60 * 1000,
     });
     expect(mintRecord.transactionHash, "mint mined").toBeTruthy();
+    // eslint-disable-next-line no-console
+    console.log("[live] mint tx hash:", mintRecord.transactionHash);
 
     const rpc = createPublicClient({
       chain: baseSepolia,
       transport: http(),
+    });
+    // Thirdweb reports MINED before the L2 RPC always returns the receipt.
+    // Wait on the public RPC so the next read sees consistent state.
+    await rpc.waitForTransactionReceipt({
+      hash: mintRecord.transactionHash as `0x${string}`,
+      timeout: 120_000,
     });
     const onChainOwner = (await rpc.readContract({
       address: contractAddress,

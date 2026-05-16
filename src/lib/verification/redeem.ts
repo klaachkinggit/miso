@@ -19,8 +19,8 @@ import type { Address } from "viem";
 import { audit } from "@/lib/audit";
 import { getGateSessionByShortCode, isGateSessionUsable, updateGateLastRedemption } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
-import { encodeSetAttribute } from "@/lib/thirdweb/contracts/misoTicket";
 import {
+  backendWallet,
   TransactionRevertError,
   TransactionTimeoutError,
   waitForTransaction,
@@ -266,15 +266,20 @@ export async function confirmRedemption(params: {
   // On-chain attribute write — DB flip already committed. Failure logs
   // an audit entry; admin retry tool can backfill the attribute.
   let redeemTxHash: string | null = null;
+  const roleAdmin = (event.role_admin_address ?? (await backendWallet())) as Address;
+  // Bind idempotency to the redemption row id when we have one — that
+  // way an admin replay (e.g. after a previous attempt's revert) does
+  // not collide with the prior key. Falls back to ticket id if the
+  // redemption row insert failed.
+  const redeemIdempotencyKey = `redeem:${redemption_id ?? ticket.id}`;
   try {
-    const data = encodeSetAttribute({
-      tokenId: BigInt(ticket.nft_token_id),
-      key: "Redeemed",
-      value: "true",
-    });
     const queued = await writeContract({
       contractAddress: ticket.nft_contract_address as Address,
-      data,
+      method:
+        "function setAttribute(uint256 tokenId, string key, string value)",
+      params: [BigInt(ticket.nft_token_id), "Redeemed", "true"],
+      from: roleAdmin,
+      idempotencyKey: redeemIdempotencyKey,
     });
     const record = await waitForTransaction(queued.transactionId, {
       timeoutMs: 180_000,

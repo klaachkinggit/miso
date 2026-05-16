@@ -206,6 +206,7 @@ export type Database = {
           nft_contract_address: string | null
           public_sales_counter_enabled: boolean
           resale_enabled: boolean
+          role_admin_address: string | null
           sales_enabled: boolean
           status: Database["public"]["Enums"]["event_status"]
           updated_at: string
@@ -225,6 +226,7 @@ export type Database = {
           nft_contract_address?: string | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
+          role_admin_address?: string | null
           sales_enabled?: boolean
           status?: Database["public"]["Enums"]["event_status"]
           updated_at?: string
@@ -244,10 +246,74 @@ export type Database = {
           nft_contract_address?: string | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
+          role_admin_address?: string | null
           sales_enabled?: boolean
           status?: Database["public"]["Enums"]["event_status"]
           updated_at?: string
           venue_name?: string
+        }
+        Relationships: []
+      }
+      chain_ops: {
+        Row: {
+          attempt: number
+          contract_address: string
+          created_at: string
+          error_message: string | null
+          from_address: string | null
+          id: string
+          idempotency_key: string
+          listing_id: string | null
+          metadata_uri: string | null
+          op_type: string
+          purchase_id: string | null
+          status: string
+          ticket_id: string
+          to_address: string
+          token_id: number
+          transaction_id: string | null
+          tx_hash: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempt?: number
+          contract_address: string
+          created_at?: string
+          error_message?: string | null
+          from_address?: string | null
+          id?: string
+          idempotency_key: string
+          listing_id?: string | null
+          metadata_uri?: string | null
+          op_type: string
+          purchase_id?: string | null
+          status?: string
+          ticket_id: string
+          to_address: string
+          token_id: number
+          transaction_id?: string | null
+          tx_hash?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempt?: number
+          contract_address?: string
+          created_at?: string
+          error_message?: string | null
+          from_address?: string | null
+          id?: string
+          idempotency_key?: string
+          listing_id?: string | null
+          metadata_uri?: string | null
+          op_type?: string
+          purchase_id?: string | null
+          status?: string
+          ticket_id?: string
+          to_address?: string
+          token_id?: number
+          transaction_id?: string | null
+          tx_hash?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -828,7 +894,13 @@ export type Database = {
         | "compensation_credit"
       currency: "MAD"
       event_status: "draft" | "published" | "canceled" | "completed"
-      listing_status: "active" | "sold" | "canceled" | "expired"
+      listing_status:
+        | "active"
+        | "sold"
+        | "canceled"
+        | "expired"
+        | "transferring"
+        | "repair_needed"
       purchase_status: "pending" | "paid" | "failed" | "refunded"
       redemption_result:
         | "valid"
@@ -853,6 +925,9 @@ export type Database = {
         | "canceled"
         | "expired"
         | "refund_pending"
+        | "minting"
+        | "transferring"
+        | "repair_needed"
       user_role: "user" | "controller" | "admin"
     }
     CompositeTypes: {
@@ -1551,6 +1626,7 @@ export type BalanceLedgerEntry = Tables<"balance_ledger_entries">
 export type GateSession = Tables<"gate_sessions">
 export type AuditLog = Tables<"audit_logs">
 export type EventController = Tables<"event_controllers">
+export type ChainOp = Tables<"chain_ops">
 
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">

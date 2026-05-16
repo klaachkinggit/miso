@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeErrorMessage } from "@/lib/api/errors";
 import { getCurrentProfile } from "@/lib/auth";
 import { cancelResaleListing } from "@/lib/resale/listing";
 
@@ -18,7 +19,7 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Cancel failed." },
+      { error: safeErrorMessage(error, { fallback: "Cancel failed." }) },
       { status: 400 },
     );
   }

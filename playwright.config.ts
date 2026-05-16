@@ -5,7 +5,11 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  timeout: 30_000,
+  // Full-path tests drive a real Sepolia mint via /api/checkout; that
+  // confirmation alone takes 10-25s and the test budget needs to
+  // cover navigation + page render on top of that. 90s gives chain
+  // headroom without masking actual hangs.
+  timeout: 90_000,
   expect: { timeout: 5_000 },
   fullyParallel: false,
   retries: 0,

@@ -1,6 +1,6 @@
 # Tests
 
-Three layers, all under `tests/e2e/` (Playwright is the only runner).
+Four layers, all under `tests/e2e/` (Playwright is the only runner).
 
 ## Smoke (`smoke.spec.ts`)
 
@@ -22,6 +22,22 @@ supabase start
 supabase migration up
 npm run demo:seed
 MISO_E2E_FULL=1 npm run test:e2e
+```
+
+## Invariants + authz + controller (`invariants.spec.ts`, `cross-user-authz.spec.ts`, `controller-flow.spec.ts`)
+
+Deterministic DB-level invariants and HTTP authz checks. No chain calls.
+Covers: balance overdraft, debit idempotency, redemption unique index,
+reservation race, cancellation refund state transitions, cross-user listing
+cancel/buy, role-based marketplace gates, controller gate
+open/poll/close + cross-controller authz. Gated behind
+`MISO_E2E_INVARIANTS=1`.
+
+```
+supabase start
+supabase migration up
+npm run demo:seed
+MISO_E2E_INVARIANTS=1 npm run test:e2e
 ```
 
 ## Live Base Sepolia (`live-chain.spec.ts`)

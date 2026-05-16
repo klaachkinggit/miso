@@ -2,6 +2,7 @@
 // that proves Ticket ownership for the Gate.
 
 import { NextResponse, type NextRequest } from "next/server";
+import { safeErrorMessage } from "@/lib/api/errors";
 import { getCurrentUser } from "@/lib/auth";
 import { RedeemPrepareSchema } from "@/lib/schemas";
 import { prepareRedemption } from "@/lib/verification/redeem";
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not prepare redemption." },
+      { error: safeErrorMessage(error, { fallback: "Could not prepare redemption." }) },
       { status: 400 }
     );
   }

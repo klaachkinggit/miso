@@ -1,8 +1,13 @@
 // Thirdweb In-App Wallet pregenerate.
 //
-// Each user gets one wallet keyed on email. The EOA address holds nothing
-// in this iteration; the smart account address is what owns NFTs on chain.
-// Users never sign on chain — the backend wallet does that for them.
+// Each user gets one EOA wallet keyed on email. Tickets are minted to and
+// owned by that EOA directly — we are explicitly NOT using ERC-4337
+// account abstraction in this iteration (plan: "no paymaster, no smart
+// account UserOp"). The backend wallet still signs every on-chain
+// operation on behalf of users via its admin roles.
+//
+// The `wallets.smart_account_address` column is preserved for forward
+// compatibility but mirrors `evm_address` until AA is enabled.
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { thirdwebFetch } from "@/lib/thirdweb/client";
@@ -16,39 +21,28 @@ interface PregenerateResponse {
   result?: {
     address?: string;
     smartAccountAddress?: string;
-    smart_account_address?: string;
   };
   address?: string;
   smartAccountAddress?: string;
-  smart_account_address?: string;
-}
-
-function getChainId(): number {
-  const raw = process.env.CHAIN_ID ?? process.env.NEXT_PUBLIC_CHAIN_ID;
-  if (!raw) throw new Error("Missing CHAIN_ID env var");
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) throw new Error(`Invalid CHAIN_ID: ${raw}`);
-  return parsed;
 }
 
 async function pregenerateWallet(email: string): Promise<UserWallet> {
   const response = await thirdwebFetch<PregenerateResponse>("/v1/wallets/user", {
     method: "POST",
-    body: { strategy: "email", email, chainId: getChainId() },
-    includeBackendWallet: false,
+    body: { type: "email", email },
   });
 
   const result = response.result ?? response;
   const evmAddress = result.address;
-  const smartAccountAddress =
-    result.smartAccountAddress ?? result.smart_account_address;
-
-  if (!evmAddress || !smartAccountAddress) {
+  if (!evmAddress) {
     throw new Error(
-      `Thirdweb pregenerate returned incomplete wallet for ${email}`,
+      `Thirdweb pregenerate returned no address for ${email}`,
     );
   }
-  return { evmAddress, smartAccountAddress };
+  return {
+    evmAddress,
+    smartAccountAddress: result.smartAccountAddress ?? evmAddress,
+  };
 }
 
 /**
@@ -68,10 +62,11 @@ export async function ensureUserWallet(
     .eq("is_primary", true)
     .maybeSingle();
 
-  if (existing?.evm_address && existing.smart_account_address) {
+  if (existing?.evm_address) {
     return {
       evmAddress: existing.evm_address,
-      smartAccountAddress: existing.smart_account_address,
+      smartAccountAddress:
+        existing.smart_account_address ?? existing.evm_address,
     };
   }
 
