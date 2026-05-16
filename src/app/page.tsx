@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { ArrowUpRight, ShieldCheck, Zap } from "lucide-react";
+import { ArrowUpRight, Gem, ShieldCheck, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
@@ -44,39 +44,39 @@ export default async function HomePage() {
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
               />
             ) : (
-              <div className="absolute inset-0 bg-zinc-900" />
+              <div className="absolute inset-0 bg-[#121212]" />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/10" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-transparent to-transparent" />
 
             <div className="container relative flex h-full flex-col justify-end pb-12 md:pb-16">
-              <span className="mono-stub mb-3 inline-flex w-fit items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-3 py-1 text-black">
-                ● FEATURED · {formatDateShort(featured.date)}
+              <span className="mono-stub mb-5 inline-flex w-fit items-center gap-2 rounded-full bg-[#E6D8C9] px-3 py-1 text-[#121212]">
+                Featured drop · {formatDateShort(featured.date)}
               </span>
-              <h1 className="display max-w-4xl text-5xl text-white md:text-7xl lg:text-8xl">
+              <h1 className="display max-w-4xl text-5xl text-[#F5F3EE] md:text-7xl lg:text-8xl">
                 {featured.name}
               </h1>
-              <p className="mono-stub mt-4 text-white/70">
+              <p className="mono-stub mt-5 text-[#E6D8C9]/85">
                 {featured.venue_name} · {featured.city}
               </p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <span className="inline-flex h-11 items-center gap-2 rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-bold text-black transition-colors group-hover:bg-[hsl(72_100%_60%)]">
-                  Get tickets <ArrowUpRight className="h-4 w-4" />
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <span className="inline-flex h-11 items-center gap-2 rounded-md bg-[#F5F3EE] px-6 text-sm font-medium text-[#121212] transition-colors group-hover:bg-[#E6D8C9]">
+                  Get ticket <ArrowUpRight className="h-4 w-4" />
                 </span>
-                <span className="mono-stub text-white/60">
-                  Tap-to-enter · No QR · No screenshot
+                <span className="mono-stub text-[#E6D8C9]/70">
+                  NFT access · official resale · nightlife
                 </span>
               </div>
             </div>
           </Link>
         ) : (
           <div className="container py-20">
-            <h1 className="display text-5xl md:text-7xl">Tickets that prove themselves.</h1>
-            <p className="mt-4 max-w-xl text-white/70">
-              On-chain ERC-721 tickets on Base. Tap your phone at the gate — copies and screenshots do not work.
+            <h1 className="display max-w-3xl text-5xl md:text-7xl">Premium NFT tickets for culture after dark.</h1>
+            <p className="mt-6 max-w-xl text-muted-foreground">
+              Discover concerts, festivals, nightlife, and exclusive experiences with ticket ownership built into every purchase.
             </p>
             <Button asChild className="mt-6" size="lg">
-              <Link href="/events">Browse events</Link>
+              <Link href="/events">Explore events</Link>
             </Button>
           </div>
         )}
@@ -84,7 +84,7 @@ export default async function HomePage() {
 
       <section className="container py-12 md:py-16">
         <div className="mb-6 flex items-end justify-between gap-4">
-          <h2 className="display text-3xl md:text-5xl">Upcoming</h2>
+          <h2 className="display text-3xl md:text-5xl">Upcoming drops</h2>
           <Button asChild variant="ghost" size="sm">
             <Link href="/events">All events →</Link>
           </Button>
@@ -98,34 +98,34 @@ export default async function HomePage() {
         ) : (
           <EmptyState
             title="No more events scheduled"
-            description="Organizers will publish more events soon."
+            description="New ticket drops will appear here soon."
           />
         )}
       </section>
 
       <section className="container pb-16">
-        <div className="grid gap-px overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.06] md:grid-cols-3">
+        <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border md:grid-cols-3">
           {[
             {
               icon: ShieldCheck,
-              title: "On-chain proof",
-              body: "Every ticket is an ERC-721 NFT on Base. Provenance is public, ownership is yours.",
+              title: "Verified access",
+              body: "Every ticket has a digital identity, QR entry, and on-chain ownership record.",
             },
             {
-              icon: Zap,
-              title: "Tap to enter",
-              body: "Open your ticket at the gate. The app verifies your NFT on the spot. No QR, no PDF, no screenshot.",
+              icon: WalletCards,
+              title: "Event wallet",
+              body: "Collect festival passes, VIP memberships, and rewards in one premium mobile wallet.",
             },
             {
-              icon: ArrowUpRight,
-              title: "Safe resale",
-              body: "List your ticket inside the app. Transfer happens on-chain after the buyer pays.",
+              icon: Gem,
+              title: "Official resale",
+              body: "Anti-scalping limits and verified transfers keep secondary sales inside the MISO ecosystem.",
             },
           ].map(({ icon: Icon, title, body }) => (
-            <div key={title} className="bg-black p-6">
-              <Icon className="h-5 w-5 text-[hsl(var(--accent))]" />
+            <div key={title} className="bg-card p-6">
+              <Icon className="h-5 w-5 text-accent" />
               <h3 className="mt-3 text-lg font-bold">{title}</h3>
-              <p className="mt-2 text-sm text-white/60">{body}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{body}</p>
             </div>
           ))}
         </div>

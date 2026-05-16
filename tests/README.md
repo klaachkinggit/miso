@@ -14,14 +14,16 @@ npm run test:e2e
 ## Full path (`full-path.spec.ts`)
 
 Authenticated journeys (login → buy → tickets → redeem, resale list +
-checkout). Requires a seeded Supabase. Gated behind `MISO_E2E_FULL=1`
+checkout). Requires a seeded Supabase. Local checkout runs with
+`MISO_MOCK_CHAIN=1` so the suite verifies UI and database behavior
+without broadcasting Thirdweb transactions. Gated behind `MISO_E2E_FULL=1`
 so CI without a seeded DB stays green on smoke alone.
 
 ```
 supabase start
 supabase migration up
 npm run demo:seed
-MISO_E2E_FULL=1 npm run test:e2e
+MISO_MOCK_CHAIN=1 MISO_E2E_FULL=1 npm run test:e2e
 ```
 
 ## Invariants + authz + controller (`invariants.spec.ts`, `cross-user-authz.spec.ts`, `controller-flow.spec.ts`)

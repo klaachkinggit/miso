@@ -8,7 +8,7 @@ const fullPathEnabled = process.env.MISO_E2E_FULL === "1";
 
 async function openDemoEvent(page: Parameters<typeof login>[0]) {
   await page.goto("/events");
-  await page.getByRole("link", { name: "Miso Demo Night" }).first().click();
+  await page.getByRole("link", { name: /Midnight Frequency/i }).first().click();
 }
 
 test.describe("Full path: discover → checkout → my tickets → redeem", () => {
@@ -21,7 +21,7 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
 
     await expect(page.getByRole("heading", { name: /tickets/i })).toBeVisible();
 
-    const buyButton = page.getByRole("button", { name: /buy ticket/i }).first();
+    const buyButton = page.getByRole("button", { name: /get ticket/i }).first();
     await expect(buyButton).toBeEnabled();
     await buyButton.click();
 
@@ -36,7 +36,7 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
 
     await openDemoEvent(page);
 
-    const buyButton = page.getByRole("button", { name: /buy ticket/i }).first();
+    const buyButton = page.getByRole("button", { name: /get ticket/i }).first();
     await expect(buyButton).toBeDisabled();
     await expect(page.getByText(/balance 0 mad/i).first()).toBeVisible();
   });
@@ -57,7 +57,7 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
   test("ticket appears in /tickets after purchase", async ({ page }) => {
     await login(page, DEMO_BUYER);
     await page.goto("/tickets");
-    await expect(page.getByRole("heading", { name: "My tickets" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Wallet" })).toBeVisible();
     // Either we have tickets (purchased above) or empty state if seed was reset.
     const ticketCards = page.getByText(/serial/i);
     const empty = page.getByText("No tickets yet");
@@ -81,6 +81,6 @@ test.describe("Marketplace: list → purchase", () => {
 
   test("marketplace lists active resale listings", async ({ page }) => {
     await page.goto("/marketplace");
-    await expect(page.getByRole("heading", { name: "Marketplace" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Resale exchange" })).toBeVisible();
   });
 });

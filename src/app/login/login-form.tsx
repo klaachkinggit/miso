@@ -12,7 +12,7 @@ export function LoginForm({ error }: { error?: string }) {
         <p className="mb-3 text-sm font-medium text-primary">Welcome back</p>
         <h1 className="text-3xl font-semibold tracking-tight">Log in to Miso</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Access your tickets, admin tools, and controller scanner.
+          Access your wallet, NFT tickets, resale listings, and gate-ready QR codes.
         </p>
       </div>
       {error ? (

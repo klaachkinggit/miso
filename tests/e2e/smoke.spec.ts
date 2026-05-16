@@ -4,24 +4,24 @@ test.describe("Public smoke", () => {
   test("home page renders hero + featured events section", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByText("Featured events")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Browse events" }).first()).toBeVisible();
+    await expect(page.getByText("Upcoming drops")).toBeVisible();
+    await expect(page.getByRole("link", { name: /all events/i }).first()).toBeVisible();
   });
 
   test("events page lists at least one published event when seeded", async ({ page }) => {
     await page.goto("/events");
     await expect(page.getByRole("heading", { name: "Events" })).toBeVisible();
     // Empty state OR at least one event card is acceptable when un-seeded.
-    const eventCards = page.getByRole("link", { name: /view tickets/i });
-    const emptyState = page.getByText("No events available");
+    const eventCards = page.getByRole("link", { name: /open/i });
+    const emptyState = page.getByText("No events yet");
     await expect(eventCards.first().or(emptyState)).toBeVisible();
   });
 
   test("marketplace page renders, shows listings or empty state", async ({ page }) => {
     await page.goto("/marketplace");
-    await expect(page.getByRole("heading", { name: "Marketplace" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Resale exchange" })).toBeVisible();
     const listingCards = page.getByRole("link", { name: /^view$/i });
-    const emptyState = page.getByText("No resale tickets right now");
+    const emptyState = page.getByText("No tickets listed right now");
     await expect(listingCards.first().or(emptyState)).toBeVisible();
   });
 

@@ -41,7 +41,7 @@ export default async function CheckoutCancelPage({
       <Card className="glass mx-auto w-full max-w-lg rounded-lg">
         <CardContent className="grid gap-5 p-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-secondary">
-            <XCircle className="h-7 w-7 text-amber-300" />
+            <XCircle className="h-7 w-7 text-accent" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold">Checkout canceled</h1>

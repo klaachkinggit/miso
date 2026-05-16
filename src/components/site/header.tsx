@@ -13,37 +13,37 @@ export async function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-black/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="container flex h-14 items-center justify-between gap-6">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-2 text-lg font-black tracking-tight">
-              <span className="text-[hsl(var(--accent))]">●</span>
+              <span className="text-accent">●</span>
               MISO
             </Link>
 
             <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
               {!controllerOnly ? (
                 <>
-                  <Link href="/events" className="text-white/80 transition-colors hover:text-white">
+                  <Link href="/events" className="text-muted-foreground transition-colors hover:text-foreground">
                     Events
                   </Link>
-                  <Link href="/marketplace" className="text-white/80 transition-colors hover:text-white">
-                    Resale
+                  <Link href="/marketplace" className="text-muted-foreground transition-colors hover:text-foreground">
+                    Exchange
                   </Link>
                   {profile ? (
-                    <Link href="/tickets" className="text-white/80 transition-colors hover:text-white">
-                      My tickets
+                    <Link href="/tickets" className="text-muted-foreground transition-colors hover:text-foreground">
+                      Wallet
                     </Link>
                   ) : null}
                   {profile?.role === "admin" ? (
-                    <Link href="/admin" className="text-white/80 transition-colors hover:text-white">
+                    <Link href="/admin" className="text-muted-foreground transition-colors hover:text-foreground">
                       Admin
                     </Link>
                   ) : null}
                 </>
               ) : null}
               {profile?.role === "controller" || profile?.role === "admin" ? (
-                <Link href="/controller" className="text-white/80 transition-colors hover:text-white">
+                <Link href="/controller" className="text-muted-foreground transition-colors hover:text-foreground">
                   Gate
                 </Link>
               ) : null}
@@ -54,7 +54,7 @@ export async function Header() {
             <Link
               href="/events"
               aria-label="Search events"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/[0.06]"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               <Search className="h-4 w-4" />
             </Link>
@@ -76,10 +76,10 @@ export async function Header() {
 
       <Marquee
         items={[
-          "● LIVE TICKETING ON-CHAIN",
-          "TAP TO ENTER · NO QR · NO SCREENSHOT",
-          "ERC-721 ON BASE",
-          "BUY · HOLD · RESELL · REDEEM",
+          "NFT TICKETS · VERIFIED ACCESS",
+          "FESTIVALS · CONCERTS · NIGHTLIFE",
+          "OFFICIAL RESALE · ANTI-SCALPING",
+          "VIP MEMBERSHIPS · EVENT WALLET",
         ]}
       />
     </>

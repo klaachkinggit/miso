@@ -46,21 +46,21 @@ export default async function CheckoutSuccessPage({
         <CardContent className="grid gap-5 p-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-secondary">
             {paid ? (
-              <CheckCircle2 className="h-7 w-7 text-emerald-300" />
+              <CheckCircle2 className="h-7 w-7 text-accent" />
             ) : failed ? (
               <XCircle className="h-7 w-7 text-destructive" />
             ) : (
-              <Clock className="h-7 w-7 text-amber-300" />
+              <Clock className="h-7 w-7 text-accent" />
             )}
           </div>
           <div>
             <Badge variant={paid ? "success" : failed ? "destructive" : "warning"}>{status}</Badge>
             <h1 className="mt-4 text-2xl font-semibold">
-              {paid ? "Ticket is ready" : failed ? "Balance checkout was not completed" : "Balance debit received, finalising ticket"}
+              {paid ? "Ticket is ready" : failed ? "Balance checkout was not completed" : "Balance debit received, minting ticket"}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {paid
-                ? "Your ticket is now in My Tickets."
+                ? "Your NFT ticket is now in Wallet."
                 : failed
                   ? "The reservation was released. You can try checkout again after checking your balance."
                   : "This page refreshes while we finalise your ticket."}
@@ -68,7 +68,7 @@ export default async function CheckoutSuccessPage({
           </div>
           <div className="flex justify-center gap-3">
             <Button asChild>
-              <Link href="/tickets">My tickets</Link>
+              <Link href="/tickets">Wallet</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/events">Events</Link>

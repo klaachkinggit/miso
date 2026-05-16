@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
@@ -30,6 +31,18 @@ async function buyerWalletAddress(userId: string): Promise<string> {
 }
 
 const RESERVATION_TTL_MS = 10 * 60 * 1000;
+
+function mockChainEnabled(): boolean {
+  return process.env.MISO_MOCK_CHAIN === "1";
+}
+
+function mockAddress(seed: string): Address {
+  return `0x${crypto.createHash("sha256").update(seed).digest("hex").slice(0, 40)}` as Address;
+}
+
+function mockTxHash(seed: string): string {
+  return `0x${crypto.createHash("sha256").update(seed).digest("hex")}`;
+}
 
 export class StaleReservationError extends Error {
   constructor(message = "Reservation is stale or no longer belongs to this buyer") {
@@ -189,10 +202,10 @@ export async function fulfillReservedTicket(params: {
   if (event.status === "canceled") {
     throw new Error("Event has been canceled — refusing to mint.");
   }
-  if (!event.nft_contract_address) {
+  if (!event.nft_contract_address && !mockChainEnabled()) {
     throw new Error("Event has no deployed contract");
   }
-  const contractAddress = event.nft_contract_address as Address;
+  const contractAddress = (event.nft_contract_address ?? mockAddress(`event:${event.id}`)) as Address;
 
   const { data: category } = await sb
     .from("ticket_categories")
@@ -200,6 +213,80 @@ export async function fulfillReservedTicket(params: {
     .eq("id", ticket.category_id)
     .single<TicketCategory>();
   if (!category) throw new Error("Category missing");
+
+  if (mockChainEnabled()) {
+    const buyerWallet = mockAddress(`wallet:${params.buyerUserId}`);
+    const metadataUri = `ipfs://miso-e2e/${ticket.id}`;
+    const mintTxHash = mockTxHash(`mint:${params.purchaseId}:${ticket.id}`);
+
+    if (isReserved) {
+      const { data: claimed } = await sb
+        .from("tickets")
+        .update({ status: "minting" })
+        .eq("id", ticket.id)
+        .eq("status", "reserved")
+        .eq("owner_user_id", params.buyerUserId)
+        .select("id")
+        .maybeSingle();
+      if (!claimed) throw new StaleReservationError();
+    }
+
+    const { data: updatedTicket, error: ticketUpdateError } = await sb
+      .from("tickets")
+      .update({
+        status: "sold",
+        owner_user_id: params.buyerUserId,
+        owner_evm_address: buyerWallet,
+        nft_contract_address: contractAddress,
+        nft_token_id: ticket.serial_number,
+        mint_tx_hash: mintTxHash,
+        metadata_uri: metadataUri,
+        image_url: event.image_url,
+        reserved_until: null,
+        minted_at: new Date().toISOString(),
+        original_purchase_id: params.purchaseId,
+      })
+      .eq("id", ticket.id)
+      .in("status", ["minting", "sold"])
+      .eq("owner_user_id", params.buyerUserId)
+      .select("id")
+      .maybeSingle();
+
+    if (ticketUpdateError) throw ticketUpdateError;
+    if (!updatedTicket) {
+      throw new Error(
+        `Ticket ${ticket.id} could not be flipped to sold after mock mint`,
+      );
+    }
+
+    await sb
+      .from("ticket_categories")
+      .update({ sold_count: category.sold_count + 1 })
+      .eq("id", category.id);
+
+    await audit({
+      actorUserId: params.buyerUserId,
+      action: "ticket.mint.mock",
+      entityType: "ticket",
+      entityId: ticket.id,
+      metadata: {
+        contract: contractAddress,
+        token_id: ticket.serial_number,
+        tx_hash: mintTxHash,
+        metadata_uri: metadataUri,
+        owner: buyerWallet,
+        purchase: params.purchaseId,
+      },
+    });
+
+    return {
+      contractAddress,
+      tokenId: ticket.serial_number,
+      mintTxHash,
+      metadataUri,
+      ownerEvmAddress: buyerWallet,
+    };
+  }
 
   const buyerWallet = await buyerWalletAddress(params.buyerUserId);
   const buyerAddress = buyerWallet as Address;

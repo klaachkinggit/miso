@@ -9,8 +9,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swa
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Miso — On-chain ticketing",
-  description: "ERC-721 tickets on Base. Tap to enter — no QR, no screenshot, no forwarded PDF.",
+  title: "MISO — Premium NFT ticketing",
+  description: "Premium Web3 ticketing for festivals, concerts, nightlife, and exclusive experiences.",
 };
 
 export const dynamic = "force-dynamic";

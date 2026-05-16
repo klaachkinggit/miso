@@ -6,9 +6,9 @@ import { Compass, Search, Ticket, User } from "lucide-react";
 
 const ITEMS = [
   { href: "/events", label: "Explore", icon: Compass, match: (p: string) => p.startsWith("/events") },
-  { href: "/marketplace", label: "Resale", icon: Search, match: (p: string) => p.startsWith("/marketplace") },
-  { href: "/tickets", label: "Tickets", icon: Ticket, match: (p: string) => p.startsWith("/tickets") },
-  { href: "/balance", label: "Profile", icon: User, match: (p: string) => p.startsWith("/balance") },
+  { href: "/marketplace", label: "Exchange", icon: Search, match: (p: string) => p.startsWith("/marketplace") },
+  { href: "/tickets", label: "Wallet", icon: Ticket, match: (p: string) => p.startsWith("/tickets") },
+  { href: "/balance", label: "Account", icon: User, match: (p: string) => p.startsWith("/balance") },
 ];
 
 const HIDDEN_PREFIXES = ["/admin", "/controller", "/login", "/signup", "/checkout", "/redeem"];
@@ -29,7 +29,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-white/[0.08] bg-black/95 backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur-xl md:hidden"
     >
       {ITEMS.map(({ href, label, icon: Icon, match }) => {
         const active = match(pathname);
@@ -40,7 +40,7 @@ export function BottomNav() {
             aria-current={active ? "page" : undefined}
             className={
               "flex h-full flex-1 flex-col items-center justify-center gap-1 " +
-              (active ? "text-[hsl(var(--accent))]" : "text-white/60")
+              (active ? "text-primary" : "text-muted-foreground")
             }
           >
             <Icon className="h-5 w-5" />

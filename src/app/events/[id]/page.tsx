@@ -64,11 +64,11 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="container relative flex min-h-[520px] items-end pb-12 pt-28 md:min-h-[640px] md:pb-16">
           <div className="max-w-4xl">
-            <span className="mono-stub mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-3 py-1 text-black">
-              ● {formatDateShort(event.date)}
+            <span className="mono-stub mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[#E6D8C9] px-3 py-1 text-[#121212]">
+              {formatDateShort(event.date)}
             </span>
-            <h1 className="display text-5xl text-white md:text-7xl lg:text-8xl">{event.name}</h1>
-            <div className="mono-stub mt-6 flex flex-wrap gap-4 text-white/70">
+            <h1 className="display text-5xl text-[#F5F3EE] md:text-7xl lg:text-8xl">{event.name}</h1>
+            <div className="mono-stub mt-6 flex flex-wrap gap-4 text-[#E6D8C9]/80">
               <span className="flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5" />
                 {formatDate(event.date)}
@@ -79,7 +79,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
               </span>
               <span className="flex items-center gap-2">
                 <Ticket className="h-3.5 w-3.5" />
-                {event.capacity.toLocaleString()} cap
+                {event.capacity.toLocaleString()} capacity
               </span>
             </div>
           </div>
@@ -114,15 +114,14 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm leading-6 text-muted-foreground">
-              After checkout, your ticket appears in My Tickets as an ERC-721 NFT held by your account. At the
-              gate, open the ticket and tap your phone — the app verifies the on-chain holder, then marks the
-              NFT redeemed. Screenshots and forwarded PDFs do not work.
+              After checkout, your NFT ticket appears in Wallet. At the gate, open the digital pass for QR
+              verification while MISO keeps ownership and resale history tied to the ticket.
             </CardContent>
           </Card>
         </div>
 
         <aside id="tickets" className="space-y-4">
-          <h2 className="text-xl font-semibold">Tickets</h2>
+          <h2 className="text-xl font-medium">Tickets</h2>
           {enriched.length ? (
             enriched.map((category) => {
               const availableBalance = profile ? balancesByCurrency.get(category.currency) ?? 0 : null;
@@ -167,25 +166,25 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
             })
           ) : (
             <Card className="glass rounded-lg">
-              <CardContent className="p-5 text-sm text-muted-foreground">No ticket categories are available.</CardContent>
+              <CardContent className="p-5 text-sm text-muted-foreground">No ticket tiers are available.</CardContent>
             </Card>
           )}
         </aside>
       </div>
 
       {cheapest ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-between gap-3 border-t border-white/[0.08] bg-black/95 px-4 backdrop-blur-xl md:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-between gap-3 border-t border-border bg-background/95 px-4 backdrop-blur-xl md:hidden">
           <div className="flex flex-col">
-            <span className="mono-stub text-white/60">From</span>
+            <span className="mono-stub text-muted-foreground">From</span>
             <span className="text-base font-bold">
               {formatPrice(cheapest.price, cheapest.currency)}
             </span>
           </div>
           <a
             href="#tickets"
-            className="inline-flex h-11 items-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-bold text-black"
+            className="inline-flex h-11 items-center rounded-md bg-primary px-6 text-sm font-bold text-primary-foreground"
           >
-            Get tickets
+            Get ticket
           </a>
         </div>
       ) : null}

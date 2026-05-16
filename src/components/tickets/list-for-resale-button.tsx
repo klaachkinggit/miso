@@ -45,7 +45,7 @@ export function ListForResaleButton({
       });
       const payload = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(payload.error ?? "Could not list ticket.");
-      toast({ title: "Ticket listed", description: "Your ticket is now on the marketplace." });
+      toast({ title: "Ticket listed", description: "Your NFT ticket is now on the official exchange." });
       setOpen(false);
       router.refresh();
     } catch (error) {
@@ -66,14 +66,14 @@ export function ListForResaleButton({
       <DialogTrigger asChild>
         <Button type="button" variant="outline">
           <Tag className="h-4 w-4" />
-          List for resale
+          List ticket
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>List ticket for resale</DialogTitle>
+          <DialogTitle>List ticket</DialogTitle>
           <DialogDescription>
-            Sale routes through the Miso treasury. The NFT transfers to the buyer after payment.
+            The ticket routes through the MISO exchange and transfers after payment.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
@@ -88,7 +88,7 @@ export function ListForResaleButton({
             disabled={loading}
           />
           {maxLabel ? (
-            <p className="text-xs text-muted-foreground">Max resale price: {maxLabel}</p>
+            <p className="text-xs text-muted-foreground">Resale price limit: {maxLabel}</p>
           ) : null}
         </div>
         <DialogFooter>
