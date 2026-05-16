@@ -1,3 +1,4 @@
+import { lookup as dnsLookup } from "node:dns/promises";
 import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
@@ -340,26 +341,67 @@ export async function createTicketCategory(params: {
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_IMAGE_MIME = /^image\/(png|jpe?g|webp|gif|avif)$/i;
 
-function isPrivateOrLocalHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  if (h === "localhost" || h.endsWith(".localhost")) return true;
-  // IPv6 loopback / link-local
-  if (h === "::1" || h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")) {
-    return true;
-  }
-  // Numeric IPv4
-  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])];
-    if (a === 10) return true;                         // 10.0.0.0/8
-    if (a === 127) return true;                        // 127.0.0.0/8
-    if (a === 169 && b === 254) return true;           // 169.254.0.0/16 link-local
-    if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16.0.0/12
-    if (a === 192 && b === 168) return true;           // 192.168.0.0/16
-    if (a === 0) return true;                          // 0.0.0.0/8
-    if (a >= 224) return true;                         // multicast / reserved
+function isPrivateIPv4(addr: string): boolean {
+  const v4 = addr.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!v4) return false;
+  const [a, b] = [Number(v4[1]), Number(v4[2])];
+  if (a === 10) return true;                         // 10.0.0.0/8
+  if (a === 127) return true;                        // 127.0.0.0/8
+  if (a === 169 && b === 254) return true;           // 169.254.0.0/16 link-local
+  if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16.0.0/12
+  if (a === 192 && b === 168) return true;           // 192.168.0.0/16
+  if (a === 0) return true;                          // 0.0.0.0/8
+  if (a >= 224) return true;                         // multicast / reserved
+  return false;
+}
+
+function isPrivateIPv6(addr: string): boolean {
+  const a = addr.toLowerCase().replace(/^\[|\]$/g, "");
+  if (a === "::1" || a === "::") return true;
+  if (a.startsWith("fe80:") || a.startsWith("fe80::")) return true;
+  if (/^f[cd][0-9a-f]{2}:/.test(a)) return true; // fc00::/7 unique-local
+  // IPv4-mapped IPv6: ::ffff:a.b.c.d (decoded form) or ::ffff:xxxx:yyyy (hex form)
+  const mappedDecoded = a.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+  if (mappedDecoded) return isPrivateIPv4(mappedDecoded[1]!);
+  const mappedHex = a.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (mappedHex) {
+    const hi = parseInt(mappedHex[1]!, 16);
+    const lo = parseInt(mappedHex[2]!, 16);
+    const ip = `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+    return isPrivateIPv4(ip);
   }
   return false;
+}
+
+function isPrivateOrLocalHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h.endsWith(".localhost")) return true;
+  if (isPrivateIPv4(h)) return true;
+  if (h.includes(":") && isPrivateIPv6(h)) return true;
+  return false;
+}
+
+// Resolve hostname to A/AAAA and reject if any answer is in a private/loopback
+// range. Defeats DNS-rebinding tricks like `*.nip.io` resolving to 169.254.169.254
+// (AWS IMDS) or attacker-controlled domains pointing at internal addresses.
+async function assertResolvedHostIsPublic(hostname: string): Promise<void> {
+  const bare = hostname.replace(/^\[|\]$/g, "");
+  // Already a literal IP — covered by syntactic check; dns.lookup would echo it back.
+  if (isPrivateIPv4(bare) || (bare.includes(":") && isPrivateIPv6(bare))) {
+    throw new Error("Event image URL host is not allowed");
+  }
+  let resolved: { address: string; family: number }[];
+  try {
+    resolved = await dnsLookup(bare, { all: true, verbatim: true });
+  } catch {
+    throw new Error(`Failed to resolve event image host: ${hostname}`);
+  }
+  for (const { address, family } of resolved) {
+    const bad = family === 4 ? isPrivateIPv4(address) : isPrivateIPv6(address);
+    if (bad) {
+      throw new Error("Event image URL resolves to a private host");
+    }
+  }
 }
 
 async function pinImageToIpfs(imageUrl: string): Promise<string> {
@@ -375,6 +417,7 @@ async function pinImageToIpfs(imageUrl: string): Promise<string> {
   if (isPrivateOrLocalHost(url.hostname)) {
     throw new Error("Event image URL host is not allowed");
   }
+  await assertResolvedHostIsPublic(url.hostname);
 
   const res = await fetch(imageUrl, { redirect: "follow" });
   if (!res.ok) {
@@ -382,11 +425,14 @@ async function pinImageToIpfs(imageUrl: string): Promise<string> {
       `Failed to fetch event image (${imageUrl}): HTTP ${res.status}`,
     );
   }
-  // If `fetch` followed redirects, recheck the final host. Public DNS
-  // can resolve to a private IP via redirect; that would land here.
+  // If `fetch` followed redirects, recheck the final host both syntactically
+  // and via DNS — a public hostname can redirect to one that resolves private.
   const finalUrl = new URL(res.url);
   if (isPrivateOrLocalHost(finalUrl.hostname)) {
     throw new Error("Event image URL redirected to a private host");
+  }
+  if (finalUrl.hostname !== url.hostname) {
+    await assertResolvedHostIsPublic(finalUrl.hostname);
   }
   const mimeType = res.headers.get("content-type") ?? "application/octet-stream";
   if (!ALLOWED_IMAGE_MIME.test(mimeType.split(";")[0]!.trim())) {
