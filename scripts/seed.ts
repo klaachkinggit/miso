@@ -370,7 +370,9 @@ async function ensureCategoryWithTickets(args: {
         currency: args.currency,
         description: args.description,
         benefits: args.benefits,
+        sales_enabled: true,
         resale_enabled: true,
+        public_sales_counter_enabled: true,
         supply: existing.supply + ticketsToAdd,
       })
       .eq("id", existing.id);
@@ -394,7 +396,9 @@ async function ensureCategoryWithTickets(args: {
       price: args.price,
       currency: args.currency,
       supply: args.supply,
+      sales_enabled: true,
       resale_enabled: true,
+      public_sales_counter_enabled: true,
     })
     .select("id")
     .single();

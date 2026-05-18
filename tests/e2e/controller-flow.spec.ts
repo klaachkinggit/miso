@@ -8,6 +8,7 @@
 
 import { expect, test } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import "./helpers/env";
 import { DEMO_BUYER, login } from "./helpers/auth";
 
 const enabled = process.env.MISO_E2E_INVARIANTS === "1";

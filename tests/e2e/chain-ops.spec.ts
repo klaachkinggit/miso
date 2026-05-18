@@ -6,6 +6,7 @@
 
 import { expect, test } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import "./helpers/env";
 
 const enabled = process.env.MISO_E2E_INVARIANTS === "1";
 
@@ -207,6 +208,58 @@ test.describe("chain_ops invariants", () => {
       idempotency_key: `bad2:${Date.now()}`,
     });
     expect(bad2.error, "transfer without listing_id must violate check constraint").toBeTruthy();
+
+    const walletExport = await client.from("chain_ops").insert({
+      op_type: "wallet_export",
+      purchase_id: null,
+      listing_id: null,
+      ticket_id: fx.ticketId,
+      contract_address: "0x",
+      token_id: 1,
+      from_address: "0xcustodial",
+      to_address: "0xexternal",
+      idempotency_key: `wallet-export:${Date.now()}`,
+    });
+    expect(walletExport.error, "wallet_export without purchase/listing is valid").toBeFalsy();
+
+    await teardown(client, fx.eventId);
+  });
+
+  test("only one live wallet export op per ticket", async () => {
+    const client = sb();
+    const buyerId = await getProfileIdByEmail(client, "buyer@miso.local");
+    const fx = await seedTicket(client, buyerId);
+
+    const baseRow = {
+      op_type: "wallet_export" as const,
+      ticket_id: fx.ticketId,
+      contract_address: "0xcontract",
+      token_id: 1,
+      from_address: "0xcustodial",
+      to_address: "0xexternal",
+    };
+
+    const first = await client
+      .from("chain_ops")
+      .insert({ ...baseRow, idempotency_key: `wallet-export:${fx.ticketId}:1`, status: "sent" })
+      .select("id")
+      .single();
+    expect(first.error).toBeFalsy();
+
+    const second = await client
+      .from("chain_ops")
+      .insert({ ...baseRow, idempotency_key: `wallet-export:${fx.ticketId}:2`, status: "queued" })
+      .select("id")
+      .single();
+    expect(second.error, "duplicate live wallet export op must be rejected").toBeTruthy();
+
+    await client.from("chain_ops").update({ status: "errored" }).eq("id", first.data!.id);
+    const retry = await client
+      .from("chain_ops")
+      .insert({ ...baseRow, idempotency_key: `wallet-export:${fx.ticketId}:3`, attempt: 2, status: "queued" })
+      .select("id")
+      .single();
+    expect(retry.error, "after errored export attempt, new attempt is allowed").toBeFalsy();
 
     await teardown(client, fx.eventId);
   });

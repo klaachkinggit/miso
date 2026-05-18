@@ -3,6 +3,7 @@
 // generated In-App Wallet, then reads ownerOf + tokenURI back over RPC.
 
 import { expect, test } from "@playwright/test";
+import "./helpers/env";
 import {
   createPublicClient,
   http,

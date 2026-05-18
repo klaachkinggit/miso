@@ -60,7 +60,12 @@ export async function transferTicketToPersonalWallet(params: {
     throw new Error("Personal wallet transfer is only available after the event or after redemption.");
   }
 
-  const finalStatus = consumed || ticket.used_at ? "used" : "sold";
+  const finalStatus =
+    consumed || ticket.used_at
+      ? "used"
+      : ticket.status === "expired"
+        ? "expired"
+        : "sold";
   const isResumable = ticket.status === "transferring";
   if (!isResumable) {
     const { data: claimed } = await sb
