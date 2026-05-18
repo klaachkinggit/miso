@@ -25,7 +25,7 @@ interface GateSession {
 
 interface PollResponse {
   session: GateSession;
-  last_redemption: { id: string; result: string; redeemed_at: string; wallet_address: string | null } | null;
+  last_redemption: { id: string; result: string; redeemed_at: string; evm_address: string | null } | null;
   last_ticket: { id: string; serial_number: number; status: string } | null;
 }
 
@@ -320,7 +320,7 @@ export function GatePanel({
               <p className="mt-2 text-sm text-muted-foreground">
                 {last
                   ? lastTicket
-                    ? `Ticket #${lastTicket.serial_number} · ${last.wallet_address?.slice(0, 6)}…`
+                    ? `Ticket #${lastTicket.serial_number} · ${last.evm_address?.slice(0, 6)}…`
                     : "Awaiting backend write"
                   : "Waiting for customer to redeem."}
               </p>

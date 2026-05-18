@@ -43,7 +43,7 @@ export default async function MarketplaceListingPage({
       .eq("id", ticket.category_id)
       .maybeSingle<TicketCategory>(),
   ]);
-  if (!event) notFound();
+  if (!event || !category) notFound();
 
   const now = Date.now();
   const eventPast = new Date(event.date).getTime() < now;
@@ -53,27 +53,10 @@ export default async function MarketplaceListingPage({
     ticketInvalid ||
     event.status !== "published" ||
     eventPast ||
-    !category?.resale_enabled
+    !category.resale_enabled
   ) {
     notFound();
   }
-  const purchasable =
-    listing.status === "active" &&
-    !ticketInvalid &&
-    !eventPast &&
-    event.status === "published" &&
-    category.resale_enabled;
-  const reason = !purchasable
-    ? listing.status !== "active"
-      ? `Listing ${listing.status}`
-      : ticketInvalid
-      ? `Ticket ${ticket.status}`
-      : event.status !== "published"
-      ? `Event ${event.status}`
-      : eventPast
-      ? "Event has passed"
-      : null
-    : null;
   const platformFee = resalePlatformFee(Number(listing.price));
   const buyerTotal = Number(listing.price) + platformFee;
 
@@ -200,7 +183,7 @@ export default async function MarketplaceListingPage({
                 </p>
               ) : null}
             </div>
-            <BuyListingButton listingId={listing.id} disabled={!purchasable} reason={reason} />
+            <BuyListingButton listingId={listing.id} />
             <Link href="/marketplace" className="block text-center text-xs text-muted-foreground hover:text-foreground">
               Back to exchange
             </Link>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createClient } from "@/lib/supabase/client";
+import { uploadPublicEventImage } from "@/lib/supabase/uploads";
 import { createEvent } from "../../actions";
 
 export function CreateEventForm({ error }: { error?: string }) {
@@ -18,15 +18,7 @@ export function CreateEventForm({ error }: { error?: string }) {
   async function uploadImage(file: File) {
     setUploading(true);
     try {
-      const sb = createClient();
-      const path = `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "-")}`;
-      const { error: uploadError } = await sb.storage.from("event-images").upload(path, file, {
-        upsert: false,
-        contentType: file.type,
-      });
-      if (uploadError) throw uploadError;
-      const { data } = sb.storage.from("event-images").getPublicUrl(path);
-      setImageUrl(data.publicUrl);
+      setImageUrl(await uploadPublicEventImage(file));
     } finally {
       setUploading(false);
     }
@@ -35,15 +27,7 @@ export function CreateEventForm({ error }: { error?: string }) {
   async function uploadFloorPlan(file: File) {
     setUploadingFloor(true);
     try {
-      const sb = createClient();
-      const path = `floor-plans/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "-")}`;
-      const { error: uploadError } = await sb.storage.from("event-images").upload(path, file, {
-        upsert: false,
-        contentType: file.type,
-      });
-      if (uploadError) throw uploadError;
-      const { data } = sb.storage.from("event-images").getPublicUrl(path);
-      setFloorPlanUrl(data.publicUrl);
+      setFloorPlanUrl(await uploadPublicEventImage(file, "floor-plans"));
     } finally {
       setUploadingFloor(false);
     }

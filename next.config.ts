@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
+  outputFileTracingRoot: process.cwd(),
   experimental: {
     serverActions: { bodySizeLimit: "5mb" },
   },

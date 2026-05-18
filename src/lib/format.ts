@@ -1,7 +1,7 @@
 import type { Currency } from "@/types/db";
 
-export const EVENT_TIMEZONE = "Europe/Paris";
-export const APP_LOCALE = "en-GB";
+const EVENT_TIMEZONE = "Europe/Paris";
+const APP_LOCALE = "en-GB";
 
 export function formatPrice(amount: number | string, _currency: Currency): string {
   const value = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -74,4 +74,3 @@ export function casablancaInputToIso(value: string): string {
   const offset = tzOffsetMs(naive, EVENT_TIMEZONE);
   return new Date(naive.getTime() - offset).toISOString();
 }
-

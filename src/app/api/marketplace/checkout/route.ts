@@ -25,14 +25,13 @@ export async function POST(request: NextRequest) {
 
     const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 128);
     const appUrl = getRequestOrigin(request);
-    const { listing, checkoutUrl } = await checkoutResaleListing({
+    const { checkoutUrl } = await checkoutResaleListing({
       listingId: body.listing_id,
       buyerUserId: profile.id,
       successUrl: `${appUrl}/marketplace/success?session_id={CHECKOUT_SESSION_ID}&listing_id=${body.listing_id}`,
       cancelUrl: `${appUrl}/marketplace/${body.listing_id}`,
       idempotencyKey,
     });
-    void listing;
 
     return NextResponse.json({ url: checkoutUrl });
   } catch (error) {

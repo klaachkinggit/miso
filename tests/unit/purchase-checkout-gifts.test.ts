@@ -143,10 +143,7 @@ describe("createPurchaseCheckout gift recipient flow", () => {
     ).rejects.toBeInstanceOf(GiftRecipientNotFoundError);
 
     expect(checkoutMocks.reserveTicket).not.toHaveBeenCalled();
-    expect(checkoutMocks.settleFailedPurchase).toHaveBeenCalledWith({
-      ticketId: undefined,
-      purchaseId: undefined,
-    });
+    expect(checkoutMocks.settleFailedPurchase).not.toHaveBeenCalled();
   });
 
   it("persists the registered gift recipient and lowercases their email lookup", async () => {

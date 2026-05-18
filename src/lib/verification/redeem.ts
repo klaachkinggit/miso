@@ -168,6 +168,28 @@ async function recordRedemption(args: {
   return data?.id ?? null;
 }
 
+async function recordAndPublishGateResult(args: {
+  ticket_id: string;
+  event_id: string;
+  controller_user_id: string;
+  evm_address: string;
+  result: RedemptionResult;
+  gate_session_id: string;
+  gate_name: string | null;
+  redeem_tx_hash: string | null;
+}): Promise<string | null> {
+  const redemption_id = await recordRedemption(args);
+  if (redemption_id) {
+    await updateGateLastRedemption({
+      gateSessionId: args.gate_session_id,
+      redemptionId: redemption_id,
+      ticketId: args.ticket_id,
+      result: args.result,
+    });
+  }
+  return redemption_id;
+}
+
 export async function confirmRedemption(params: {
   userId: string;
   gateShortCode: string;
@@ -192,7 +214,7 @@ export async function confirmRedemption(params: {
   const smartAccount = await buyerSmartAccount(params.userId);
 
   if (ticket.event_id !== gate.event_id) {
-    await recordRedemption({
+    await recordAndPublishGateResult({
       ticket_id: ticket.id,
       event_id: gate.event_id,
       controller_user_id: gate.controller_user_id,
@@ -205,7 +227,7 @@ export async function confirmRedemption(params: {
     return { result: "wrong_event", reason: "Ticket belongs to another event" };
   }
   if (!gateAllowsTicketCategory(gate, ticket.category_id)) {
-    const redemption_id = await recordRedemption({
+    await recordAndPublishGateResult({
       ticket_id: ticket.id,
       event_id: ticket.event_id,
       controller_user_id: gate.controller_user_id,
@@ -215,14 +237,6 @@ export async function confirmRedemption(params: {
       gate_name: gate.gate_name,
       redeem_tx_hash: null,
     });
-    if (redemption_id) {
-      await updateGateLastRedemption({
-        gateSessionId: gate.id,
-        redemptionId: redemption_id,
-        ticketId: ticket.id,
-        result: "wrong_category",
-      });
-    }
     return { result: "wrong_category", reason: "Ticket category is not accepted at this gate" };
   }
 
@@ -234,7 +248,7 @@ export async function confirmRedemption(params: {
   if (!event) return { result: "no_ticket", reason: "Event missing" };
 
   const failFast = (result: RedemptionResult, reason: string) =>
-    recordRedemption({
+    recordAndPublishGateResult({
       ticket_id: ticket.id,
       event_id: ticket.event_id,
       controller_user_id: gate.controller_user_id,
@@ -261,7 +275,7 @@ export async function confirmRedemption(params: {
   // Flip DB first — conditional on status='sold' so only one redemption wins.
   const flipped = await markTicketRedeemed({ ticketId: ticket.id });
   if (!flipped) {
-    const redemption_id = await recordRedemption({
+    const redemption_id = await recordAndPublishGateResult({
       ticket_id: ticket.id,
       event_id: ticket.event_id,
       controller_user_id: gate.controller_user_id,
@@ -271,18 +285,10 @@ export async function confirmRedemption(params: {
       gate_name: gate.gate_name,
       redeem_tx_hash: null,
     });
-    if (redemption_id) {
-      await updateGateLastRedemption({
-        gateSessionId: gate.id,
-        redemptionId: redemption_id,
-        ticketId: ticket.id,
-        result: "already_used",
-      });
-    }
     return { result: "already_used", reason: "Concurrent redeem", redemption_id: redemption_id ?? undefined };
   }
 
-  const redemption_id = await recordRedemption({
+  const redemption_id = await recordAndPublishGateResult({
     ticket_id: ticket.id,
     event_id: ticket.event_id,
     controller_user_id: gate.controller_user_id,
@@ -362,15 +368,6 @@ export async function confirmRedemption(params: {
         gate_session_id: gate.id,
         redemption_id,
       },
-    });
-  }
-
-  if (redemption_id) {
-    await updateGateLastRedemption({
-      gateSessionId: gate.id,
-      redemptionId: redemption_id,
-      ticketId: ticket.id,
-      result: "valid",
     });
   }
 

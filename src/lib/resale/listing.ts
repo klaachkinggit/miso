@@ -12,6 +12,7 @@ import { DomainError } from "@/lib/api/errors";
 import {
   createResaleStripeCheckoutSession,
   expireStripeCheckoutSession,
+  stripe,
 } from "@/lib/payments/stripe";
 import {
   ChainOpRepairError,
@@ -31,8 +32,6 @@ import {
   markTicketResaleCanceled,
 } from "@/lib/tickets/lifecycle";
 import type { Ticket, EventRow, TicketCategory, ResaleListing } from "@/types/db";
-
-export { resalePlatformFee };
 
 const INVALID_FOR_RESALE = new Set([
   "used",
@@ -232,6 +231,25 @@ export async function checkoutResaleListing(params: {
   idempotencyKey?: string;
 }): Promise<{ listing: ResaleListing; checkoutUrl: string }> {
   const sb = createServiceClient();
+  if (params.idempotencyKey) {
+    const { data: prior } = await sb
+      .from("resale_listings")
+      .select("*")
+      .eq("buyer_user_id", params.buyerUserId)
+      .eq("checkout_idempotency_key", params.idempotencyKey)
+      .maybeSingle<ResaleListing>();
+    if (prior?.provider_session_id) {
+      const session = await stripe.checkout.sessions.retrieve(prior.provider_session_id);
+      return {
+        listing: prior,
+        checkoutUrl: session.url ?? params.cancelUrl,
+      };
+    }
+    if (prior) {
+      throw new ResaleCheckoutPreflightError("Checkout is still being prepared.", 409);
+    }
+  }
+
   const listing = await getResaleCheckoutListing(params);
   const sellerAmount = Number(listing.price);
   const platformFeeAmount = resalePlatformFee(sellerAmount);
@@ -241,7 +259,11 @@ export async function checkoutResaleListing(params: {
   // buyer can claim the same listing during payment.
   const { data: claimed } = await sb
     .from("resale_listings")
-    .update({ status: "transferring", buyer_user_id: params.buyerUserId })
+    .update({
+      status: "transferring",
+      buyer_user_id: params.buyerUserId,
+      checkout_idempotency_key: params.idempotencyKey ?? null,
+    })
     .eq("id", listing.id)
     .eq("status", "active")
     .select("id")
@@ -275,11 +297,19 @@ export async function checkoutResaleListing(params: {
       cancelUrl: params.cancelUrl,
       idempotencyKey: params.idempotencyKey,
     });
+    if (!session.url) {
+      await expireStripeCheckoutSession(session.id);
+      throw new Error("Stripe Checkout session did not include a URL.");
+    }
   } catch (err) {
     // Release claim if Stripe session creation fails.
     await sb
       .from("resale_listings")
-      .update({ status: "active", buyer_user_id: null })
+      .update({
+        status: "active",
+        buyer_user_id: null,
+        checkout_idempotency_key: null,
+      })
       .eq("id", listing.id)
       .eq("status", "transferring");
     throw err;
@@ -292,19 +322,24 @@ export async function checkoutResaleListing(params: {
       payment_provider: "stripe",
       platform_fee_amount: platformFeeAmount,
       buyer_total_amount: buyerTotalAmount,
+      checkout_idempotency_key: params.idempotencyKey ?? null,
     })
     .eq("id", listing.id);
   if (providerUpdateError) {
     await sb
       .from("resale_listings")
-      .update({ status: "active", buyer_user_id: null })
+      .update({
+        status: "active",
+        buyer_user_id: null,
+        checkout_idempotency_key: null,
+      })
       .eq("id", listing.id)
       .eq("status", "transferring");
     await expireStripeCheckoutSession(session.id);
     throw providerUpdateError;
   }
 
-  return { listing, checkoutUrl: session.url! };
+  return { listing, checkoutUrl: session.url };
 }
 
 export async function fulfillResale(params: {

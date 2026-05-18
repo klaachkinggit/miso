@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { casablancaInputValue } from "@/lib/format";
 import { shortAddress } from "@/lib/chain/utils";
-import { createClient } from "@/lib/supabase/client";
+import { uploadPublicEventImage } from "@/lib/supabase/uploads";
 import type { EventRow } from "@/types/db";
 import { cancelEvent, publishEvent, unpublishEvent, updateEvent } from "../../actions";
 
@@ -23,15 +23,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
   async function uploadImage(file: File) {
     setUploading(true);
     try {
-      const sb = createClient();
-      const path = `events/${event.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "-")}`;
-      const { error: uploadError } = await sb.storage.from("event-images").upload(path, file, {
-        upsert: false,
-        contentType: file.type,
-      });
-      if (uploadError) throw uploadError;
-      const { data } = sb.storage.from("event-images").getPublicUrl(path);
-      setImageUrl(data.publicUrl);
+      setImageUrl(await uploadPublicEventImage(file, `events/${event.id}`));
     } finally {
       setUploading(false);
     }
@@ -40,15 +32,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
   async function uploadFloorPlan(file: File) {
     setUploadingFloor(true);
     try {
-      const sb = createClient();
-      const path = `events/${event.id}/floor-plans/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "-")}`;
-      const { error: uploadError } = await sb.storage.from("event-images").upload(path, file, {
-        upsert: false,
-        contentType: file.type,
-      });
-      if (uploadError) throw uploadError;
-      const { data } = sb.storage.from("event-images").getPublicUrl(path);
-      setFloorPlanUrl(data.publicUrl);
+      setFloorPlanUrl(await uploadPublicEventImage(file, `events/${event.id}/floor-plans`));
     } finally {
       setUploadingFloor(false);
     }

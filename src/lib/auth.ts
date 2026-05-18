@@ -38,16 +38,8 @@ export async function requireRole(role: UserRole | UserRole[]) {
   return profile;
 }
 
-export async function requireAdmin() {
-  return requireRole("admin");
-}
-
 export async function requireOrganizerWorkspace() {
   return requireRole(["admin", "organizer"]);
-}
-
-export function isGlobalAdmin(profile: Pick<Profile, "role">): boolean {
-  return profile.role === "admin";
 }
 
 export function canUseOrganizerWorkspace(profile: Pick<Profile, "role">): boolean {

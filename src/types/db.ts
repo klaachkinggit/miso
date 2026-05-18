@@ -475,6 +475,7 @@ export type Database = {
         Row: {
           buyer_total_amount: number | null
           buyer_user_id: string | null
+          checkout_idempotency_key: string | null
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
           id: string
@@ -490,6 +491,7 @@ export type Database = {
         Insert: {
           buyer_total_amount?: number | null
           buyer_user_id?: string | null
+          checkout_idempotency_key?: string | null
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
           id?: string
@@ -505,6 +507,7 @@ export type Database = {
         Update: {
           buyer_total_amount?: number | null
           buyer_user_id?: string | null
+          checkout_idempotency_key?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
           id?: string

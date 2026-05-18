@@ -5,7 +5,7 @@ const HexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #AABBCC");
 
-export const CategoryKindSchema = z.enum(["standard", "club_table"]);
+const CategoryKindSchema = z.enum(["standard", "club_table"]);
 
 export const CreateEventSchema = z.object({
   name: z.string().min(2).max(120),
@@ -109,7 +109,7 @@ export const RedeemPrepareSchema = z.object({
 });
 
 // EVM 0x address. Used for off-platform NFT exports.
-export const EvmAddressSchema = z
+const EvmAddressSchema = z
   .string()
   .regex(/^0x[a-fA-F0-9]{40}$/, "Address must be a valid 0x EVM address");
 

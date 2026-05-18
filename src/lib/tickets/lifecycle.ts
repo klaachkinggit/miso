@@ -31,18 +31,6 @@ async function buyerWalletAddress(userId: string): Promise<string> {
   return smartAccountAddress;
 }
 
-// Resolves the wallet address for the user who actually receives the NFT.
-// For a gift purchase this is the friend (validated at checkout). For a
-// normal purchase it falls back to the paying buyer.
-export async function recipientWalletAddress(params: {
-  buyerUserId: string;
-  giftRecipientUserId?: string | null;
-}): Promise<{ recipientUserId: string; walletAddress: string }> {
-  const recipientUserId = params.giftRecipientUserId ?? params.buyerUserId;
-  const walletAddress = await buyerWalletAddress(recipientUserId);
-  return { recipientUserId, walletAddress };
-}
-
 export const RESERVATION_TTL_SECONDS = 30 * 60;
 const RESERVATION_TTL_MS = RESERVATION_TTL_SECONDS * 1000;
 

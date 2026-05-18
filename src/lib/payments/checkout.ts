@@ -4,6 +4,7 @@ import {
   createStripeCheckoutSession,
   expireStripeCheckoutSession,
 } from "@/lib/payments/stripe";
+import { DomainError } from "@/lib/api/errors";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reserveTicket } from "@/lib/tickets/lifecycle";
 import type { EventRow, Purchase, TicketCategory } from "@/types/db";
@@ -14,20 +15,19 @@ export interface PurchaseCheckoutResult {
   idempotentReplay: boolean;
 }
 
-export class GiftRecipientNotFoundError extends Error {
+export class GiftRecipientNotFoundError extends DomainError {
   constructor(email: string) {
     super(`No MISO account is registered for ${email}.`);
     this.name = "GiftRecipientNotFoundError";
   }
 }
 
-export class ExtraGuestsInvalidError extends Error {
+class ExtraGuestsInvalidError extends DomainError {
   constructor(message: string) {
     super(message);
     this.name = "ExtraGuestsInvalidError";
   }
 }
-
 
 export async function createPurchaseCheckout(params: {
   buyerUserId: string;
@@ -40,8 +40,14 @@ export async function createPurchaseCheckout(params: {
 }): Promise<PurchaseCheckoutResult> {
   let ticketId: string | undefined;
   let purchaseId: string | undefined;
+  let compensated = false;
   const sb = createServiceClient();
   const extras = Math.max(0, Math.floor(params.extraGuestsCount ?? 0));
+  const compensateStartedCheckout = async () => {
+    if (compensated || (!ticketId && !purchaseId)) return;
+    compensated = true;
+    await settleFailedPurchase({ ticketId, purchaseId });
+  };
 
   try {
     if (params.idempotencyKey) {
@@ -158,6 +164,10 @@ export async function createPurchaseCheckout(params: {
         idempotencyKey: params.idempotencyKey,
       },
     );
+    if (!session.url) {
+      await expireStripeCheckoutSession(session.id);
+      throw new Error("Stripe Checkout session did not include a URL.");
+    }
 
     const { error: providerUpdateError } = await sb
       .from("purchases")
@@ -167,18 +177,18 @@ export async function createPurchaseCheckout(params: {
       })
       .eq("id", purchase.id);
     if (providerUpdateError) {
-      await settleFailedPurchase({ ticketId, purchaseId });
+      await compensateStartedCheckout();
       await expireStripeCheckoutSession(session.id);
       throw providerUpdateError;
     }
 
     return {
       purchaseId: purchase.id,
-      checkoutUrl: session.url!,
+      checkoutUrl: session.url,
       idempotentReplay: false,
     };
   } catch (error) {
-    await settleFailedPurchase({ ticketId, purchaseId });
+    await compensateStartedCheckout();
     throw error;
   }
 }

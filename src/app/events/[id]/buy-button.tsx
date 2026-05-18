@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
+import { redirectToCheckout } from "@/lib/checkout/client";
 import { formatPrice } from "@/lib/format";
 
 export interface BuyButtonCategory {
@@ -61,37 +62,15 @@ export function BuyButton({
       return;
     }
     setLoading(true);
-    try {
-      const idempotencyKey = crypto.randomUUID();
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { 
-          "content-type": "application/json",
-          "idempotency-key": idempotencyKey
-        },
-        body: JSON.stringify({
-          category_id: category.id,
-          extra_guests_count: extras,
-          gift_recipient_email: isGift ? giftEmail : null,
-        }),
-      });
-
-      if (res.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-        return;
-      }
-
-      const payload = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok || !payload.url) {
-        throw new Error(payload.error ?? "Checkout could not be started.");
-      }
-      window.location.href = payload.url;
-    } catch (error) {
-      toast({
-        title: "Checkout failed",
-        description: error instanceof Error ? error.message : "Please try again.",
-        variant: "destructive",
-      });
+    const redirected = await redirectToCheckout({
+      endpoint: "/api/checkout",
+      body: {
+        category_id: category.id,
+        extra_guests_count: extras,
+        gift_recipient_email: isGift ? giftEmail : null,
+      },
+    });
+    if (!redirected) {
       setLoading(false);
     }
   }
