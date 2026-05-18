@@ -10,8 +10,7 @@ import type { EventRow, Ticket, TicketCategory, Wallet } from "@/types/db";
 import { RedeemPanel } from "./redeem-panel";
 
 export default async function RedeemPage({ params }: { params: Promise<{ shortCode: string }> }) {
-  const { shortCode } = await params;
-  const user = await getCurrentUser();
+  const [{ shortCode }, user] = await Promise.all([params, getCurrentUser()]);
   if (!user) redirect(`/login?next=/redeem/${shortCode}`);
 
   const gate = await getGateSessionByShortCode(shortCode);

@@ -13,8 +13,7 @@ import { BuyButton } from "./buy-button";
 type Category = TicketCategory & { remaining: number };
 
 export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const profile = await getCurrentProfile();
+  const [{ id }, profile] = await Promise.all([params, getCurrentProfile()]);
   if (profile?.role === "controller") redirect("/controller");
 
   const sb = createServiceClient();

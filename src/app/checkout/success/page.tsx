@@ -13,8 +13,7 @@ export default async function CheckoutSuccessPage({
 }: {
   searchParams?: Promise<{ session_id?: string; purchase_id?: string }>;
 }) {
-  const user = await requireUser();
-  const params = await searchParams;
+  const [user, params] = await Promise.all([requireUser(), searchParams]);
   const sessionId = params?.session_id;
   const purchaseId = params?.purchase_id;
   const sb = createServiceClient();

@@ -12,8 +12,7 @@ export default async function CheckoutCancelPage({
 }: {
   searchParams?: Promise<{ ticket_id?: string; purchase_id?: string }>;
 }) {
-  const user = await requireUser();
-  const params = await searchParams;
+  const [user, params] = await Promise.all([requireUser(), searchParams]);
   const sb = createServiceClient();
 
   if (params?.ticket_id) {

@@ -19,8 +19,8 @@ export default async function EventsPage({
 }: {
   searchParams?: Promise<{ when?: string; q?: string; city?: string }>;
 }) {
-  const discovery = normalizeEventDiscoveryParams(await searchParams);
-  const profile = await getCurrentProfile();
+  const [params, profile] = await Promise.all([searchParams, getCurrentProfile()]);
+  const discovery = normalizeEventDiscoveryParams(params);
   if (profile?.role === "controller") redirect("/controller");
 
   const sb = createServiceClient();

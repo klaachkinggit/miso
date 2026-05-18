@@ -10,8 +10,7 @@ import type { EventRow, TicketRedemption } from "@/types/db";
 import { GatePanel } from "./gate-panel";
 
 export default async function ControllerEventPage({ params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId } = await params;
-  const profile = await getCurrentProfile();
+  const [{ eventId }, profile] = await Promise.all([params, getCurrentProfile()]);
   if (!profile || !["controller", "admin"].includes(profile.role)) redirect("/");
 
   const sb = createServiceClient();
