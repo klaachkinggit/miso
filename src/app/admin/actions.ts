@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
-import { requireAdmin } from "@/lib/auth";
+import { requireOrganizerWorkspace } from "@/lib/auth";
 import {
   cancelEventSetup,
   cancelUnsoldInventory,
@@ -22,6 +22,7 @@ import {
   RefundSchema,
 } from "@/lib/schemas";
 import { createServiceClient } from "@/lib/supabase/service";
+import type { EventRow, Profile, Ticket } from "@/types/db";
 
 function checkbox(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
@@ -35,8 +36,26 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
+async function assertCanManageEvent(
+  profile: Pick<Profile, "id" | "role">,
+  eventId: string,
+  path: string,
+): Promise<EventRow> {
+  const sb = createServiceClient();
+  const { data: event } = await sb
+    .from("events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle<EventRow>();
+  if (!event) fail(path, "Event not found.");
+  if (profile.role === "organizer" && event.organizer_user_id !== profile.id) {
+    fail("/admin/events", "You can only manage your own events.");
+  }
+  return event;
+}
+
 export async function createEvent(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const parsed = CreateEventSchema.safeParse({
     name: formData.get("name"),
     date: formData.get("date"),
@@ -58,6 +77,7 @@ export async function createEvent(formData: FormData) {
     event = await createDraftEvent({
       input: parsed.data,
       adminUserId: admin.id,
+      organizerUserId: admin.id,
     });
   } catch (error) {
     fail("/admin/events/new", errorMessage(error, "Event could not be created."));
@@ -66,9 +86,10 @@ export async function createEvent(formData: FormData) {
 }
 
 export async function updateEvent(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const eventId = String(formData.get("event_id") ?? "");
   if (!eventId) fail("/admin", "Missing event id.");
+  await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   const parsed = CreateEventSchema.safeParse({
     name: formData.get("name"),
@@ -96,14 +117,16 @@ export async function updateEvent(formData: FormData) {
   }
   revalidatePath(`/admin/events/${eventId}`);
   revalidatePath("/admin");
+  revalidatePath("/admin/events");
   revalidatePath("/events");
-  redirect("/admin");
+  redirect("/admin/events");
 }
 
 export async function cancelEvent(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const eventId = String(formData.get("event_id") ?? "");
   if (!eventId) fail("/admin", "Missing event id.");
+  await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   try {
     await cancelEventSetup({ eventId, adminUserId: admin.id });
@@ -111,15 +134,17 @@ export async function cancelEvent(formData: FormData) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be canceled."));
   }
   revalidatePath("/admin");
+  revalidatePath("/admin/events");
   revalidatePath("/events");
-  redirect("/admin");
+  redirect("/admin/events");
 }
 
 export async function removeCategory(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const categoryId = String(formData.get("category_id") ?? "");
   const eventId = String(formData.get("event_id") ?? "");
   if (!categoryId || !eventId) fail(`/admin/events/${eventId}`, "Missing category or event id.");
+  await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   try {
     await removeEmptyCategory({ eventId, categoryId, adminUserId: admin.id });
@@ -131,10 +156,11 @@ export async function removeCategory(formData: FormData) {
 }
 
 export async function cancelUnsoldTickets(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const eventId = String(formData.get("event_id") ?? "");
   const categoryId = String(formData.get("category_id") ?? "");
   if (!eventId) fail("/admin", "Missing event id.");
+  await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   try {
     await cancelUnsoldInventory({
@@ -150,8 +176,9 @@ export async function cancelUnsoldTickets(formData: FormData) {
 }
 
 export async function publishEvent(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const eventId = String(formData.get("event_id") ?? "");
+  await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
   try {
     await publishEventSetup({ eventId, adminUserId: admin.id });
   } catch (error) {
@@ -162,8 +189,9 @@ export async function publishEvent(formData: FormData) {
 }
 
 export async function unpublishEvent(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const eventId = String(formData.get("event_id") ?? "");
+  await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
   try {
     await unpublishEventSetup({ eventId, adminUserId: admin.id });
   } catch (error) {
@@ -174,7 +202,7 @@ export async function unpublishEvent(formData: FormData) {
 }
 
 export async function createCategory(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const parsed = CreateCategorySchema.safeParse({
     event_id: formData.get("event_id"),
     name: formData.get("name"),
@@ -185,8 +213,10 @@ export async function createCategory(formData: FormData) {
     max_resale_price: formData.get("max_resale_price") || null,
     resale_enabled: checkbox(formData, "resale_enabled"),
     benefits: formData.get("benefits") || null,
+    image_url: formData.get("image_url") || null,
   });
   if (!parsed.success) fail("/admin", parsed.error.issues[0]?.message ?? "Invalid category.");
+  await assertCanManageEvent(admin, parsed.data.event_id, `/admin/events/${parsed.data.event_id}`);
 
   try {
     await createTicketCategory({
@@ -200,12 +230,13 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function inviteController(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const parsed = InviteControllerSchema.safeParse({
     event_id: formData.get("event_id"),
     email: formData.get("email"),
   });
   if (!parsed.success) fail("/admin", parsed.error.issues[0]?.message ?? "Invalid controller invite.");
+  await assertCanManageEvent(admin, parsed.data.event_id, `/admin/events/${parsed.data.event_id}`);
 
   const sb = createServiceClient();
   const email = parsed.data.email.toLowerCase();
@@ -228,7 +259,7 @@ export async function inviteController(formData: FormData) {
       display_name: email.split("@")[0],
       role: "controller",
     });
-  } else if (existingProfile?.role !== "admin") {
+  } else if (existingProfile?.role !== "admin" && existingProfile?.role !== "organizer") {
     await sb.from("profiles").update({ role: "controller" }).eq("id", userId);
   }
 
@@ -249,12 +280,21 @@ export async function inviteController(formData: FormData) {
 }
 
 export async function refundTicketAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const parsed = RefundSchema.safeParse({
     ticket_id: formData.get("ticket_id"),
     reason: formData.get("reason") || undefined,
   });
   if (!parsed.success) fail("/admin", parsed.error.issues[0]?.message ?? "Invalid refund request.");
+
+  const sb = createServiceClient();
+  const { data: ticket } = await sb
+    .from("tickets")
+    .select("*")
+    .eq("id", parsed.data.ticket_id)
+    .maybeSingle<Ticket>();
+  if (!ticket) fail("/admin", "Ticket not found.");
+  await assertCanManageEvent(admin, ticket.event_id, `/admin/events/${ticket.event_id}`);
 
   await refundTicket({
     ticketId: parsed.data.ticket_id,

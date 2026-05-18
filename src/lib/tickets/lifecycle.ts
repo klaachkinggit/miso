@@ -30,7 +30,8 @@ async function buyerWalletAddress(userId: string): Promise<string> {
   return smartAccountAddress;
 }
 
-const RESERVATION_TTL_MS = 10 * 60 * 1000;
+export const RESERVATION_TTL_SECONDS = 30 * 60;
+const RESERVATION_TTL_MS = RESERVATION_TTL_SECONDS * 1000;
 
 function mockChainEnabled(): boolean {
   return process.env.MISO_MOCK_CHAIN === "1";
@@ -44,7 +45,7 @@ function mockTxHash(seed: string): string {
   return `0x${crypto.createHash("sha256").update(seed).digest("hex")}`;
 }
 
-export class StaleReservationError extends Error {
+class StaleReservationError extends Error {
   constructor(message = "Reservation is stale or no longer belongs to this buyer") {
     super(message);
     this.name = "StaleReservationError";
@@ -218,6 +219,7 @@ export async function fulfillReservedTicket(params: {
     const buyerWallet = mockAddress(`wallet:${params.buyerUserId}`);
     const metadataUri = `ipfs://miso-e2e/${ticket.id}`;
     const mintTxHash = mockTxHash(`mint:${params.purchaseId}:${ticket.id}`);
+    const tierImageUrl = category.image_url ?? event.image_url;
 
     if (isReserved) {
       const { data: claimed } = await sb
@@ -241,7 +243,7 @@ export async function fulfillReservedTicket(params: {
         nft_token_id: ticket.serial_number,
         mint_tx_hash: mintTxHash,
         metadata_uri: metadataUri,
-        image_url: event.image_url,
+        image_url: tierImageUrl,
         reserved_until: null,
         minted_at: new Date().toISOString(),
         original_purchase_id: params.purchaseId,
@@ -304,10 +306,18 @@ export async function fulfillReservedTicket(params: {
     if (!claimed) throw new StaleReservationError();
   }
 
+  // Prefer the category-specific artwork — falls back to the event
+  // banner when the tier hasn't been given its own image.
+  const tierImage =
+    category.image_ipfs_uri ??
+    category.image_url ??
+    event.image_ipfs_uri ??
+    event.image_url ??
+    "";
   const metadata = {
     name: `${event.name} — Ticket #${ticket.serial_number}`,
     description: event.description ?? "",
-    image: event.image_ipfs_uri ?? event.image_url ?? "",
+    image: tierImage,
     attributes: [
       { trait_type: "Event", value: event.name },
       { trait_type: "Category", value: category.name },
@@ -387,7 +397,7 @@ export async function fulfillReservedTicket(params: {
         nft_token_id: ticket.serial_number,
         mint_tx_hash: mintTxHash,
         metadata_uri: op.metadata_uri ?? metadataUri,
-        image_url: event.image_url,
+        image_url: category.image_url ?? event.image_url,
         reserved_until: null,
         minted_at: new Date().toISOString(),
         original_purchase_id: params.purchaseId,
@@ -489,32 +499,6 @@ export async function markTicketResaleCanceled(params: {
     .eq("id", params.ticketId)
     .eq("status", "listed")
     .eq("current_listing_id", params.listingId);
-}
-
-export async function transferListedTicketToBuyer(params: {
-  ticketId: string;
-  listingId: string;
-  buyerUserId: string;
-  buyerEvmAddress: string;
-  lastTransferTxHash?: string | null;
-}): Promise<void> {
-  const sb = createServiceClient();
-  const { data, error } = await sb
-    .from("tickets")
-    .update({
-      owner_user_id: params.buyerUserId,
-      owner_evm_address: params.buyerEvmAddress,
-      status: "sold",
-      current_listing_id: null,
-      last_transfer_tx_hash: params.lastTransferTxHash ?? null,
-    })
-    .eq("id", params.ticketId)
-    .eq("status", "listed")
-    .eq("current_listing_id", params.listingId)
-    .select("id")
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) throw new Error("Ticket is no longer listed");
 }
 
 export async function markTicketRedeemed(params: {

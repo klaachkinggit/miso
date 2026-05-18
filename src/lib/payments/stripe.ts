@@ -1,12 +1,24 @@
 import Stripe from "stripe";
+import { RESERVATION_TTL_SECONDS } from "@/lib/tickets/lifecycle";
 import type { Currency } from "@/types/db";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is required");
+let stripeClient: Stripe | null = null;
+
+function getStripeClient(): Stripe {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("STRIPE_SECRET_KEY is required");
+  }
+  stripeClient ??= new Stripe(secretKey, {
+    apiVersion: "2026-04-22.dahlia" as const,
+  });
+  return stripeClient;
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2026-04-22.dahlia" as const,
+export const stripe: Stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    return getStripeClient()[prop as keyof Stripe];
+  },
 });
 
 function toCents(amount: number): number {
@@ -29,29 +41,33 @@ export interface StripeCheckoutInput {
 
 export async function createStripeCheckoutSession(
   input: StripeCheckoutInput,
+  opts: { idempotencyKey?: string } = {},
 ): Promise<Stripe.Checkout.Session> {
-  return stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: stripeCurrency(input.currency),
-          unit_amount: toCents(input.amount),
-          product_data: {
-            name: `${input.eventName} — ${input.categoryName}`,
+  return stripe.checkout.sessions.create(
+    {
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: stripeCurrency(input.currency),
+            unit_amount: toCents(input.amount),
+            product_data: {
+              name: `${input.eventName} — ${input.categoryName}`,
+            },
           },
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      success_url: input.successUrl,
+      cancel_url: input.cancelUrl,
+      metadata: {
+        type: "purchase",
+        purchase_id: input.purchaseId,
       },
-    ],
-    success_url: input.successUrl,
-    cancel_url: input.cancelUrl,
-    metadata: {
-      type: "purchase",
-      purchase_id: input.purchaseId,
+      expires_at: Math.floor(Date.now() / 1000) + RESERVATION_TTL_SECONDS,
     },
-    expires_at: Math.floor(Date.now() / 1000) + 1800,
-  });
+    opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined,
+  );
 }
 
 export interface ResaleStripeCheckoutInput {
@@ -89,8 +105,12 @@ export async function createResaleStripeCheckoutSession(
       listing_id: input.listingId,
       buyer_id: input.buyerUserId,
     },
-    expires_at: Math.floor(Date.now() / 1000) + 1800,
+    expires_at: Math.floor(Date.now() / 1000) + RESERVATION_TTL_SECONDS,
   });
+}
+
+export async function expireStripeCheckoutSession(sessionId: string): Promise<void> {
+  await stripe.checkout.sessions.expire(sessionId);
 }
 
 export async function refundStripeSession(sessionId: string): Promise<void> {

@@ -47,9 +47,11 @@ export default async function MarketplacePage() {
     const ticket = ticketById.get(listing.ticket_id);
     if (!ticket || ticket.status !== "listed") return false;
     const event = eventById.get(ticket.event_id);
-    if (!event || event.status === "canceled") return false;
+    if (!event || event.status !== "published") return false;
     if (new Date(event.date).getTime() < now) return false;
     if (!event.resale_enabled) return false;
+    const category = categoryById.get(ticket.category_id);
+    if (!category?.resale_enabled) return false;
     return true;
   });
 

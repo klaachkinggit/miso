@@ -1,12 +1,11 @@
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice } from "@/lib/format";
 import type { TicketCategory } from "@/types/db";
-import { cancelUnsoldTickets, createCategory, removeCategory } from "../../actions";
+import { cancelUnsoldTickets, removeCategory } from "../../actions";
+import { CategoryCreateForm } from "./category-create-form";
 
 export function CategoriesPanel({
   eventId,
@@ -24,17 +23,25 @@ export function CategoriesPanel({
             return (
               <Card key={category.id} className="glass rounded-lg">
                 <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold">{category.name}</h3>
-                      <Badge variant="secondary">{formatPrice(category.price, category.currency)}</Badge>
-                      <Badge variant={category.sold_count >= category.supply ? "destructive" : "success"}>
-                        {category.sold_count}/{category.supply} sold
-                      </Badge>
-                    </div>
-                    {category.description ? (
-                      <p className="mt-2 text-sm text-muted-foreground">{category.description}</p>
+                  <div className="flex items-start gap-4">
+                    {category.image_url ? (
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border/60">
+                        <Image src={category.image_url} alt={category.name} fill sizes="64px" className="object-cover" />
+                      </div>
                     ) : null}
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold">{category.name}</h3>
+                        <Badge variant="secondary">{formatPrice(category.price, category.currency)}</Badge>
+                        <Badge variant={category.sold_count >= category.supply ? "destructive" : "success"}>
+                          {category.sold_count}/{category.supply} sold
+                        </Badge>
+                        {category.image_ipfs_uri ? <Badge variant="success">art pinned</Badge> : null}
+                      </div>
+                      {category.description ? (
+                        <p className="mt-2 text-sm text-muted-foreground">{category.description}</p>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {remaining > 0 ? (
@@ -65,59 +72,7 @@ export function CategoriesPanel({
         )}
       </div>
 
-      <Card className="glass h-fit rounded-lg">
-        <CardHeader>
-          <CardTitle>Add category</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={createCategory} className="grid gap-4">
-            <input type="hidden" name="event_id" value={eventId} />
-            <div className="grid gap-2">
-              <Label htmlFor="category-name">Name</Label>
-              <Input id="category-name" name="name" required />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="category-description">Description</Label>
-              <Textarea id="category-description" name="description" rows={3} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="price">Price</Label>
-                <Input id="price" name="price" type="number" step="0.01" min="0" required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="currency">Currency</Label>
-                <input
-                  id="currency"
-                  name="currency"
-                  value="EUR"
-                  readOnly
-                  className="h-10 rounded-md border border-input bg-background/40 px-3 text-sm text-muted-foreground"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="supply">Supply</Label>
-                <Input id="supply" name="supply" type="number" min="1" required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="max_resale_price">Max resale</Label>
-                <Input id="max_resale_price" name="max_resale_price" type="number" step="0.01" min="0" />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="benefits">Benefits</Label>
-              <Textarea id="benefits" name="benefits" rows={3} />
-            </div>
-            <label className="flex items-center gap-3 text-sm">
-              <input name="resale_enabled" type="checkbox" className="h-4 w-4" defaultChecked />
-              Resale enabled
-            </label>
-            <Button type="submit">Create and seed tickets</Button>
-          </form>
-        </CardContent>
-      </Card>
+      <CategoryCreateForm eventId={eventId} />
     </div>
   );
 }

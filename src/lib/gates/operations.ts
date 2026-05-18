@@ -12,7 +12,7 @@ export interface GatePoll {
   last_ticket: Pick<Ticket, "id" | "serial_number" | "status"> | null;
 }
 
-export function generateShortCode(len = SHORT_CODE_LEN): string {
+function generateShortCode(len = SHORT_CODE_LEN): string {
   const bytes = randomBytes(len);
   let out = "";
   for (let i = 0; i < len; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
@@ -41,7 +41,7 @@ export async function canOperateEventGate(params: {
   return !!data;
 }
 
-export async function requireEventGateOperator(params: {
+async function requireEventGateOperator(params: {
   eventId: string;
   profile: Pick<Profile, "id" | "role">;
 }): Promise<void> {

@@ -5,11 +5,6 @@ export const DEMO_BUYER = {
   password: process.env.DEMO_BUYER_PASSWORD ?? "misobuyer",
 };
 
-export const DEMO_ADMIN = {
-  email: process.env.DEMO_ADMIN_EMAIL ?? "admin@miso.local",
-  password: process.env.DEMO_ADMIN_PASSWORD ?? "misoadmin",
-};
-
 export const DEMO_SELLER = {
   email: process.env.DEMO_SELLER_EMAIL ?? "seller@miso.local",
   password: process.env.DEMO_SELLER_PASSWORD ?? "misoseller",

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CurrencySchema = z.literal("EUR");
+const CurrencySchema = z.literal("EUR");
 
 export const CreateEventSchema = z.object({
   name: z.string().min(2).max(120),
@@ -26,6 +26,7 @@ export const CreateCategorySchema = z.object({
   max_resale_price: z.coerce.number().min(0).optional().nullable(),
   resale_enabled: z.coerce.boolean().default(true),
   benefits: z.string().max(1000).optional().nullable(),
+  image_url: z.string().url().optional().nullable(),
 });
 
 export const PurchaseInitSchema = z.object({

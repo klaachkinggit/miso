@@ -8,7 +8,10 @@
 import type { Address } from "viem";
 
 import { createServiceClient } from "@/lib/supabase/service";
-import { createResaleStripeCheckoutSession } from "@/lib/payments/stripe";
+import {
+  createResaleStripeCheckoutSession,
+  expireStripeCheckoutSession,
+} from "@/lib/payments/stripe";
 import {
   ChainOpRepairError,
   markChainOpMined,
@@ -162,7 +165,7 @@ export class ResaleCheckoutPreflightError extends Error {
   }
 }
 
-export async function getResaleCheckoutListing(params: {
+async function getResaleCheckoutListing(params: {
   listingId: string;
   buyerUserId: string;
 }): Promise<ResaleListing> {
@@ -249,10 +252,19 @@ export async function checkoutResaleListing(params: {
     throw err;
   }
 
-  await sb
+  const { error: providerUpdateError } = await sb
     .from("resale_listings")
     .update({ provider_session_id: session.id, payment_provider: "stripe" })
     .eq("id", listing.id);
+  if (providerUpdateError) {
+    await sb
+      .from("resale_listings")
+      .update({ status: "active", buyer_user_id: null })
+      .eq("id", listing.id)
+      .eq("status", "transferring");
+    await expireStripeCheckoutSession(session.id);
+    throw providerUpdateError;
+  }
 
   return { listing, checkoutUrl: session.url! };
 }

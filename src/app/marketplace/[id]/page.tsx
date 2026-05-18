@@ -45,21 +45,31 @@ export default async function MarketplaceListingPage({
 
   const now = Date.now();
   const eventPast = new Date(event.date).getTime() < now;
-  const eventCanceled = event.status === "canceled";
   const ticketInvalid = ticket.status !== "listed";
+  if (
+    listing.status !== "active" ||
+    ticketInvalid ||
+    event.status !== "published" ||
+    eventPast ||
+    !event.resale_enabled ||
+    !category?.resale_enabled
+  ) {
+    notFound();
+  }
   const purchasable =
     listing.status === "active" &&
     !ticketInvalid &&
     !eventPast &&
-    !eventCanceled &&
-    event.resale_enabled;
+    event.status === "published" &&
+    event.resale_enabled &&
+    category.resale_enabled;
   const reason = !purchasable
     ? listing.status !== "active"
       ? `Listing ${listing.status}`
       : ticketInvalid
       ? `Ticket ${ticket.status}`
-      : eventCanceled
-      ? "Event canceled"
+      : event.status !== "published"
+      ? `Event ${event.status}`
       : eventPast
       ? "Event has passed"
       : !event.resale_enabled

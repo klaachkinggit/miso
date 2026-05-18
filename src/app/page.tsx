@@ -268,10 +268,10 @@ export default async function HomePage() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button asChild size="lg">
-                  <Link href="/signup">Publish my event</Link>
+                  <Link href="/signup/organizer">Publish my event</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link href="/admin">Pro dashboard</Link>
+                  <Link href="/admin">Organizer dashboard</Link>
                 </Button>
               </div>
             </div>

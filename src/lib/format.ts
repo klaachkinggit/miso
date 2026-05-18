@@ -1,6 +1,6 @@
 import type { Currency } from "@/types/db";
 
-export const EVENT_TIMEZONE = "Europe/Paris";
+const EVENT_TIMEZONE = "Europe/Paris";
 
 export function formatPrice(amount: number | string, _currency: Currency): string {
   const value = typeof amount === "string" ? parseFloat(amount) : amount;

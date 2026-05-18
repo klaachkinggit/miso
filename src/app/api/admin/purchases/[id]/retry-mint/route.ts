@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireOrganizerWorkspace } from "@/lib/auth";
 import { settlePaidPurchase } from "@/lib/payments/settlement";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { Purchase } from "@/types/db";
+import type { EventRow, Purchase } from "@/types/db";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const { id } = await params;
   const sb = createServiceClient();
   const { data: purchase } = await sb.from("purchases").select("*").eq("id", id).single<Purchase>();
@@ -15,6 +15,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!purchase) {
     target.searchParams.set("error", "Purchase not found.");
     return NextResponse.redirect(target);
+  }
+
+  if (admin.role === "organizer") {
+    const { data: event } = await sb
+      .from("events")
+      .select("*")
+      .eq("id", purchase.event_id)
+      .maybeSingle<EventRow>();
+    if (!event || event.organizer_user_id !== admin.id) {
+      target.searchParams.set("error", "You can only manage your own events.");
+      return NextResponse.redirect(new URL("/admin/events", request.url));
+    }
   }
 
   try {

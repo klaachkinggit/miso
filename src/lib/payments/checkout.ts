@@ -1,5 +1,8 @@
 import { settleFailedPurchase } from "@/lib/payments/settlement";
-import { createStripeCheckoutSession } from "@/lib/payments/stripe";
+import {
+  createStripeCheckoutSession,
+  expireStripeCheckoutSession,
+} from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reserveTicket } from "@/lib/tickets/lifecycle";
 import type { EventRow, Purchase, TicketCategory } from "@/types/db";
@@ -27,7 +30,7 @@ export async function createPurchaseCheckout(params: {
         .from("purchases")
         .select("id, status, provider_session_id")
         .eq("buyer_user_id", params.buyerUserId)
-        .eq("provider_session_id", params.idempotencyKey)
+        .eq("checkout_idempotency_key", params.idempotencyKey)
         .maybeSingle<{ id: string; status: string; provider_session_id: string | null }>();
       if (prior?.provider_session_id) {
         const { stripe } = await import("@/lib/payments/stripe");
@@ -61,6 +64,7 @@ export async function createPurchaseCheckout(params: {
         amount: category.price,
         currency: category.currency,
         status: "pending",
+        checkout_idempotency_key: params.idempotencyKey,
       })
       .select("*")
       .single<Purchase>();
@@ -77,15 +81,22 @@ export async function createPurchaseCheckout(params: {
       categoryName: cat?.name ?? "Ticket",
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
+    }, {
+      idempotencyKey: params.idempotencyKey,
     });
 
-    await sb
+    const { error: providerUpdateError } = await sb
       .from("purchases")
       .update({
         provider_session_id: session.id,
         payment_provider: "stripe",
       })
       .eq("id", purchase.id);
+    if (providerUpdateError) {
+      await settleFailedPurchase({ ticketId, purchaseId });
+      await expireStripeCheckoutSession(session.id);
+      throw providerUpdateError;
+    }
 
     return {
       purchaseId: purchase.id,

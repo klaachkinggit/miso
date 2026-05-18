@@ -14,7 +14,6 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   TransactionRevertError,
   TransactionTimeoutError,
-  getTransaction,
   waitForTransaction,
   writeContract,
   type WriteContractCall,
@@ -22,7 +21,7 @@ import {
 import type { Address } from "viem";
 import type { ChainOp } from "@/types/db";
 
-export type ChainOpType = "mint" | "transfer";
+type ChainOpType = "mint" | "transfer";
 
 export interface OpenChainOpInput {
   opType: ChainOpType;
@@ -139,7 +138,7 @@ export async function openOrResumeChainOp(
   );
 }
 
-export async function recordChainOpTransactionId(
+async function recordChainOpTransactionId(
   opId: string,
   transactionId: string,
 ): Promise<void> {
@@ -161,7 +160,7 @@ export async function markChainOpMined(
     .eq("id", opId);
 }
 
-export async function markChainOpErrored(
+async function markChainOpErrored(
   opId: string,
   message: string,
 ): Promise<void> {
@@ -242,22 +241,6 @@ export async function runChainOp(args: {
     }
     throw err;
   }
-}
-
-// Polls Thirdweb once and updates the row — used by admin retry tools
-// to discover whether a `sent` op actually mined since the last attempt.
-export async function reconcileChainOp(op: ChainOp): Promise<ChainOp> {
-  if (!op.transaction_id) return op;
-  const record = await getTransaction(op.transaction_id);
-  if (record.status === "MINED") {
-    await markChainOpMined(op.id, record.transactionHash ?? null);
-    return { ...op, status: "mined", tx_hash: record.transactionHash ?? null };
-  }
-  if (record.status === "ERRORED" || record.status === "CANCELLED") {
-    await markChainOpErrored(op.id, record.errorMessage ?? "reverted");
-    return { ...op, status: "errored", error_message: record.errorMessage ?? "reverted" };
-  }
-  return op;
 }
 
 // Thrown when a non-revert error occurs AFTER the chain op was opened.

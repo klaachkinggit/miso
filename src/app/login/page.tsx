@@ -1,4 +1,5 @@
 import { AuthShell } from "@/components/site/auth-shell";
+import { redirectIfAuthenticated } from "@/lib/auth";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -6,6 +7,7 @@ export default async function LoginPage({
 }: {
   searchParams?: Promise<{ error?: string }>;
 }) {
+  await redirectIfAuthenticated();
   const params = await searchParams;
   return (
     <AuthShell>

@@ -23,10 +23,10 @@ const COLUMNS = [
   {
     title: "Organizers",
     links: [
-      { label: "Publish an event", href: "/signup" },
-      { label: "Smart pricing", href: "/signup" },
-      { label: "Audience tools", href: "/signup" },
-      { label: "Pro dashboard", href: "/admin" },
+      { label: "Publish an event", href: "/signup/organizer" },
+      { label: "Smart pricing", href: "/signup/organizer" },
+      { label: "Audience tools", href: "/signup/organizer" },
+      { label: "Organizer dashboard", href: "/admin" },
     ],
   },
   {

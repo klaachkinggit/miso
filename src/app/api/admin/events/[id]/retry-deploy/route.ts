@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireOrganizerWorkspace } from "@/lib/auth";
 import { publishEventSetup } from "@/lib/events/setup";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow } from "@/types/db";
@@ -12,7 +12,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const admin = await requireAdmin();
+  const admin = await requireOrganizerWorkspace();
   const { id } = await params;
   const sb = createServiceClient();
   const { data: event } = await sb
@@ -25,6 +25,10 @@ export async function POST(
   if (!event) {
     target.searchParams.set("error", "Event not found.");
     return NextResponse.redirect(target);
+  }
+  if (admin.role === "organizer" && event.organizer_user_id !== admin.id) {
+    target.searchParams.set("error", "You can only manage your own events.");
+    return NextResponse.redirect(new URL("/admin/events", request.url));
   }
 
   try {

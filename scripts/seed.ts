@@ -3,11 +3,15 @@
 // Seeds a fully working demo against a local Supabase stack.
 // Re-runnable: upserts fixtures and restores available demo inventory.
 //
-// Creates:
-//   - admin@miso.local       password: misoadmin
+// Demo accounts:
 //   - buyer@miso.local       password: misobuyer
-//   - seller@miso.local      password: misoseller
-//   - controller@miso.local  password: misocontroller
+//   - organizer@miso.local   password: misoorganizer
+//   - admin@miso.local       password: misoadmin
+//
+// Fixture accounts for resale/controller e2e coverage are also seeded, but
+// they are not shown as primary demo credentials.
+//
+// Creates:
 //   - published events across tonight, this week, weekend, and next month
 //   - NFT ticket tiers seeded as `available`
 //
@@ -36,15 +40,30 @@ interface SeedUser {
   email: string;
   password: string;
   display_name: string;
-  role: "admin" | "user" | "controller";
+  role: "admin" | "organizer" | "user" | "controller";
+  demoLabel?: "buyer" | "organizer" | "admin";
 }
 
-const users: SeedUser[] = [
-  { email: "admin@miso.local", password: "misoadmin", display_name: "Demo Admin", role: "admin" },
-  { email: "buyer@miso.local", password: "misobuyer", display_name: "Demo Buyer", role: "user" },
+type DemoSeedUser = SeedUser & { demoLabel: "buyer" | "organizer" | "admin" };
+
+const demoUsers: DemoSeedUser[] = [
+  { email: "buyer@miso.local", password: "misobuyer", display_name: "Demo Buyer", role: "user", demoLabel: "buyer" },
+  {
+    email: "organizer@miso.local",
+    password: "misoorganizer",
+    display_name: "Demo Organizer",
+    role: "organizer",
+    demoLabel: "organizer",
+  },
+  { email: "admin@miso.local", password: "misoadmin", display_name: "Demo Admin", role: "admin", demoLabel: "admin" },
+];
+
+const fixtureUsers: SeedUser[] = [
   { email: "seller@miso.local", password: "misoseller", display_name: "Demo Seller", role: "user" },
   { email: "controller@miso.local", password: "misocontroller", display_name: "Demo Controller", role: "controller" },
 ];
+
+const users: SeedUser[] = [...demoUsers, ...fixtureUsers];
 
 interface SeedEvent {
   name: string;
@@ -280,7 +299,7 @@ async function hideThrowawayTestEvents() {
   if (error) throw new Error(`Failed to hide legacy demo events: ${error.message}`);
 }
 
-async function ensureEvent(event: SeedEvent): Promise<string> {
+async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<string> {
   const { data: existing } = await sb
     .from("events")
     .select("id")
@@ -298,6 +317,7 @@ async function ensureEvent(event: SeedEvent): Promise<string> {
         sales_enabled: true,
         resale_enabled: true,
         public_sales_counter_enabled: true,
+        organizer_user_id: organizerUserId,
         status: "published",
       })
       .eq("id", existing.id);
@@ -316,6 +336,7 @@ async function ensureEvent(event: SeedEvent): Promise<string> {
       sales_enabled: true,
       resale_enabled: true,
       public_sales_counter_enabled: true,
+      organizer_user_id: organizerUserId,
       status: "published",
     })
     .select("id")
@@ -432,8 +453,10 @@ async function main() {
   console.log("  throwaway test events hidden");
 
   const events = buildSeedEvents();
-  for (const event of events) {
-    const eventId = await ensureEvent(event);
+  for (const [index, event] of events.entries()) {
+    const organizerUserId =
+      index === 0 ? userIds["organizer@miso.local"] : userIds["admin@miso.local"];
+    const eventId = await ensureEvent(event, organizerUserId);
     console.log(`  event ${eventId} — ${event.name} (${event.date.toLocaleString()})`);
     for (const category of event.categories) {
       await ensureCategoryWithTickets({
@@ -451,8 +474,8 @@ async function main() {
   console.log("  events, categories, tickets, and controllers seeded");
 
   console.log("\nDone. Demo credentials:");
-  for (const user of users) {
-    console.log(`  ${user.role.padEnd(11)}  ${user.email}  /  ${user.password}`);
+  for (const user of demoUsers) {
+    console.log(`  ${user.demoLabel.padEnd(11)}  ${user.email}  /  ${user.password}`);
   }
 }
 

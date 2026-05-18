@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { ImagePlus, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,10 +9,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { casablancaInputValue, shortAddress } from "@/lib/format";
+import { createClient } from "@/lib/supabase/client";
 import type { EventRow } from "@/types/db";
 import { cancelEvent, publishEvent, unpublishEvent, updateEvent } from "../../actions";
 
 export function DetailsForm({ event }: { event: EventRow }) {
+  const [imageUrl, setImageUrl] = useState(event.image_url ?? "");
+  const [uploading, setUploading] = useState(false);
+
+  async function uploadImage(file: File) {
+    setUploading(true);
+    try {
+      const sb = createClient();
+      const path = `events/${event.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "-")}`;
+      const { error: uploadError } = await sb.storage.from("event-images").upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+      });
+      if (uploadError) throw uploadError;
+      const { data } = sb.storage.from("event-images").getPublicUrl(path);
+      setImageUrl(data.publicUrl);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <div className="grid gap-5">
       <Card className="glass rounded-lg">
@@ -21,6 +46,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
         <CardContent>
           <form action={updateEvent} className="grid gap-5">
             <input type="hidden" name="event_id" value={event.id} />
+            <input type="hidden" name="image_url" value={imageUrl} />
             <div className="grid gap-2">
               <Label htmlFor="name">Name</Label>
               <Input id="name" name="name" defaultValue={event.name} required />
@@ -47,8 +73,31 @@ export function DetailsForm({ event }: { event: EventRow }) {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="image_url">Image URL</Label>
-              <Input id="image_url" name="image_url" defaultValue={event.image_url ?? ""} />
+              <Label htmlFor="event-image">Event image</Label>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Input
+                  id="event-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(uploadEvent) => {
+                    const file = uploadEvent.target.files?.[0];
+                    if (file) void uploadImage(file);
+                  }}
+                />
+                <div className="min-w-40 text-sm text-muted-foreground">
+                  {uploading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Uploading
+                    </span>
+                  ) : imageUrl ? (
+                    <span className="flex items-center gap-2 text-emerald-300">
+                      <ImagePlus className="h-4 w-4" /> Image ready
+                    </span>
+                  ) : (
+                    "Optional"
+                  )}
+                </div>
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
@@ -77,7 +126,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
                 Public sales counter
               </label>
             </div>
-            <Button type="submit">Save changes</Button>
+            <Button type="submit" disabled={uploading}>Save changes</Button>
           </form>
         </CardContent>
       </Card>

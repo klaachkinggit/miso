@@ -43,17 +43,20 @@ export interface CategoryInput {
   max_resale_price?: number | null;
   resale_enabled: boolean;
   benefits?: string | null;
+  image_url?: string | null;
 }
 
 
 export async function createDraftEvent(params: {
   input: EventDetailsInput;
   adminUserId: string;
+  organizerUserId: string;
 }): Promise<EventRow> {
   const sb = createServiceClient();
   const eventPayload = {
     ...params.input,
     date: casablancaInputToIso(params.input.date),
+    organizer_user_id: params.organizerUserId,
     status: "draft" as const,
   };
 
@@ -288,9 +291,19 @@ export async function createTicketCategory(params: {
   adminUserId: string;
 }): Promise<{ id: string; event_id: string; supply: number }> {
   const sb = createServiceClient();
+  // Pin a category-specific image to IPFS up front so the metadata
+  // baked into each NFT mint references the tier's artwork, not the
+  // event banner. Done at create time so all mints from this category
+  // see a stable URI without a publish-time backfill.
+  let imageIpfsUri: string | null = null;
+  if (params.input.image_url) {
+    imageIpfsUri = await pinImageToIpfs(params.input.image_url);
+  }
   const insertPayload = {
     ...params.input,
     max_resale_price: params.input.max_resale_price ?? null,
+    image_url: params.input.image_url ?? null,
+    image_ipfs_uri: imageIpfsUri,
   };
   const { data: category, error: categoryError } = await sb
     .from("ticket_categories")

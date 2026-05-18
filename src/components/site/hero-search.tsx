@@ -26,6 +26,8 @@ export function HeroSearch({ size = "lg" }: { size?: "lg" | "md" }) {
   return (
     <div className="w-full">
       <form
+        action="/events"
+        method="get"
         onSubmit={submit}
         role="search"
         className={`group relative flex items-center gap-2 rounded-full border border-[#E6D8C9]/15 bg-[#0b0b0b]/80 backdrop-blur-xl transition-colors focus-within:border-accent/60 ${padding}`}
@@ -56,7 +58,7 @@ export function HeroSearch({ size = "lg" }: { size?: "lg" | "md" }) {
             <a
               key={chip.label}
               href={chip.href}
-              className="rounded-full border border-[#E6D8C9]/15 bg-[#121212]/70 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[#E6D8C9]/75 transition-colors hover:border-accent/50 hover:text-[#F5F3EE]"
+              className="rounded-full border border-[#E6D8C9]/15 bg-[#121212]/70 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[#E6D8C9]/75 transition-colors hover:border-accent/50 hover:text-[#F5F3EE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {chip.label}
             </a>

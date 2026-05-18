@@ -203,7 +203,7 @@ export async function writeContract(
   return { transactionId: ids[0] };
 }
 
-export type TransactionStatus =
+type TransactionStatus =
   | "QUEUED"
   | "SENT"
   | "MINED"
@@ -255,7 +255,7 @@ function normalizeStatus(raw: string | undefined): TransactionStatus {
   }
 }
 
-export async function getTransaction(
+async function getTransaction(
   transactionId: string,
 ): Promise<TransactionRecord> {
   const response = await thirdwebFetch<StatusResponse>(

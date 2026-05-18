@@ -203,6 +203,7 @@ export type Database = {
           image_url: string | null
           name: string
           nft_contract_address: string | null
+          organizer_user_id: string | null
           public_sales_counter_enabled: boolean
           resale_enabled: boolean
           role_admin_address: string | null
@@ -223,6 +224,7 @@ export type Database = {
           image_url?: string | null
           name: string
           nft_contract_address?: string | null
+          organizer_user_id?: string | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
           role_admin_address?: string | null
@@ -243,6 +245,7 @@ export type Database = {
           image_url?: string | null
           name?: string
           nft_contract_address?: string | null
+          organizer_user_id?: string | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
           role_admin_address?: string | null
@@ -251,7 +254,15 @@ export type Database = {
           updated_at?: string
           venue_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "events_organizer_user_id_fkey"
+            columns: ["organizer_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       gate_sessions: {
         Row: {
@@ -336,24 +347,39 @@ export type Database = {
           display_name: string | null
           email: string
           id: string
+          organizer_onboarding: Json | null
           pro_crypto_mode: boolean
           role: Database["public"]["Enums"]["user_role"]
+          stripe_account_id: string | null
+          stripe_charges_enabled: boolean
+          stripe_details_submitted: boolean
+          stripe_payouts_enabled: boolean
         }
         Insert: {
           created_at?: string
           display_name?: string | null
           email: string
           id: string
+          organizer_onboarding?: Json | null
           pro_crypto_mode?: boolean
           role?: Database["public"]["Enums"]["user_role"]
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
+          stripe_payouts_enabled?: boolean
         }
         Update: {
           created_at?: string
           display_name?: string | null
           email?: string
           id?: string
+          organizer_onboarding?: Json | null
           pro_crypto_mode?: boolean
           role?: Database["public"]["Enums"]["user_role"]
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
+          stripe_payouts_enabled?: boolean
         }
         Relationships: []
       }
@@ -361,6 +387,7 @@ export type Database = {
         Row: {
           amount: number
           buyer_user_id: string
+          checkout_idempotency_key: string | null
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
           event_id: string
@@ -375,6 +402,7 @@ export type Database = {
         Insert: {
           amount: number
           buyer_user_id: string
+          checkout_idempotency_key?: string | null
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
           event_id: string
@@ -389,6 +417,7 @@ export type Database = {
         Update: {
           amount?: number
           buyer_user_id?: string
+          checkout_idempotency_key?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
           event_id?: string
@@ -496,6 +525,8 @@ export type Database = {
           description: string | null
           event_id: string
           id: string
+          image_ipfs_uri: string | null
+          image_url: string | null
           max_resale_price: number | null
           name: string
           price: number
@@ -510,6 +541,8 @@ export type Database = {
           description?: string | null
           event_id: string
           id?: string
+          image_ipfs_uri?: string | null
+          image_url?: string | null
           max_resale_price?: number | null
           name: string
           price: number
@@ -524,6 +557,8 @@ export type Database = {
           description?: string | null
           event_id?: string
           id?: string
+          image_ipfs_uri?: string | null
+          image_url?: string | null
           max_resale_price?: number | null
           name?: string
           price?: number
@@ -808,7 +843,7 @@ export type Database = {
         | "minting"
         | "transferring"
         | "repair_needed"
-      user_role: "user" | "controller" | "admin"
+      user_role: "user" | "controller" | "admin" | "organizer"
     }
     CompositeTypes: {
       [_ in never]: never

@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { defaultRoleDestination } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
+import type { UserRole } from "@/types/db";
 
 function withError(path: string, message: string) {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
@@ -24,8 +26,8 @@ export async function loginAction(formData: FormData) {
       .from("profiles")
       .select("role")
       .eq("id", data.user.id)
-      .maybeSingle<{ role: string }>();
-    if (profile?.role === "controller") redirect("/controller");
+      .maybeSingle<{ role: UserRole }>();
+    redirect(defaultRoleDestination(profile?.role));
   }
 
   redirect("/events");

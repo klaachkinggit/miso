@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DEMO_BUYER, DEMO_SELLER, login } from "./helpers/auth";
+import { DEMO_BUYER, login } from "./helpers/auth";
 
 // Full-path E2E (requires `npm run demo:seed` + dev server).
 // Set MISO_E2E_FULL=1 to enable. Skipped by default so CI without a seeded DB

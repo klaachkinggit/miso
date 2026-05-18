@@ -35,7 +35,7 @@ import type {
   Ticket,
 } from "@/types/db";
 
-export interface RedemptionIntent {
+interface RedemptionIntent {
   type: "miso.redeem";
   ticket: string;
   event: string;
@@ -46,7 +46,7 @@ export interface RedemptionIntent {
   version: 2;
 }
 
-export interface PreparedRedemption {
+interface PreparedRedemption {
   payload: RedemptionIntent;
   signer_wallet: string;
   tx_signature: string;

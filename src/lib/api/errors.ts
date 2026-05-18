@@ -47,7 +47,7 @@ export function errorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-export function safeErrorMessage(err: unknown, opts: SafeErrorOptions = {}): string {
+function safeErrorMessage(err: unknown, opts: SafeErrorOptions = {}): string {
   const fallback = opts.fallback ?? "Request failed.";
   if (!(err instanceof Error)) return fallback;
   const msg = err.message ?? "";
@@ -70,19 +70,5 @@ export function apiErrorResponse(
   return NextResponse.json(
     { error: safeErrorMessage(err, opts) },
     { status: opts.status ?? 400 },
-  );
-}
-
-export function chainPendingResponse(): NextResponse<{
-  error: string;
-  status: "pending";
-}> {
-  return NextResponse.json(
-    {
-      error:
-        "Your purchase is pending on chain. We're retrying — check back shortly.",
-      status: "pending",
-    },
-    { status: 202 },
   );
 }

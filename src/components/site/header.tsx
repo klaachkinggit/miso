@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentProfile } from "@/lib/auth";
+import { canOperateGateRole, canUseOrganizerWorkspace, getCurrentProfile } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/site/user-menu";
 import { Marquee } from "@/components/site/marquee";
@@ -32,14 +32,14 @@ export async function Header() {
                     Wallet
                   </Link>
                 ) : null}
-                {profile?.role === "admin" ? (
+                {profile && canUseOrganizerWorkspace(profile) ? (
                   <Link href="/admin" className="text-muted-foreground transition-colors hover:text-foreground">
-                    Admin
+                    Workspace
                   </Link>
                 ) : null}
               </>
             ) : null}
-            {profile?.role === "controller" || profile?.role === "admin" ? (
+            {profile && canOperateGateRole(profile) ? (
               <Link href="/controller" className="text-muted-foreground transition-colors hover:text-foreground">
                 Gate
               </Link>

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { requireOrganizerWorkspace } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, Profile, Ticket, TicketCategory } from "@/types/db";
 import { CategoriesPanel } from "./categories-panel";
@@ -16,10 +17,12 @@ export default async function AdminEventPage({
 }) {
   const { id } = await params;
   const notices = await searchParams;
+  const profile = await requireOrganizerWorkspace();
   const sb = createServiceClient();
 
   const { data: event } = await sb.from("events").select("*").eq("id", id).single<EventRow>();
   if (!event) notFound();
+  if (profile.role === "organizer" && event.organizer_user_id !== profile.id) notFound();
 
   const [{ data: categories }, { data: controllerLinks }, { data: tickets }] = await Promise.all([
     sb.from("ticket_categories").select("*").eq("event_id", id).order("created_at", { ascending: true }).returns<TicketCategory[]>(),

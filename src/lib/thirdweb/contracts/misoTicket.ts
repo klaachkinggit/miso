@@ -1,20 +1,14 @@
-// MisoTicket ABI + typed call-data helpers.
+// MisoTicket ABI.
 //
 // Bytecode is filled in after compiling `contracts/MisoTicket.sol`
 // (Foundry / Hardhat) and pasting the resulting hex string into
 // `MISO_TICKET_BYTECODE`. Until then, deploy paths will throw at the
 // encode step, which is intentional: Phase 5 sets the bytecode.
 //
-// ABI is hand-written from the Solidity source so we can encode/decode
-// without depending on a compiler artifact at runtime.
+// ABI is hand-written from the Solidity source so runtime code can
+// deploy/read without depending on a compiler artifact.
 
-import {
-  type Abi,
-  type Address,
-  type Hex,
-  encodeDeployData,
-  encodeFunctionData,
-} from "viem";
+import { type Abi } from "viem";
 
 import { MISO_TICKET_BYTECODE } from "@/lib/thirdweb/contracts/misoTicket.bytecode";
 
@@ -88,51 +82,3 @@ export const MISO_TICKET_ABI = [
     outputs: [{ name: "", type: "string" }],
   },
 ] as const satisfies Abi;
-
-export function encodeMisoTicketDeploy(args: {
-  name: string;
-  symbol: string;
-  admin: Address;
-}): Hex {
-  return encodeDeployData({
-    abi: MISO_TICKET_ABI,
-    bytecode: MISO_TICKET_BYTECODE,
-    args: [args.name, args.symbol, args.admin],
-  });
-}
-
-export function encodeMintTo(args: {
-  to: Address;
-  tokenId: bigint;
-  uri: string;
-}): Hex {
-  return encodeFunctionData({
-    abi: MISO_TICKET_ABI,
-    functionName: "mintTo",
-    args: [args.to, args.tokenId, args.uri],
-  });
-}
-
-export function encodeSetAttribute(args: {
-  tokenId: bigint;
-  key: string;
-  value: string;
-}): Hex {
-  return encodeFunctionData({
-    abi: MISO_TICKET_ABI,
-    functionName: "setAttribute",
-    args: [args.tokenId, args.key, args.value],
-  });
-}
-
-export function encodeAdminTransfer(args: {
-  from: Address;
-  to: Address;
-  tokenId: bigint;
-}): Hex {
-  return encodeFunctionData({
-    abi: MISO_TICKET_ABI,
-    functionName: "adminTransfer",
-    args: [args.from, args.to, args.tokenId],
-  });
-}

@@ -48,9 +48,25 @@ test.describe("Public smoke", () => {
     await expect(page.getByRole("button", { name: /log in/i })).toBeVisible();
   });
 
-  test("signup page renders form", async ({ page }) => {
+  test("signup picker renders buyer and organizer routes", async ({ page }) => {
     await page.goto("/signup");
-    await expect(page.getByRole("heading", { name: "Create account" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /pick how you/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /regular buyer/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /event organizer/i })).toBeVisible();
+  });
+
+  test("buyer signup page renders form", async ({ page }) => {
+    await page.goto("/signup/buyer");
+    await expect(page.getByRole("heading", { name: /create your account/i })).toBeVisible();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByLabel("Password")).toBeVisible();
+  });
+
+  test("organizer signup page renders onboarding questionnaire", async ({ page }) => {
+    await page.goto("/signup/organizer");
+    await expect(page.getByRole("heading", { name: /set up your ticketing workspace/i })).toBeVisible();
+    await expect(page.getByLabel("Organization name")).toBeVisible();
+    await expect(page.getByLabel(/what kind of events/i)).toBeVisible();
   });
 
   test("tickets requires auth (redirects to /login)", async ({ page }) => {

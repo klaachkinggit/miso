@@ -8,7 +8,7 @@ export async function requireApiUser(): Promise<{ id: string; email: string }> {
   return user;
 }
 
-export async function requireApiProfile(params: {
+async function requireApiProfile(params: {
   allowRoles?: UserRole[];
   denyRoles?: UserRole[];
   deniedMessage?: string;

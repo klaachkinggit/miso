@@ -26,27 +26,30 @@ export function BottomNav() {
     return null;
   }
   return (
-    <nav
-      aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur-xl md:hidden"
-    >
-      {ITEMS.map(({ href, label, icon: Icon, match }) => {
-        const active = match(pathname);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={
-              "flex h-full flex-1 flex-col items-center justify-center gap-1 " +
-              (active ? "text-primary" : "text-muted-foreground")
-            }
-          >
-            <Icon className="h-5 w-5" />
-            <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      <div aria-hidden="true" className="h-16 md:hidden" />
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur-xl md:hidden"
+      >
+        {ITEMS.map(({ href, label, icon: Icon, match }) => {
+          const active = match(pathname);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={
+                "flex h-full flex-1 flex-col items-center justify-center gap-1 " +
+                (active ? "text-primary" : "text-muted-foreground")
+              }
+            >
+              <Icon className="h-5 w-5" />
+              <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

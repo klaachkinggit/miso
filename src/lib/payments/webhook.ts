@@ -42,7 +42,7 @@ export async function handleStripeCheckoutEvent(
   }
 }
 
-export async function settlePaidCheckoutSession(
+async function settlePaidCheckoutSession(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   if (session.payment_status !== "paid") return;
@@ -61,7 +61,7 @@ export async function settlePaidCheckoutSession(
   }
 }
 
-export async function settleFailedCheckoutSession(
+async function settleFailedCheckoutSession(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const metadata = checkoutMetadata(session);

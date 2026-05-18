@@ -36,3 +36,36 @@ export async function requireRole(role: UserRole | UserRole[]) {
 export async function requireAdmin() {
   return requireRole("admin");
 }
+
+export async function requireOrganizerWorkspace() {
+  return requireRole(["admin", "organizer"]);
+}
+
+export function isGlobalAdmin(profile: Pick<Profile, "role">): boolean {
+  return profile.role === "admin";
+}
+
+export function canUseOrganizerWorkspace(profile: Pick<Profile, "role">): boolean {
+  return profile.role === "admin" || profile.role === "organizer";
+}
+
+export function canOperateGateRole(profile: Pick<Profile, "role">): boolean {
+  return profile.role === "admin" || profile.role === "controller";
+}
+
+// Where a signed-in user should land instead of seeing /login or /signup
+// again. Controllers go to the gate UI; admins and organizers go to
+// the organizer workspace; everyone else goes to the buyer event feed.
+export function defaultRoleDestination(role: UserRole | null | undefined): string {
+  if (role === "controller") return "/controller";
+  if (role === "admin" || role === "organizer") return "/admin";
+  return "/events";
+}
+
+// Redirects already-authenticated users away from auth-only pages
+// (/signup, /login). Returns silently when there is no session.
+export async function redirectIfAuthenticated(): Promise<void> {
+  const profile = await getCurrentProfile();
+  if (!profile) return;
+  redirect(defaultRoleDestination(profile.role));
+}
