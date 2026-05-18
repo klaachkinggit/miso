@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import { audit } from "@/lib/audit";
+import { DomainError } from "@/lib/api/errors";
 import {
   ChainOpInFlightError,
   ChainOpRepairError,
@@ -31,7 +32,7 @@ export async function transferTicketToPersonalWallet(params: {
     .eq("id", params.ticketId)
     .single<Ticket>();
   if (!ticket) throw new Error("Ticket not found");
-  if (ticket.owner_user_id !== params.userId) throw new Error("Not ticket owner");
+  if (ticket.owner_user_id !== params.userId) throw new DomainError("Not ticket owner");
 
   const { data: event } = await sb
     .from("events")
@@ -46,13 +47,13 @@ export async function transferTicketToPersonalWallet(params: {
   });
   if (!exportPolicy.allowed) {
     if (exportPolicy.reason === "already_transferred") {
-      throw new Error("Ticket already transferred to a personal wallet");
+      throw new DomainError("Ticket already transferred to a personal wallet");
     }
     if (exportPolicy.reason === "missing_nft") throw new Error("Ticket has no on-chain identity");
     if (exportPolicy.reason === "not_expired_or_consumed") {
-      throw new Error("Personal wallet transfer is only available after the event or after redemption.");
+      throw new DomainError("Personal wallet transfer is only available after the event or after redemption.");
     }
-    throw new Error(`Ticket cannot be transferred (${exportPolicy.reason})`);
+    throw new DomainError(`Ticket cannot be transferred (${exportPolicy.reason})`);
   }
   if (!ticket.owner_evm_address) throw new Error("Ticket has no on-chain identity");
   const contractAddress = ticket.nft_contract_address;
@@ -62,7 +63,7 @@ export async function transferTicketToPersonalWallet(params: {
 
   const finalStatus = walletExportFinalStatus(ticket);
   if (ticket.status === "sold" && new Date(event.date).getTime() >= Date.now()) {
-    throw new Error("Personal wallet transfer is only available after the event or after redemption.");
+    throw new DomainError("Personal wallet transfer is only available after the event or after redemption.");
   }
   const isResumable = ticket.status === "transferring";
   if (!isResumable) {
@@ -74,7 +75,7 @@ export async function transferTicketToPersonalWallet(params: {
       .is("transferred_off_platform_at", null)
       .select("id")
       .maybeSingle();
-    if (!claimed) throw new Error("Ticket is already being transferred");
+    if (!claimed) throw new DomainError("Ticket is already being transferred");
   }
 
   const roleAdmin = (event.role_admin_address ?? (await backendWallet())) as Address;
@@ -118,7 +119,7 @@ export async function transferTicketToPersonalWallet(params: {
         entityId: ticket.id,
         metadata: { error: err.record.errorMessage ?? "reverted", chain_op: op.id },
       });
-      throw new Error(`Wallet export reverted: ${err.record.errorMessage ?? "unknown"}`);
+      throw new DomainError(`Wallet export reverted: ${err.record.errorMessage ?? "unknown"}`);
     }
     await audit({
       actorUserId: params.userId,

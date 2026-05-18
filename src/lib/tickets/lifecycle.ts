@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
+import { DomainError } from "@/lib/api/errors";
 import {
   ChainOpInFlightError,
   ChainOpRepairError,
@@ -76,9 +77,9 @@ export async function reserveTicket(params: {
     .eq("id", params.categoryId)
     .single<TicketCategory & { events: { status: string } }>();
   if (categoryError || !category) throw new Error("Category not found");
-  if (category.events.status !== "published") throw new Error("Sales not open");
-  if (!category.sales_enabled) throw new Error("Sales not open for this category");
-  if (category.sold_count >= category.supply) throw new Error("Sold out");
+  if (category.events.status !== "published") throw new DomainError("Sales not open");
+  if (!category.sales_enabled) throw new DomainError("Sales not open for this category");
+  if (category.sold_count >= category.supply) throw new DomainError("Sold out");
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const now = new Date().toISOString();
@@ -91,7 +92,7 @@ export async function reserveTicket(params: {
       .limit(1)
       .maybeSingle<Ticket>();
     if (ticketError) throw ticketError;
-    if (!candidate) throw new Error("No tickets available");
+    if (!candidate) throw new DomainError("No tickets available");
 
     const reservedUntil = new Date(Date.now() + RESERVATION_TTL_MS).toISOString();
     let query = sb
@@ -236,7 +237,7 @@ export async function fulfillReservedTicket(params: {
   // sold/listed/etc to refund_pending but cannot recall an in-flight
   // mint, so we refuse to broadcast at all.
   if (event.status === "canceled") {
-    throw new Error("Event has been canceled — refusing to mint.");
+    throw new DomainError("Event has been canceled — refusing to mint.");
   }
   if (!event.nft_contract_address && !mockChainEnabled()) {
     throw new Error("Event has no deployed contract");
@@ -612,7 +613,7 @@ export async function markTicketRefunded(ticketId: string): Promise<void> {
     .select("id")
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Cannot refund this ticket in its current state");
+  if (!data) throw new DomainError("Cannot refund this ticket in its current state");
 }
 
 // Cancels rows that have NOT touched chain yet. Tickets in `minting`,

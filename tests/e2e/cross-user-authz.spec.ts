@@ -224,7 +224,7 @@ test.describe("Cross-user authz", () => {
       .select("id")
       .single<{ id: string }>();
 
-    const { data: ticket } = await client
+    const { data: ticket, error: ticketError } = await client
       .from("tickets")
       .insert({
         event_id: event!.id,
@@ -234,10 +234,12 @@ test.describe("Cross-user authz", () => {
         owner_user_id: buyerId,
         owner_evm_address: "0x1111111111111111111111111111111111111111",
         nft_contract_address: "0x2222222222222222222222222222222222222222",
-        nft_token_id: 1,
+        nft_token_id: Date.now(),
       })
       .select("id")
       .single<{ id: string }>();
+
+    if (ticketError) console.error("TICKET INSERT ERROR:", ticketError);
 
     await login(page, DEMO_SELLER);
     const res = await page.request.post("/api/tickets/transfer-to-wallet", {

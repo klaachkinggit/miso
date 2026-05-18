@@ -8,6 +8,7 @@
 import type { Address } from "viem";
 
 import { createServiceClient } from "@/lib/supabase/service";
+import { DomainError } from "@/lib/api/errors";
 import {
   createResaleStripeCheckoutSession,
   expireStripeCheckoutSession,
@@ -53,23 +54,23 @@ export async function createResaleListing(params: {
 
   const { data: ticket } = await sb.from("tickets").select("*").eq("id", params.ticketId).single<Ticket>();
   if (!ticket) throw new Error("Ticket not found");
-  if (ticket.owner_user_id !== params.sellerUserId) throw new Error("Not ticket owner");
+  if (ticket.owner_user_id !== params.sellerUserId) throw new DomainError("Not ticket owner");
   if (INVALID_FOR_RESALE.has(ticket.status)) {
-    throw new Error(`Ticket cannot be listed (status: ${ticket.status})`);
+    throw new DomainError(`Ticket cannot be listed (status: ${ticket.status})`);
   }
   if (ticket.status !== "sold") throw new Error(`Ticket not listable (status: ${ticket.status})`);
 
   const { data: event } = await sb.from("events").select("*").eq("id", ticket.event_id).single<EventRow>();
   if (!event) throw new Error("Event not found");
-  if (event.status === "canceled") throw new Error("Event canceled");
-  if (new Date(event.date).getTime() < Date.now()) throw new Error("Event already passed");
+  if (event.status === "canceled") throw new DomainError("Event canceled");
+  if (new Date(event.date).getTime() < Date.now()) throw new DomainError("Event already passed");
 
   const { data: category } = await sb
     .from("ticket_categories")
     .select("*")
     .eq("id", ticket.category_id)
     .single<TicketCategory>();
-  if (!category?.resale_enabled) throw new Error("Resale not enabled for this category");
+  if (!category?.resale_enabled) throw new DomainError("Resale not enabled for this category");
 
   // Anti-scalping cap: resale price must NOT exceed the original online
   // total paid by the first buyer (advance + paid extras for club tables,
@@ -88,13 +89,13 @@ export async function createResaleListing(params: {
     originalOnlineTotal = Number(category.price);
   }
   if (params.price > originalOnlineTotal) {
-    throw new Error(
+    throw new DomainError(
       `Resale price cannot exceed the original online total of ${originalOnlineTotal}.`,
     );
   }
   if (params.price < 0) throw new Error("Resale price must be positive");
   if (category.max_resale_price !== null && params.price > category.max_resale_price) {
-    throw new Error(`Resale price exceeds max ${category.max_resale_price}`);
+    throw new DomainError(`Resale price exceeds max ${category.max_resale_price}`);
   }
 
   const { data: listing, error } = await sb
@@ -139,8 +140,8 @@ export async function cancelResaleListing(params: {
     .select("*")
     .eq("id", params.listingId)
     .single<ResaleListing>();
-  if (!listing) throw new Error("Listing not found");
-  if (listing.seller_user_id !== params.sellerUserId) throw new Error("Not listing owner");
+  if (!listing) throw new DomainError("Listing not found");
+  if (listing.seller_user_id !== params.sellerUserId) throw new DomainError("Not listing owner");
   if (listing.status !== "active") throw new Error(`Listing not cancelable (status: ${listing.status})`);
 
   // Atomic transition active → canceled. If a concurrent buyer just
@@ -155,7 +156,7 @@ export async function cancelResaleListing(params: {
     .select("id")
     .maybeSingle();
   if (!canceled) {
-    throw new Error(
+    throw new DomainError(
       "Listing is no longer cancelable — another buyer has claimed it.",
     );
   }
@@ -317,14 +318,14 @@ export async function fulfillResale(params: {
     .select("*")
     .eq("id", params.listingId)
     .single<ResaleListing>();
-  if (!listingPeek) throw new Error("Listing not found");
+  if (!listingPeek) throw new DomainError("Listing not found");
 
   // Already-sold short-circuit (idempotent re-entry).
   if (listingPeek.status === "sold" && listingPeek.buyer_user_id === params.buyerUserId) {
     return;
   }
   if (listingPeek.seller_user_id === params.buyerUserId) {
-    throw new Error("Cannot buy your own listing");
+    throw new DomainError("Cannot buy your own listing");
   }
 
   // ---- Atomic listing claim (active → transferring | resumable) -----------
@@ -333,7 +334,7 @@ export async function fulfillResale(params: {
     listingPeek.status === "transferring" &&
     listingPeek.buyer_user_id === params.buyerUserId;
   if (!isResumable && listingPeek.status !== "active") {
-    throw new Error(`Listing not active (status: ${listingPeek.status})`);
+    throw new DomainError(`Listing not active (status: ${listingPeek.status})`);
   }
   if (!isResumable) {
     const { data: claimed } = await sb
@@ -351,7 +352,7 @@ export async function fulfillResale(params: {
         .eq("id", listingPeek.id)
         .single<{ status: string; buyer_user_id: string | null }>();
       if (fresh?.status === "sold" && fresh.buyer_user_id === params.buyerUserId) return;
-      throw new Error("Listing not active");
+      throw new DomainError("Listing not active");
     }
   }
 
@@ -396,7 +397,7 @@ export async function fulfillResale(params: {
   }
 
   if (INVALID_FOR_RESALE.has(ticket.status)) {
-    throw new Error(`Ticket cannot be transferred (status: ${ticket.status})`);
+    throw new DomainError(`Ticket cannot be transferred (status: ${ticket.status})`);
   }
 
   // Claim the ticket into `transferring` so a parallel cancel / refund
@@ -422,8 +423,8 @@ export async function fulfillResale(params: {
     .select("status, date, role_admin_address")
     .eq("id", ticket.event_id)
     .single<Pick<EventRow, "status" | "date" | "role_admin_address">>();
-  if (event?.status === "canceled") throw new Error("Event canceled");
-  if (event && new Date(event.date).getTime() < Date.now()) throw new Error("Event already passed");
+  if (event?.status === "canceled") throw new DomainError("Event canceled");
+  if (event && new Date(event.date).getTime() < Date.now()) throw new DomainError("Event already passed");
 
   const { data: buyerProfile } = await sb
     .from("profiles")

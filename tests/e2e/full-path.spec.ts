@@ -34,7 +34,7 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
   test("ticket appears in /tickets after purchase", async ({ page }) => {
     await login(page, DEMO_BUYER);
     await page.goto("/tickets");
-    await expect(page.getByRole("heading", { name: "Wallet" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Wallet", exact: true })).toBeVisible();
     // Either we have tickets (purchased above) or empty state if seed was reset.
     const ticketCards = page.getByText(/serial/i);
     const empty = page.getByText("No tickets yet");

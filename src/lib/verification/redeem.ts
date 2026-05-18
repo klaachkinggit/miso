@@ -17,6 +17,7 @@ import { randomBytes } from "node:crypto";
 import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
+import { DomainError } from "@/lib/api/errors";
 import { getGateSessionByShortCode, isGateSessionUsable, updateGateLastRedemption } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -99,8 +100,8 @@ export async function prepareRedemption(params: {
     .eq("id", params.ticketId)
     .single<Ticket>();
   if (!ticket) throw new Error("Ticket not found");
-  if (ticket.owner_user_id !== params.userId) throw new Error("Not ticket owner");
-  if (ticket.event_id !== gate.event_id) throw new Error("Ticket is for a different event");
+  if (ticket.owner_user_id !== params.userId) throw new DomainError("Not ticket owner");
+  if (ticket.event_id !== gate.event_id) throw new DomainError("Ticket is for a different event");
   if (ticket.status !== "sold") throw new Error(`Ticket not redeemable (status: ${ticket.status})`);
   if (!ticket.nft_contract_address || ticket.nft_token_id === null) {
     throw new Error("Ticket has no on-chain identity");

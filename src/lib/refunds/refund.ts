@@ -6,6 +6,7 @@
 //   - Used tickets cannot be refunded.
 
 import { audit } from "@/lib/audit";
+import { DomainError } from "@/lib/api/errors";
 import { markPurchaseRefunded } from "@/lib/payments/settlement";
 import { refundStripeSession } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -21,8 +22,8 @@ export async function refundTicket(params: {
 
   const { data: ticket } = await sb.from("tickets").select("*").eq("id", params.ticketId).single<Ticket>();
   if (!ticket) throw new Error("Ticket not found");
-  if (ticket.status === "refunded") throw new Error("Already refunded");
-  if (ticket.status === "used") throw new Error("Cannot refund a used ticket");
+  if (ticket.status === "refunded") throw new DomainError("Already refunded");
+  if (ticket.status === "used") throw new DomainError("Cannot refund a used ticket");
 
   const holderUserId = ticket.owner_user_id;
 
