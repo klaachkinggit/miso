@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { PageHeader } from "@/components/site/page-header";
 import { formatDate, formatPrice } from "@/lib/format";
-import { resalePlatformFee } from "@/lib/resale/listing";
+import { resalePlatformFee } from "@/lib/resale/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 

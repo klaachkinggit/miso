@@ -24,11 +24,14 @@ import {
 import { backendWallet } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { audit } from "@/lib/audit";
+import { resalePlatformFee } from "@/lib/resale/pricing";
 import {
   markTicketListed,
   markTicketResaleCanceled,
 } from "@/lib/tickets/lifecycle";
 import type { Ticket, EventRow, TicketCategory, ResaleListing } from "@/types/db";
+
+export { resalePlatformFee };
 
 const INVALID_FOR_RESALE = new Set([
   "used",
@@ -40,13 +43,6 @@ const INVALID_FOR_RESALE = new Set([
   "transferring",
   "repair_needed",
 ]);
-
-export function resalePlatformFee(amount: number): number {
-  const percent = Number(process.env.MISO_RESALE_PLATFORM_FEE_PERCENT ?? "5");
-  const fixed = Number(process.env.MISO_RESALE_PLATFORM_FEE_FIXED ?? "0");
-  const fee = amount * (Number.isFinite(percent) ? percent : 0) / 100 + (Number.isFinite(fixed) ? fixed : 0);
-  return Math.round(fee * 100) / 100;
-}
 
 export async function createResaleListing(params: {
   ticketId: string;

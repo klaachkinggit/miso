@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatDate, formatPrice, shortAddress } from "@/lib/format";
-import { resalePlatformFee } from "@/lib/resale/listing";
+import { resalePlatformFee } from "@/lib/resale/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 import { BuyListingButton } from "./buy-listing-button";

@@ -12,18 +12,11 @@ import {
 } from "@/lib/chain/ops";
 import { createServiceClient } from "@/lib/supabase/service";
 import { backendWallet } from "@/lib/thirdweb/transactions";
+import {
+  canExportTicketToPersonalWallet,
+  walletExportFinalStatus,
+} from "@/lib/tickets/wallet-export-policy";
 import type { EventRow, Ticket } from "@/types/db";
-
-const EXPORT_BLOCKED_STATUSES = new Set([
-  "available",
-  "reserved",
-  "listed",
-  "minting",
-  "refund_pending",
-  "refunded",
-  "canceled",
-  "repair_needed",
-]);
 
 export async function transferTicketToPersonalWallet(params: {
   ticketId: string;
@@ -39,13 +32,6 @@ export async function transferTicketToPersonalWallet(params: {
     .single<Ticket>();
   if (!ticket) throw new Error("Ticket not found");
   if (ticket.owner_user_id !== params.userId) throw new Error("Not ticket owner");
-  if (ticket.transferred_off_platform_at) throw new Error("Ticket already transferred to a personal wallet");
-  if (EXPORT_BLOCKED_STATUSES.has(ticket.status)) {
-    throw new Error(`Ticket cannot be transferred (status: ${ticket.status})`);
-  }
-  if (!ticket.nft_contract_address || ticket.nft_token_id === null || !ticket.owner_evm_address) {
-    throw new Error("Ticket has no on-chain identity");
-  }
 
   const { data: event } = await sb
     .from("events")
@@ -54,18 +40,30 @@ export async function transferTicketToPersonalWallet(params: {
     .single<EventRow>();
   if (!event) throw new Error("Event not found");
 
-  const eventPassed = new Date(event.date).getTime() < Date.now();
-  const consumed = ticket.status === "used" || ticket.used_at !== null;
-  if (!eventPassed && !consumed) {
+  const exportPolicy = canExportTicketToPersonalWallet({
+    ticket,
+    eventDate: event.date,
+  });
+  if (!exportPolicy.allowed) {
+    if (exportPolicy.reason === "already_transferred") {
+      throw new Error("Ticket already transferred to a personal wallet");
+    }
+    if (exportPolicy.reason === "missing_nft") throw new Error("Ticket has no on-chain identity");
+    if (exportPolicy.reason === "not_expired_or_consumed") {
+      throw new Error("Personal wallet transfer is only available after the event or after redemption.");
+    }
+    throw new Error(`Ticket cannot be transferred (${exportPolicy.reason})`);
+  }
+  if (!ticket.owner_evm_address) throw new Error("Ticket has no on-chain identity");
+  const contractAddress = ticket.nft_contract_address;
+  const tokenId = ticket.nft_token_id;
+  const ownerAddress = ticket.owner_evm_address;
+  if (!contractAddress || tokenId === null) throw new Error("Ticket has no on-chain identity");
+
+  const finalStatus = walletExportFinalStatus(ticket);
+  if (ticket.status === "sold" && new Date(event.date).getTime() >= Date.now()) {
     throw new Error("Personal wallet transfer is only available after the event or after redemption.");
   }
-
-  const finalStatus =
-    consumed || ticket.used_at
-      ? "used"
-      : ticket.status === "expired"
-        ? "expired"
-        : "sold";
   const isResumable = ticket.status === "transferring";
   if (!isResumable) {
     const { data: claimed } = await sb
@@ -83,9 +81,9 @@ export async function transferTicketToPersonalWallet(params: {
   const { op, resumed } = await openOrResumeChainOp({
     opType: "wallet_export",
     ticketId: ticket.id,
-    contractAddress: ticket.nft_contract_address,
-    tokenId: ticket.nft_token_id,
-    fromAddress: ticket.owner_evm_address,
+    contractAddress,
+    tokenId,
+    fromAddress: ownerAddress,
     toAddress: params.destinationAddress,
   });
 
@@ -96,12 +94,12 @@ export async function transferTicketToPersonalWallet(params: {
       resumed,
       from: roleAdmin,
       call: {
-        contractAddress: ticket.nft_contract_address as Address,
+        contractAddress: contractAddress as Address,
         method: "function adminTransfer(address from, address to, uint256 tokenId)",
         params: [
-          ticket.owner_evm_address as Address,
+          ownerAddress as Address,
           params.destinationAddress,
-          BigInt(ticket.nft_token_id),
+          BigInt(tokenId),
         ],
       },
     });
