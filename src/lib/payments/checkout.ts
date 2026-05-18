@@ -1,15 +1,12 @@
-import {
-  FulfillmentPendingError,
-  settleFailedPurchase,
-  settlePaidPurchase,
-} from "@/lib/payments/settlement";
+import { settleFailedPurchase } from "@/lib/payments/settlement";
+import { createStripeCheckoutSession } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reserveTicket } from "@/lib/tickets/lifecycle";
-import type { EventRow, Purchase } from "@/types/db";
+import type { EventRow, Purchase, TicketCategory } from "@/types/db";
 
 export interface PurchaseCheckoutResult {
   purchaseId: string;
-  status?: string;
+  checkoutUrl: string;
   idempotentReplay: boolean;
 }
 
@@ -17,6 +14,8 @@ export async function createPurchaseCheckout(params: {
   buyerUserId: string;
   categoryId: string;
   idempotencyKey?: string;
+  successUrl: string;
+  cancelUrl: string;
 }): Promise<PurchaseCheckoutResult> {
   let ticketId: string | undefined;
   let purchaseId: string | undefined;
@@ -26,14 +25,16 @@ export async function createPurchaseCheckout(params: {
     if (params.idempotencyKey) {
       const { data: prior } = await sb
         .from("purchases")
-        .select("id, status")
+        .select("id, status, provider_session_id")
         .eq("buyer_user_id", params.buyerUserId)
         .eq("provider_session_id", params.idempotencyKey)
-        .maybeSingle<{ id: string; status: string }>();
-      if (prior) {
+        .maybeSingle<{ id: string; status: string; provider_session_id: string | null }>();
+      if (prior?.provider_session_id) {
+        const { stripe } = await import("@/lib/payments/stripe");
+        const session = await stripe.checkout.sessions.retrieve(prior.provider_session_id);
         return {
           purchaseId: prior.id,
-          status: prior.status,
+          checkoutUrl: session.url ?? params.cancelUrl,
           idempotentReplay: true,
         };
       }
@@ -45,11 +46,10 @@ export async function createPurchaseCheckout(params: {
     });
     ticketId = ticket.id;
 
-    const { data: event } = await sb
-      .from("events")
-      .select("*")
-      .eq("id", ticket.event_id)
-      .single<EventRow>();
+    const [{ data: event }, { data: cat }] = await Promise.all([
+      sb.from("events").select("*").eq("id", ticket.event_id).single<EventRow>(),
+      sb.from("ticket_categories").select("*").eq("id", ticket.category_id).single<TicketCategory>(),
+    ]);
     if (!event) throw new Error("Event not found.");
 
     const { data: purchase, error: purchaseError } = await sb
@@ -61,7 +61,6 @@ export async function createPurchaseCheckout(params: {
         amount: category.price,
         currency: category.currency,
         status: "pending",
-        provider_session_id: params.idempotencyKey ?? null,
       })
       .select("*")
       .single<Purchase>();
@@ -70,11 +69,30 @@ export async function createPurchaseCheckout(params: {
     }
     purchaseId = purchase.id;
 
-    await settlePaidPurchase({ purchaseId: purchase.id });
+    const session = await createStripeCheckoutSession({
+      purchaseId: purchase.id,
+      amount: Number(category.price),
+      currency: category.currency,
+      eventName: event.name,
+      categoryName: cat?.name ?? "Ticket",
+      successUrl: params.successUrl,
+      cancelUrl: params.cancelUrl,
+    });
 
-    return { purchaseId: purchase.id, idempotentReplay: false };
+    await sb
+      .from("purchases")
+      .update({
+        provider_session_id: session.id,
+        payment_provider: "stripe",
+      })
+      .eq("id", purchase.id);
+
+    return {
+      purchaseId: purchase.id,
+      checkoutUrl: session.url!,
+      idempotentReplay: false,
+    };
   } catch (error) {
-    if (error instanceof FulfillmentPendingError) throw error;
     await settleFailedPurchase({ ticketId, purchaseId });
     throw error;
   }

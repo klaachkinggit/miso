@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatDate, formatDateShort, formatPrice } from "@/lib/format";
 import { getCurrentProfile } from "@/lib/auth";
-import { getAccountBalanceAmount } from "@/lib/balances/ledger";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, TicketCategory } from "@/types/db";
 import { BuyButton } from "./buy-button";
@@ -39,18 +38,6 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       ...category,
       remaining: Math.max(0, category.supply - category.sold_count),
     })) ?? [];
-  const balancesByCurrency = new Map<string, number>();
-  if (profile) {
-    await Promise.all(
-      Array.from(new Set(enriched.map((category) => category.currency))).map(async (currency) => {
-        balancesByCurrency.set(
-          currency,
-          await getAccountBalanceAmount({ profileId: profile.id, currency }),
-        );
-      }),
-    );
-  }
-
   const cheapest = enriched.filter((c) => c.remaining > 0).sort((a, b) => Number(a.price) - Number(b.price))[0];
 
   return (
@@ -124,17 +111,12 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           <h2 className="text-xl font-medium">Tickets</h2>
           {enriched.length ? (
             enriched.map((category) => {
-              const availableBalance = profile ? balancesByCurrency.get(category.currency) ?? 0 : null;
-              const insufficientBalance =
-                availableBalance !== null && availableBalance < Number(category.price);
-              const disabled = !event.sales_enabled || category.remaining <= 0 || insufficientBalance;
+              const disabled = !event.sales_enabled || category.remaining <= 0;
               const reason = !event.sales_enabled
                 ? "Sales closed"
                 : category.remaining <= 0
                   ? "Sold out"
-                  : insufficientBalance
-                    ? `Balance ${formatPrice(availableBalance, category.currency)}`
-                    : null;
+                  : null;
               return (
                 <Card key={category.id} className="glass rounded-lg">
                   <CardContent className="space-y-4 p-5">

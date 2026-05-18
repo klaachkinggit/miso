@@ -5,8 +5,6 @@ import { Calendar, MapPin, ShieldCheck, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { getCurrentProfile } from "@/lib/auth";
-import { getAccountBalanceAmount } from "@/lib/balances/ledger";
 import { formatDate, formatPrice, shortAddress } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
@@ -20,7 +18,6 @@ export default async function MarketplaceListingPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const profile = await getCurrentProfile();
   const sb = createServiceClient();
   const { data: listing } = await sb
     .from("resale_listings")
@@ -56,12 +53,6 @@ export default async function MarketplaceListingPage({
     !eventPast &&
     !eventCanceled &&
     event.resale_enabled;
-  const availableBalance =
-    profile && profile.role !== "controller"
-      ? await getAccountBalanceAmount({ profileId: profile.id, currency: listing.currency })
-      : null;
-  const insufficientBalance = availableBalance !== null && availableBalance < Number(listing.price);
-
   const reason = !purchasable
     ? listing.status !== "active"
       ? `Listing ${listing.status}`
@@ -74,8 +65,6 @@ export default async function MarketplaceListingPage({
       : !event.resale_enabled
       ? "Exchange disabled"
       : null
-    : insufficientBalance
-      ? `Balance ${formatPrice(availableBalance, listing.currency)}`
     : null;
 
   return (
@@ -121,7 +110,7 @@ export default async function MarketplaceListingPage({
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
             <p>
-              Purchase settles in MAD via your account balance. MISO handles the NFT ticket transfer after
+              Purchase settles via Stripe. MISO handles the NFT ticket transfer after
               payment, keeping resale inside the official anti-scalping flow.
             </p>
             <Separator />
@@ -148,7 +137,7 @@ export default async function MarketplaceListingPage({
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Price</p>
               <p className="text-3xl font-semibold">{formatPrice(listing.price, listing.currency)}</p>
             </div>
-            <BuyListingButton listingId={listing.id} disabled={!purchasable || insufficientBalance} reason={reason} />
+            <BuyListingButton listingId={listing.id} disabled={!purchasable} reason={reason} />
             <Link href="/marketplace" className="block text-center text-xs text-muted-foreground hover:text-foreground">
               Back to exchange
             </Link>

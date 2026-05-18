@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CurrencySchema = z.literal("MAD");
+export const CurrencySchema = z.literal("EUR");
 
 export const CreateEventSchema = z.object({
   name: z.string().min(2).max(120),
@@ -40,13 +40,6 @@ export const ResellInitSchema = z.object({
 export const RefundSchema = z.object({
   ticket_id: z.string().uuid(),
   reason: z.string().max(500).optional(),
-});
-
-export const AdminTopupSchema = z.object({
-  profile_id: z.string().uuid(),
-  currency: CurrencySchema,
-  amount: z.coerce.number().positive(),
-  topup_request_id: z.string().uuid(),
 });
 
 export const InviteControllerSchema = z.object({

@@ -1,9 +1,5 @@
 import { fulfillReservedTicket, releaseReservation } from "@/lib/tickets/lifecycle";
 import {
-  compensatePurchaseDebit,
-  debitPurchaseBalance,
-} from "@/lib/balances/ledger";
-import {
   ChainOpInFlightError,
   ChainOpRepairError,
 } from "@/lib/chain/ops";
@@ -12,9 +8,6 @@ import { TransactionTimeoutError } from "@/lib/thirdweb/transactions";
 import { audit } from "@/lib/audit";
 import type { Purchase, Ticket } from "@/types/db";
 
-// Thrown when a fulfillment chain op timed out without a terminal answer —
-// the mint could still mine. Caller must NOT compensate balance / release
-// the reservation: an admin retry tool resumes the same purchase.
 export class FulfillmentPendingError extends Error {
   constructor(readonly purchaseId: string, readonly cause: TransactionTimeoutError) {
     super(`Fulfillment for purchase ${purchaseId} is pending on chain — do not release.`);
@@ -31,10 +24,6 @@ export async function settlePaidPurchase(params: { purchaseId: string }): Promis
     .single<Purchase>();
   if (!purchase) throw new Error("Purchase not found");
 
-  // Terminal-state purchases must not be re-driven through the chain
-  // path: their debit may already be compensated and their reservation
-  // released, so retrying would either short-circuit on the dedup'd
-  // debit row (silent double-charge) or throw on a stale reservation.
   if (purchase.status === "failed" || purchase.status === "refunded") {
     throw new Error(
       `Purchase ${purchase.id} is ${purchase.status} and cannot be re-settled.`,
@@ -59,16 +48,6 @@ export async function settlePaidPurchase(params: { purchaseId: string }): Promis
     return;
   }
 
-  const purchaseAmount = Number(purchase.amount);
-  if (purchaseAmount > 0) {
-    await debitPurchaseBalance({
-      purchaseId: purchase.id,
-      buyerUserId: purchase.buyer_user_id,
-      amount: purchase.amount,
-      currency: purchase.currency,
-    });
-  }
-
   try {
     await fulfillReservedTicket({
       ticketId: purchase.ticket_id,
@@ -76,10 +55,6 @@ export async function settlePaidPurchase(params: { purchaseId: string }): Promis
       purchaseId: purchase.id,
     });
   } catch (error) {
-    // Chain timeout / in-flight / repair_needed = chain state uncertain
-    // or ahead of DB. Compensating now would either lose a mined NFT
-    // (timeout / unknown wait error) or refund an already-minted token
-    // (repair). Leave purchase pending for admin retry.
     const nonCompensatable =
       error instanceof TransactionTimeoutError ||
       error instanceof ChainOpInFlightError ||
@@ -109,14 +84,6 @@ export async function settlePaidPurchase(params: { purchaseId: string }): Promis
         purchase.id,
         error as TransactionTimeoutError,
       );
-    }
-    if (purchaseAmount > 0) {
-      await compensatePurchaseDebit({
-        purchaseId: purchase.id,
-        buyerUserId: purchase.buyer_user_id,
-        amount: purchase.amount,
-        currency: purchase.currency,
-      });
     }
     await settleFailedPurchase({ purchaseId: purchase.id, ticketId: purchase.ticket_id });
     throw error;

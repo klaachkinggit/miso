@@ -262,7 +262,7 @@ export async function reconcileChainOp(op: ChainOp): Promise<ChainOp> {
 
 // Thrown when a non-revert error occurs AFTER the chain op was opened.
 // The tx may already have been broadcast / be mining; callers MUST NOT
-// release reservations or compensate balances. Settlement + checkout
+// release reservations or compensate payment state. Settlement + checkout
 // translate this into a 202 / pending purchase that admin retry resumes.
 export class ChainOpInFlightError extends Error {
   constructor(

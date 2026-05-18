@@ -34,7 +34,7 @@ test.describe("Controller flow", () => {
     await expect(page.getByRole("heading", { name: "Controller" })).toBeVisible();
     // Seeded demo event is assigned to the demo controller.
     await expect(
-      page.getByRole("heading", { name: "Miso Demo Night" }).first(),
+      page.getByRole("heading", { name: "Midnight Frequency" }).first(),
     ).toBeVisible();
   });
 
@@ -45,7 +45,7 @@ test.describe("Controller flow", () => {
     const { data: event } = await client
       .from("events")
       .select("id")
-      .eq("name", "Miso Demo Night")
+      .eq("name", "Midnight Frequency")
       .single<{ id: string }>();
     expect(event).toBeTruthy();
 
@@ -120,7 +120,7 @@ test.describe("Controller flow", () => {
     const { data: event } = await client
       .from("events")
       .select("id")
-      .eq("name", "Miso Demo Night")
+      .eq("name", "Midnight Frequency")
       .single<{ id: string }>();
     expect(event).toBeTruthy();
 

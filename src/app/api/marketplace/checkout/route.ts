@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { requireApiNonControllerProfile } from "@/lib/api/auth";
-import { apiErrorResponse, chainPendingResponse } from "@/lib/api/errors";
+import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
 import {
   ChainOpInFlightError,
@@ -23,25 +23,23 @@ export async function POST(request: NextRequest) {
     );
     const body = await parseJsonBody(request, Body, "Invalid checkout request.");
 
-    const listing = await checkoutResaleListing({
+    const appUrl = getRequestOrigin(request);
+    const { listing, checkoutUrl } = await checkoutResaleListing({
       listingId: body.listing_id,
       buyerUserId: profile.id,
+      successUrl: `${appUrl}/marketplace/success?session_id={CHECKOUT_SESSION_ID}&listing_id=${body.listing_id}`,
+      cancelUrl: `${appUrl}/marketplace/${body.listing_id}`,
     });
-    const appUrl = getRequestOrigin(request);
-    return NextResponse.json({
-      url: `${appUrl}/marketplace/success?listing_id=${listing.id}&mock=1`,
-    });
+    void listing;
+
+    return NextResponse.json({ url: checkoutUrl });
   } catch (error) {
-    // Chain in-flight (timeout, unknown wait error) OR mined-then-DB
-    // failed (repair). Surface 202 so the client polls; admin retry
-    // resumes. Do NOT collapse these into 400 — the buyer's NFT may
-    // be (or already is) on chain.
     if (
       error instanceof ResaleTransferPendingError ||
       error instanceof ChainOpInFlightError ||
       error instanceof ChainOpRepairError
     ) {
-      return chainPendingResponse();
+      return NextResponse.json({ error: "Transfer in progress." }, { status: 202 });
     }
     if (error instanceof ResaleCheckoutPreflightError) {
       return NextResponse.json(

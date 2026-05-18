@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Search, Ticket, User } from "lucide-react";
+import { Compass, Search, Ticket } from "lucide-react";
 
 const ITEMS = [
   { href: "/events", label: "Explore", icon: Compass, match: (p: string) => p.startsWith("/events") },
   { href: "/marketplace", label: "Exchange", icon: Search, match: (p: string) => p.startsWith("/marketplace") },
   { href: "/tickets", label: "Wallet", icon: Ticket, match: (p: string) => p.startsWith("/tickets") },
-  { href: "/balance", label: "Account", icon: User, match: (p: string) => p.startsWith("/balance") },
 ];
 
 const HIDDEN_PREFIXES = ["/admin", "/controller", "/login", "/signup", "/checkout", "/redeem"];

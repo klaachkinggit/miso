@@ -1,8 +1,12 @@
 // Drives on-chain resale against Base Sepolia:
 //   1. Reuse already-deployed event contract (run live-flow.ts first).
 //   2. Mint a fresh ticket to buyer (sold).
-//   3. Buyer lists it. Seller buys it → on-chain adminTransfer.
+//   3. Buyer lists it. Seller transfer is fulfilled on-chain.
 //   4. Print tx hash.
+//
+// Resale checkout now requires a Stripe Checkout Session. This script bypasses
+// the hosted payment step and drives only the seeded ticket plus chain transfer
+// portion of the resale flow.
 //
 // Pre-req: `npm run demo:seed` + `npx tsx scripts/live-flow.ts` already ran
 // (event contract is deployed).
@@ -12,7 +16,6 @@ import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
 import { createServiceClient } from "@/lib/supabase/service";
-import { creditAdminTopup } from "@/lib/balances/ledger";
 import {
   reserveTicket,
   fulfillReservedTicket,
@@ -33,14 +36,6 @@ async function main() {
   const byEmail = Object.fromEntries((profiles ?? []).map((p) => [p.email, p.id]));
   const buyerId = byEmail["buyer@miso.local"];
   const sellerId = byEmail["seller@miso.local"];
-
-  // Top up seller balance so they can buy the resold ticket.
-  await creditAdminTopup({
-    profileId: sellerId,
-    currency: "MAD",
-    amount: 1000,
-    referenceId: `resale-test-${Date.now()}`,
-  });
 
   const { data: event } = await sb
     .from("events")

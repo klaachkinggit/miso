@@ -1,6 +1,6 @@
 // Internal resale marketplace.
 //
-// Sellers list a sold ticket → buyer settles in MAD via Account Balance →
+// Sellers list a sold ticket → buyer pays via Stripe Checkout →
 // backend wallet broadcasts `adminTransfer(seller, buyer, tokenId)` on the
 // event's MisoTicket contract. Users never sign on chain; transfer is
 // authorized by the listing creation itself.
@@ -8,11 +8,7 @@
 import type { Address } from "viem";
 
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  compensateResaleBuyerDebit,
-  creditResaleSellerBalance,
-  debitResaleBuyerBalance,
-} from "@/lib/balances/ledger";
+import { createResaleStripeCheckoutSession } from "@/lib/payments/stripe";
 import {
   ChainOpRepairError,
   markChainOpMined,
@@ -201,10 +197,64 @@ export async function getResaleCheckoutListing(params: {
 export async function checkoutResaleListing(params: {
   listingId: string;
   buyerUserId: string;
-}): Promise<ResaleListing> {
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<{ listing: ResaleListing; checkoutUrl: string }> {
+  const sb = createServiceClient();
   const listing = await getResaleCheckoutListing(params);
-  await fulfillResale({ listingId: listing.id, buyerUserId: params.buyerUserId });
-  return listing;
+
+  // Atomically claim listing before creating Stripe session so no concurrent
+  // buyer can claim the same listing during payment.
+  const { data: claimed } = await sb
+    .from("resale_listings")
+    .update({ status: "transferring", buyer_user_id: params.buyerUserId })
+    .eq("id", listing.id)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+  if (!claimed) {
+    throw new ResaleCheckoutPreflightError("Listing was claimed by another buyer.");
+  }
+
+  const { data: ticket } = await sb
+    .from("tickets")
+    .select("event_id, category_id")
+    .eq("id", listing.ticket_id)
+    .single<{ event_id: string; category_id: string }>();
+
+  const [{ data: event }, { data: category }] = await Promise.all([
+    sb.from("events").select("name").eq("id", ticket?.event_id ?? "").maybeSingle<{ name: string }>(),
+    sb.from("ticket_categories").select("name").eq("id", ticket?.category_id ?? "").maybeSingle<{ name: string }>(),
+  ]);
+
+  let session: import("stripe").Stripe.Checkout.Session;
+  try {
+    session = await createResaleStripeCheckoutSession({
+      listingId: listing.id,
+      buyerUserId: params.buyerUserId,
+      amount: Number(listing.price),
+      currency: listing.currency,
+      eventName: event?.name ?? "Event",
+      categoryName: category?.name ?? "Ticket",
+      successUrl: params.successUrl,
+      cancelUrl: params.cancelUrl,
+    });
+  } catch (err) {
+    // Release claim if Stripe session creation fails.
+    await sb
+      .from("resale_listings")
+      .update({ status: "active", buyer_user_id: null })
+      .eq("id", listing.id)
+      .eq("status", "transferring");
+    throw err;
+  }
+
+  await sb
+    .from("resale_listings")
+    .update({ provider_session_id: session.id, payment_provider: "stripe" })
+    .eq("id", listing.id);
+
+  return { listing, checkoutUrl: session.url! };
 }
 
 export async function fulfillResale(params: {
@@ -286,15 +336,6 @@ export async function fulfillResale(params: {
     ticket.status === "sold" &&
     ticket.owner_user_id === params.buyerUserId
   ) {
-    const listingAmount = Number(listing.price);
-    if (listingAmount > 0) {
-      await creditResaleSellerBalance({
-        listingId: listing.id,
-        sellerUserId: listing.seller_user_id,
-        amount: listing.price,
-        currency: listing.currency,
-      });
-    }
     await sb
       .from("resale_listings")
       .update({
@@ -349,36 +390,7 @@ export async function fulfillResale(params: {
   );
 
   const sellerSmartAccount = ticket.owner_evm_address;
-  const listingAmount = Number(listing.price);
   const roleAdmin = (event?.role_admin_address ?? (await backendWallet())) as Address;
-
-  // Debit AFTER the atomic claim — the debit RPC is idempotent on
-  // (profile, currency, movement, ref_type, ref_id) so retries are
-  // safe; the chain_op below has its own per-attempt key.
-  if (listingAmount > 0) {
-    try {
-      await debitResaleBuyerBalance({
-        listingId: listing.id,
-        buyerUserId: params.buyerUserId,
-        amount: listing.price,
-        currency: listing.currency,
-      });
-    } catch (err) {
-      // Debit failed before any chain call. Roll claim back to active.
-      await sb
-        .from("tickets")
-        .update({ status: "listed" })
-        .eq("id", ticket.id)
-        .eq("status", "transferring")
-        .eq("current_listing_id", listing.id);
-      await sb
-        .from("resale_listings")
-        .update({ status: "active", buyer_user_id: null })
-        .eq("id", listing.id)
-        .eq("status", "transferring");
-      throw err;
-    }
-  }
 
   // Open or resume the chain_op for this listing.
   const { op, resumed } = await openOrResumeChainOp({
@@ -415,14 +427,6 @@ export async function fulfillResale(params: {
     // may have a broadcasted tx mining underneath; compensating or
     // releasing on those failures would lose the NFT.
     if (err instanceof TransactionRevertError) {
-      if (listingAmount > 0) {
-        await compensateResaleBuyerDebit({
-          listingId: listing.id,
-          buyerUserId: params.buyerUserId,
-          amount: listing.price,
-          currency: listing.currency,
-        });
-      }
       await sb
         .from("tickets")
         .update({ status: "listed" })
@@ -538,18 +542,8 @@ export async function fulfillResale(params: {
     throw new ChainOpRepairError(op.id, transferTxHash, message);
   }
 
-  // Seller credit + listing finalize. These are best-effort idempotent
-  // (credit RPC dedups by ref); a failure here also lands as repair_needed.
+  // Listing finalize. A failure here lands as repair_needed.
   try {
-    if (listingAmount > 0) {
-      await creditResaleSellerBalance({
-        listingId: listing.id,
-        sellerUserId: listing.seller_user_id,
-        amount: listing.price,
-        currency: listing.currency,
-      });
-    }
-
     await sb
       .from("resale_listings")
       .update({

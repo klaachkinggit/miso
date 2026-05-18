@@ -1,8 +1,7 @@
 // scripts/seed.ts
 //
 // Seeds a fully working demo against a local Supabase stack.
-// Re-runnable: upserts fixtures, restores available demo inventory, and tops
-// demo balances back up to their target amounts.
+// Re-runnable: upserts fixtures and restores available demo inventory.
 //
 // Creates:
 //   - admin@miso.local       password: misoadmin
@@ -97,8 +96,8 @@ function buildSeedEvents(): SeedEvent[] {
     {
       name: "Midnight Frequency",
       date: tonight,
-      venue_name: "The Black Room",
-      city: "Casablanca",
+      venue_name: "Concrete",
+      city: "Paris",
       capacity: 900,
       description: "A members-only electronic night with cinematic lighting, token-gated access, and collectible NFT tickets.",
       categories: [
@@ -106,47 +105,23 @@ function buildSeedEvents(): SeedEvent[] {
           name: "General NFT",
           description: "Entry ticket minted to your event wallet.",
           benefits: "QR check-in, NFT proof of attendance, and official resale eligibility.",
-          price: 180,
+          price: 18,
           supply: 36,
         },
         {
           name: "Gold Circle",
           description: "Premium floor access with a limited collectible design.",
           benefits: "Priority entry, collector artwork, and member-only bar access.",
-          price: 520,
+          price: 52,
           supply: 12,
         },
       ],
     },
     {
-      name: "Casa Rooftop Signal",
-      date: atTime(addDays(now, 2), 19, 0),
-      venue_name: "Anfa Skyline",
-      city: "Casablanca",
-      capacity: 420,
-      description: "A curated rooftop concert blending fashion, music, and clean digital ownership.",
-      categories: [
-        {
-          name: "Skyline Entry",
-          description: "Standard access with NFT ticket ownership.",
-          benefits: "Fast QR scan, on-chain ticket identity, and secure transfer history.",
-          price: 220,
-          supply: 28,
-        },
-        {
-          name: "Balcony Member",
-          description: "Elevated viewing and limited member collectible.",
-          benefits: "Balcony access, private check-in lane, and loyalty reward drop.",
-          price: 680,
-          supply: 8,
-        },
-      ],
-    },
-    {
-      name: "Friday Boiler Set",
-      date: atTime(nextWeekday(now, 5), 21, 30),
-      venue_name: "Medina Warehouse",
-      city: "Marrakech",
+      name: "Berlin Boiler Set",
+      date: atTime(addDays(now, 2), 23, 0),
+      venue_name: "Tresor",
+      city: "Berlin",
       capacity: 650,
       description: "A raw warehouse performance with premium access control and anti-scalping resale limits.",
       categories: [
@@ -154,23 +129,47 @@ function buildSeedEvents(): SeedEvent[] {
           name: "Floor Token",
           description: "Main floor access for the live set.",
           benefits: "NFT ticket, verified QR entry, and official marketplace protection.",
-          price: 260,
+          price: 26,
           supply: 34,
         },
         {
           name: "Backstage Ledger",
           description: "Limited backstage access with collector metadata.",
           benefits: "Backstage wristband, priority gate, artist drop eligibility, and resale cap protection.",
-          price: 900,
+          price: 90,
           supply: 6,
         },
       ],
     },
     {
-      name: "Atlantic Festival Afterdark",
+      name: "London Skyline Sessions",
+      date: atTime(nextWeekday(now, 5), 21, 30),
+      venue_name: "Printworks",
+      city: "London",
+      capacity: 420,
+      description: "A curated rooftop concert blending fashion, music, and clean digital ownership.",
+      categories: [
+        {
+          name: "Skyline Entry",
+          description: "Standard access with NFT ticket ownership.",
+          benefits: "Fast QR scan, on-chain ticket identity, and secure transfer history.",
+          price: 22,
+          supply: 28,
+        },
+        {
+          name: "Balcony Member",
+          description: "Elevated viewing and limited member collectible.",
+          benefits: "Balcony access, private check-in lane, and loyalty reward drop.",
+          price: 68,
+          supply: 8,
+        },
+      ],
+    },
+    {
+      name: "Amsterdam Weekender",
       date: weekend,
-      venue_name: "Ain Diab Stage",
-      city: "Casablanca",
+      venue_name: "Shelter",
+      city: "Amsterdam",
       capacity: 2500,
       description: "A weekend festival afterparty with collectible tickets, VIP access, and secure member resale.",
       categories: [
@@ -178,14 +177,14 @@ function buildSeedEvents(): SeedEvent[] {
           name: "Festival Pass",
           description: "Afterdark festival entry.",
           benefits: "Mobile QR, NFT ownership, and festival wallet history.",
-          price: 340,
+          price: 34,
           supply: 60,
         },
         {
           name: "VIP Membership",
           description: "VIP lounge and loyalty-linked access.",
           benefits: "VIP lane, private platform, loyalty reward, and limited gold ticket art.",
-          price: 1200,
+          price: 120,
           supply: 10,
         },
       ],
@@ -194,7 +193,7 @@ function buildSeedEvents(): SeedEvent[] {
       name: "MISO Access Forum",
       date: nextMonthDate(now, 8, 18, 30),
       venue_name: "MISO Members House",
-      city: "Casablanca",
+      city: "Lisbon",
       capacity: 300,
       description: "A private culture and technology evening for promoters, artists, collectors, and nightlife members.",
       categories: [
@@ -202,14 +201,14 @@ function buildSeedEvents(): SeedEvent[] {
           name: "Member Access",
           description: "Forum entry with digital identity activation.",
           benefits: "Talks, wallet setup, NFT ticket, and loyalty program preview.",
-          price: 120,
+          price: 12,
           supply: 40,
         },
         {
           name: "Founders NFT",
           description: "Limited membership pass for early MISO supporters.",
           benefits: "Priority seating, founders collectible, VIP marketplace access, and future reward eligibility.",
-          price: 480,
+          price: 48,
           supply: 14,
         },
       ],
@@ -262,6 +261,9 @@ async function hideThrowawayTestEvents() {
   const legacyDemoNames = [
     "Miso Demo Night",
     "Casa Rooftop Sessions",
+    "Casa Rooftop Signal",
+    "Friday Boiler Set",
+    "Atlantic Festival Afterdark",
     "Friday Medina Live",
     "Weekend Beach Afterparty",
     "Miso Launch Forum",
@@ -329,7 +331,7 @@ async function ensureCategoryWithTickets(args: {
   benefits: string;
   price: number;
   supply: number;
-  currency: "MAD";
+  currency: "EUR";
 }) {
   const { data: existing } = await sb
     .from("ticket_categories")
@@ -418,34 +420,6 @@ async function ensureController(eventId: string, controllerUserId: string) {
     .upsert({ event_id: eventId, user_id: controllerUserId });
 }
 
-async function ensureSeedBalance(args: {
-  userId: string;
-  email: string;
-  currency: "MAD";
-  amount: number;
-}) {
-  const { data: balance } = await sb
-    .from("account_balances")
-    .select("available_amount")
-    .eq("profile_id", args.userId)
-    .eq("currency", args.currency)
-    .maybeSingle<{ available_amount: string }>();
-  const currentAmount = balance ? Number(balance.available_amount) : 0;
-  if (currentAmount >= args.amount) return;
-
-  const { error } = await sb.rpc("account_balance_credit", {
-    p_profile_id: args.userId,
-    p_currency: args.currency,
-    p_movement_type: "seed_credit",
-    p_amount: args.amount - currentAmount,
-    p_reference_type: "seed",
-    p_reference_id: `${args.email}:${args.currency}:${Date.now()}`,
-  });
-  if (error) {
-    throw new Error(`Failed to seed ${args.currency} balance for ${args.email}: ${error.message}`);
-  }
-}
-
 async function main() {
   console.log(`Seeding against ${supabaseUrl}`);
   const userIds: Record<string, string> = {};
@@ -469,26 +443,12 @@ async function main() {
         benefits: category.benefits,
         price: category.price,
         supply: category.supply,
-        currency: "MAD",
+        currency: "EUR",
       });
     }
     await ensureController(eventId, userIds["controller@miso.local"]);
   }
   console.log("  events, categories, tickets, and controllers seeded");
-
-  await ensureSeedBalance({
-    userId: userIds["buyer@miso.local"],
-    email: "buyer@miso.local",
-    currency: "MAD",
-    amount: 2500,
-  });
-  await ensureSeedBalance({
-    userId: userIds["admin@miso.local"],
-    email: "admin@miso.local",
-    currency: "MAD",
-    amount: 1000,
-  });
-  console.log("  account balances seeded");
 
   console.log("\nDone. Demo credentials:");
   for (const user of users) {

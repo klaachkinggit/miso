@@ -34,7 +34,6 @@ const PASSTHROUGH_PATTERNS: RegExp[] = [
   /^Ticket is /,
   /^Event (canceled|already passed|has been canceled)/i,
   /^Resale not enabled/i,
-  /^Insufficient Account Balance\./,
   /^Resale price exceeds max /,
   /^Cannot refund/i,
   /^Already refunded/i,

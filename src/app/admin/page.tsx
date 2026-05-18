@@ -1,16 +1,12 @@
-import crypto from "node:crypto";
 import Link from "next/link";
-import { CalendarPlus, Settings, WalletCards } from "lucide-react";
+import { CalendarPlus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatDateShort } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, Profile } from "@/types/db";
-import { adminTopupAccountBalance } from "./actions";
+import type { EventRow } from "@/types/db";
 
 export default async function AdminPage({
   searchParams,
@@ -19,15 +15,7 @@ export default async function AdminPage({
 }) {
   const params = await searchParams;
   const sb = createServiceClient();
-  const [{ data: events }, { data: holders }] = await Promise.all([
-    sb.from("events").select("*").order("created_at", { ascending: false }).returns<EventRow[]>(),
-    sb
-      .from("profiles")
-      .select("*")
-      .neq("role", "controller")
-      .order("email", { ascending: true })
-      .returns<Profile[]>(),
-  ]);
+  const { data: events } = await sb.from("events").select("*").order("created_at", { ascending: false }).returns<EventRow[]>();
 
   return (
     <div className="container py-10">
@@ -53,54 +41,6 @@ export default async function AdminPage({
           {params.success}
         </div>
       ) : null}
-
-      <Card className="glass mb-8 rounded-lg">
-        <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_2fr] lg:items-end">
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <WalletCards className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Account Balance top-up</h2>
-            </div>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Grant demo credit to buyer or admin profiles. Controllers are excluded.
-            </p>
-          </div>
-          <form action={adminTopupAccountBalance} className="grid gap-3 md:grid-cols-[1.5fr_0.8fr_1fr_auto] md:items-end">
-            <input type="hidden" name="topup_request_id" value={crypto.randomUUID()} />
-            <input type="hidden" name="currency" value="MAD" />
-            <div className="space-y-2">
-              <Label htmlFor="profile_id">Holder</Label>
-              <select
-                id="profile_id"
-                name="profile_id"
-                required
-                className="flex h-10 w-full rounded-md border border-input bg-background/40 px-3 py-2 text-sm"
-              >
-                <option value="">Select holder</option>
-                {(holders ?? []).map((holder) => (
-                  <option key={holder.id} value={holder.id}>
-                    {holder.email} ({holder.role})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <input
-                id="currency"
-                value="MAD"
-                disabled
-                className="flex h-10 w-full rounded-md border border-input bg-background/40 px-3 py-2 text-sm text-muted-foreground"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
-              <Input id="amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="250.00" />
-            </div>
-            <Button type="submit" className="w-full md:w-auto">Top up</Button>
-          </form>
-        </CardContent>
-      </Card>
 
       {events?.length ? (
         <div className="grid gap-4">

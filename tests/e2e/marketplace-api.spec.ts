@@ -22,14 +22,4 @@ test.describe("Marketplace API surface", () => {
     );
     expect(res.status()).toBe(401);
   });
-
-  test("POST /api/balance/charge rejects unauthenticated", async ({ request }) => {
-    const res = await request.post("/api/balance/charge");
-    expect(res.status()).toBe(401);
-  });
-
-  test("POST /api/balance/cashout rejects unauthenticated", async ({ request }) => {
-    const res = await request.post("/api/balance/cashout");
-    expect(res.status()).toBe(401);
-  });
 });

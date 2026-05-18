@@ -4,13 +4,14 @@ On-chain ticketing app for event organizers, buyers, resale sellers, and
 gate controllers.
 
 Miso issues ERC-721 tickets on Base Sepolia through Thirdweb. In-app
-checkout uses a MAD Account Balance ledger; real charge and cashout
-rails are intentionally not enabled yet.
+checkout and resale payments go through Stripe Checkout Sessions;
+NFT minting and transfers are triggered by the Stripe webhook.
 
 ## Stack
 
 - Next.js 15 App Router
 - Supabase auth, database, and migrations
+- Stripe Checkout Sessions + webhook fulfillment
 - Thirdweb Transactions API and Storage
 - Base Sepolia ERC-721 event contracts
 - Playwright e2e tests
@@ -40,7 +41,12 @@ THIRDWEB_SECRET_KEY=
 THIRDWEB_API_URL=https://api.thirdweb.com
 THIRDWEB_BACKEND_WALLET_ADDRESS=
 CHAIN_ID=84532
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 ```
+
+Use a restricted API key (`rk_` prefix) for `STRIPE_SECRET_KEY`.
+For local webhook testing run `stripe listen --forward-to localhost:3002/api/stripe/webhook`.
 
 Do not commit `.env.local` or provider secrets.
 

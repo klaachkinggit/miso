@@ -17,6 +17,21 @@ test.describe("Public smoke", () => {
     await expect(eventCards.first().or(emptyState)).toBeVisible();
   });
 
+  test("home search and city links apply event discovery filters", async ({ page }) => {
+    await page.goto("/");
+    const main = page.getByRole("main");
+
+    await main.getByLabel("Search events").fill("paris");
+    await main.getByRole("button", { name: "Explore" }).click();
+    await expect(page).toHaveURL(/\/events\?q=paris/);
+    await expect(page.getByText(/matching "paris"/)).toBeVisible();
+
+    await page.goto("/");
+    await main.getByRole("link", { name: "Paris", exact: true }).click();
+    await expect(page).toHaveURL(/\/events\?city=paris/);
+    await expect(page.getByText(/in paris/)).toBeVisible();
+  });
+
   test("marketplace page renders, shows listings or empty state", async ({ page }) => {
     await page.goto("/marketplace");
     await expect(page.getByRole("heading", { name: "Resale exchange" })).toBeVisible();

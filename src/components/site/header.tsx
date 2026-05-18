@@ -1,65 +1,60 @@
 import Link from "next/link";
-import { Search } from "lucide-react";
 import { getCurrentProfile } from "@/lib/auth";
-import { listAccountBalances } from "@/lib/balances/ledger";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/site/user-menu";
 import { Marquee } from "@/components/site/marquee";
+import { HeroSearch } from "@/components/site/hero-search";
 
 export async function Header() {
   const profile = await getCurrentProfile();
   const controllerOnly = profile?.role === "controller";
-  const balances = profile && !controllerOnly ? await listAccountBalances(profile.id) : [];
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-xl">
-        <div className="container flex h-14 items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 text-lg font-black tracking-tight">
-              <span className="text-accent">●</span>
-              MISO
-            </Link>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl">
+        <div className="container flex h-16 items-center gap-4 md:gap-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-black tracking-tight">
+            <span className="text-accent">●</span>
+            MISO
+          </Link>
 
-            <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
-              {!controllerOnly ? (
-                <>
-                  <Link href="/events" className="text-muted-foreground transition-colors hover:text-foreground">
-                    Events
-                  </Link>
-                  <Link href="/marketplace" className="text-muted-foreground transition-colors hover:text-foreground">
-                    Exchange
-                  </Link>
-                  {profile ? (
-                    <Link href="/tickets" className="text-muted-foreground transition-colors hover:text-foreground">
-                      Wallet
-                    </Link>
-                  ) : null}
-                  {profile?.role === "admin" ? (
-                    <Link href="/admin" className="text-muted-foreground transition-colors hover:text-foreground">
-                      Admin
-                    </Link>
-                  ) : null}
-                </>
-              ) : null}
-              {profile?.role === "controller" || profile?.role === "admin" ? (
-                <Link href="/controller" className="text-muted-foreground transition-colors hover:text-foreground">
-                  Gate
+          <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
+            {!controllerOnly ? (
+              <>
+                <Link href="/events" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Events
                 </Link>
-              ) : null}
-            </nav>
+                <Link href="/marketplace" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Exchange
+                </Link>
+                {profile ? (
+                  <Link href="/tickets" className="text-muted-foreground transition-colors hover:text-foreground">
+                    Wallet
+                  </Link>
+                ) : null}
+                {profile?.role === "admin" ? (
+                  <Link href="/admin" className="text-muted-foreground transition-colors hover:text-foreground">
+                    Admin
+                  </Link>
+                ) : null}
+              </>
+            ) : null}
+            {profile?.role === "controller" || profile?.role === "admin" ? (
+              <Link href="/controller" className="text-muted-foreground transition-colors hover:text-foreground">
+                Gate
+              </Link>
+            ) : null}
+          </nav>
+
+          <div className="hidden flex-1 justify-center px-4 lg:flex">
+            <div className="w-full max-w-md">
+              <HeroSearch size="md" />
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href="/events"
-              aria-label="Search events"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              <Search className="h-4 w-4" />
-            </Link>
+          <div className="ml-auto flex items-center gap-2">
             {profile ? (
-              <UserMenu profile={profile} balances={balances} />
+              <UserMenu profile={profile} />
             ) : (
               <>
                 <Button variant="ghost" size="sm" asChild>
@@ -71,6 +66,9 @@ export async function Header() {
               </>
             )}
           </div>
+        </div>
+        <div className="container pb-3 lg:hidden">
+          <HeroSearch size="md" />
         </div>
       </header>
 

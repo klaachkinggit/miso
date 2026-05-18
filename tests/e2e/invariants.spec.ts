@@ -25,107 +25,6 @@ async function getProfileIdByEmail(client: SupabaseClient, email: string): Promi
   return data.id;
 }
 
-async function getBalance(client: SupabaseClient, profileId: string): Promise<number> {
-  const { data } = await client
-    .from("account_balances")
-    .select("available_amount")
-    .eq("profile_id", profileId)
-    .eq("currency", "MAD")
-    .maybeSingle<{ available_amount: number | string }>();
-  return data ? Number(data.available_amount) : 0;
-}
-
-test.describe("Balance ledger invariants", () => {
-  test.skip(!enabled, "Set MISO_E2E_INVARIANTS=1 (+ run npm run demo:seed) to run.");
-
-  test("debit fails when balance insufficient (no overdraft)", async () => {
-    const client = sb();
-    const sellerId = await getProfileIdByEmail(client, "seller@miso.local");
-
-    // Seller balance is 0 in seed. Attempt a debit > 0 and expect RPC failure.
-    const { error } = await client.rpc("account_balance_debit", {
-      p_profile_id: sellerId,
-      p_currency: "MAD",
-      p_movement_type: "purchase_debit",
-      p_amount: "9999.00",
-      p_reference_type: "purchase",
-      p_reference_id: `invariant-overdraft-${Date.now()}`,
-    });
-    expect(error, "overdraft should error").toBeTruthy();
-    expect(error?.message.toLowerCase()).toMatch(/insufficient/);
-    expect(await getBalance(client, sellerId)).toBe(0);
-  });
-
-  test("debit-then-compensate restores prior balance", async () => {
-    const client = sb();
-    const buyerId = await getProfileIdByEmail(client, "buyer@miso.local");
-    const before = await getBalance(client, buyerId);
-
-    const ref = `invariant-debit-${Date.now()}`;
-    const { error: debitErr } = await client.rpc("account_balance_debit", {
-      p_profile_id: buyerId,
-      p_currency: "MAD",
-      p_movement_type: "purchase_debit",
-      p_amount: "10.00",
-      p_reference_type: "purchase",
-      p_reference_id: ref,
-    });
-    expect(debitErr).toBeFalsy();
-    expect(await getBalance(client, buyerId)).toBe(before - 10);
-
-    const { error: creditErr } = await client.rpc("account_balance_credit", {
-      p_profile_id: buyerId,
-      p_currency: "MAD",
-      p_movement_type: "compensation_credit",
-      p_amount: "10.00",
-      p_reference_type: "purchase",
-      p_reference_id: ref,
-    });
-    expect(creditErr).toBeFalsy();
-    expect(await getBalance(client, buyerId)).toBe(before);
-  });
-
-  test("debit RPC is idempotent on same reference (no double-debit)", async () => {
-    const client = sb();
-    const buyerId = await getProfileIdByEmail(client, "buyer@miso.local");
-    const before = await getBalance(client, buyerId);
-
-    const ref = `invariant-idempotent-${Date.now()}`;
-    const first = await client.rpc("account_balance_debit", {
-      p_profile_id: buyerId,
-      p_currency: "MAD",
-      p_movement_type: "purchase_debit",
-      p_amount: "5.00",
-      p_reference_type: "purchase",
-      p_reference_id: ref,
-    });
-    expect(first.error).toBeFalsy();
-    const after1 = await getBalance(client, buyerId);
-    expect(after1).toBe(before - 5);
-
-    const second = await client.rpc("account_balance_debit", {
-      p_profile_id: buyerId,
-      p_currency: "MAD",
-      p_movement_type: "purchase_debit",
-      p_amount: "5.00",
-      p_reference_type: "purchase",
-      p_reference_id: ref,
-    });
-    expect(second.error).toBeFalsy();
-    expect(await getBalance(client, buyerId)).toBe(after1);
-
-    // Compensate so subsequent runs find seller/buyer balances untouched.
-    await client.rpc("account_balance_credit", {
-      p_profile_id: buyerId,
-      p_currency: "MAD",
-      p_movement_type: "compensation_credit",
-      p_amount: "5.00",
-      p_reference_type: "purchase",
-      p_reference_id: ref,
-    });
-  });
-});
-
 test.describe("Redemption replay safety", () => {
   test.skip(!enabled, "Set MISO_E2E_INVARIANTS=1 to run.");
 
@@ -249,7 +148,7 @@ test.describe("Cancellation refund flow", () => {
         event_id: event!.id,
         name: "GA",
         price: 100,
-        currency: "MAD",
+        currency: "EUR",
         supply: 2,
         resale_enabled: false,
       })

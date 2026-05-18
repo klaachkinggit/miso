@@ -2,12 +2,12 @@
 //
 // Policy:
 //   - Mark ticket as refunded in DB.
-//   - Refund issued through mock payment when a payment exists.
+//   - Refund issued through Stripe when a checkout session exists.
 //   - Used tickets cannot be refunded.
 
 import { audit } from "@/lib/audit";
-import { creditRefundBalance } from "@/lib/balances/ledger";
 import { markPurchaseRefunded } from "@/lib/payments/settlement";
+import { refundStripeSession } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { markTicketRefunded } from "@/lib/tickets/lifecycle";
 import type { Purchase, ResaleListing, Ticket } from "@/types/db";
@@ -50,21 +50,10 @@ export async function refundTicket(params: {
 
   const refundAmount = resale?.price ?? purchase?.amount;
   const refundCurrency = resale?.currency ?? purchase?.currency;
+  const providerSessionId = resale?.provider_session_id ?? purchase?.provider_session_id;
 
-  // Credit first — the RPC dedups on (profile, currency, movement,
-  // ref_type, ref_id) so retrying is a no-op. If we flipped the ticket
-  // first and then the credit failed, retry would hit "Cannot refund
-  // this ticket in its current state" and the buyer would be left
-  // refund-less with status=refunded. Crediting first makes the whole
-  // chain idempotent: credit → markTicketRefunded → markPurchaseRefunded
-  // can be re-driven safely on any partial failure.
-  if (holderUserId && refundAmount && refundCurrency && Number(refundAmount) > 0) {
-    await creditRefundBalance({
-      ticketId: ticket.id,
-      holderUserId,
-      amount: refundAmount,
-      currency: refundCurrency,
-    });
+  if (providerSessionId) {
+    await refundStripeSession(providerSessionId);
   }
 
   await markTicketRefunded(ticket.id);

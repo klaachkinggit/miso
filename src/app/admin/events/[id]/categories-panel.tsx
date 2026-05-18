@@ -90,7 +90,7 @@ export function CategoriesPanel({
                 <input
                   id="currency"
                   name="currency"
-                  value="MAD"
+                  value="EUR"
                   readOnly
                   className="h-10 rounded-md border border-input bg-background/40 px-3 text-sm text-muted-foreground"
                 />

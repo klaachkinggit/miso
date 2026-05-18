@@ -1,5 +1,5 @@
 // Cross-user authorization: a logged-in user must NOT be able to mutate
-// another user's listings, balances, or tickets. The HTTP routes go through
+// another user's listings or tickets. The HTTP routes go through
 // service-role for execution but enforce ownership checks at the lib layer
 // (cancelResaleListing, fulfillResale, etc.). These tests verify those gates.
 
@@ -57,7 +57,7 @@ async function seedListingFixture(
       event_id: event!.id,
       name: "GA",
       price: 100,
-      currency: "MAD",
+      currency: "EUR",
       supply: 1,
       resale_enabled: true,
     })
@@ -86,7 +86,7 @@ async function seedListingFixture(
       ticket_id: ticket!.id,
       seller_user_id: sellerId,
       price: 100,
-      currency: "MAD",
+      currency: "EUR",
       status: "active",
     })
     .select("id")

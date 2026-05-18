@@ -29,8 +29,7 @@ MISO_MOCK_CHAIN=1 MISO_E2E_FULL=1 npm run test:e2e
 ## Invariants + authz + controller (`invariants.spec.ts`, `cross-user-authz.spec.ts`, `controller-flow.spec.ts`)
 
 Deterministic DB-level invariants and HTTP authz checks. No chain calls.
-Covers: balance overdraft, debit idempotency, redemption unique index,
-reservation race, cancellation refund state transitions, cross-user listing
+Covers: redemption unique index, reservation race, cancellation refund state transitions, cross-user listing
 cancel/buy, role-based marketplace gates, controller gate
 open/poll/close + cross-controller authz. Gated behind
 `MISO_E2E_INVARIANTS=1`.

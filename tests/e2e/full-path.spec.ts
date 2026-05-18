@@ -14,7 +14,7 @@ async function openDemoEvent(page: Parameters<typeof login>[0]) {
 test.describe("Full path: discover → checkout → my tickets → redeem", () => {
   test.skip(!fullPathEnabled, "Set MISO_E2E_FULL=1 with a seeded DB to run.");
 
-  test("buyer purchases a ticket with Account Balance", async ({ page }) => {
+  test("buyer can initiate Stripe checkout for a ticket", async ({ page }) => {
     await login(page, DEMO_BUYER);
 
     await openDemoEvent(page);
@@ -25,33 +25,8 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
     await expect(buyButton).toBeEnabled();
     await buyButton.click();
 
-    await page.waitForURL(/\/checkout\/success/, { timeout: 30_000 });
-    await expect(page.getByText(/ticket is ready|finalising/i)).toBeVisible({
-      timeout: 30_000,
-    });
-  });
-
-  test("zero-balance holder cannot start checkout", async ({ page }) => {
-    await login(page, DEMO_SELLER);
-
-    await openDemoEvent(page);
-
-    const buyButton = page.getByRole("button", { name: /get ticket/i }).first();
-    await expect(buyButton).toBeDisabled();
-    await expect(page.getByText(/balance 0 mad/i).first()).toBeVisible();
-  });
-
-  test("funding actions are visible but not implemented", async ({ page }) => {
-    await login(page, DEMO_BUYER);
-
-    await page.goto("/balance");
-    await expect(page.getByRole("heading", { name: "Account Balance" })).toBeVisible();
-
-    await page.getByRole("button", { name: /^charge$/i }).click();
-    await expect(page.getByText("Charging Account Balance is not implemented yet.", { exact: true }).first()).toBeVisible();
-
-    await page.getByRole("button", { name: /^cashout$/i }).click();
-    await expect(page.getByText("Cashout is not implemented yet.", { exact: true }).first()).toBeVisible();
+    // Button redirects to Stripe Checkout; wait for Stripe domain or success URL.
+    await page.waitForURL(/checkout\.stripe\.com|\/checkout\/success/, { timeout: 30_000 });
   });
 
   test("ticket appears in /tickets after purchase", async ({ page }) => {

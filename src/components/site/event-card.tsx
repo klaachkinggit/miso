@@ -14,7 +14,7 @@ export function EventCard({
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group relative block aspect-[4/5] overflow-hidden rounded-md border border-border bg-card shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
+      className="group relative block aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_10px_40px_-20px_rgba(0,0,0,0.8)] transition-all hover:-translate-y-1 hover:border-accent/40 hover:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)]"
     >
       {event.image_url ? (
         <Image

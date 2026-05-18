@@ -38,6 +38,7 @@
     "react": "^19.0.0-rc",
     "react-dom": "^19.0.0-rc",
     "react-hook-form": "^7.53.1",
+    "stripe": "^22.1.1",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
     "thirdweb": "^5.85.0",

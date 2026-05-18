@@ -34,41 +34,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      account_balances: {
-        Row: {
-          available_amount: number
-          created_at: string
-          currency: Database["public"]["Enums"]["currency"]
-          id: string
-          profile_id: string
-          updated_at: string
-        }
-        Insert: {
-          available_amount?: number
-          created_at?: string
-          currency: Database["public"]["Enums"]["currency"]
-          id?: string
-          profile_id: string
-          updated_at?: string
-        }
-        Update: {
-          available_amount?: number
-          created_at?: string
-          currency?: Database["public"]["Enums"]["currency"]
-          id?: string
-          profile_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "account_balances_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       audit_logs: {
         Row: {
           action: string
@@ -107,53 +72,87 @@ export type Database = {
           },
         ]
       }
-      balance_ledger_entries: {
+      chain_ops: {
         Row: {
-          account_balance_id: string
-          amount: number
+          attempt: number
+          contract_address: string
           created_at: string
-          currency: Database["public"]["Enums"]["currency"]
+          error_message: string | null
+          from_address: string | null
           id: string
-          movement_type: Database["public"]["Enums"]["balance_movement_type"]
-          profile_id: string
-          reference_id: string
-          reference_type: string
+          idempotency_key: string
+          listing_id: string | null
+          metadata_uri: string | null
+          op_type: string
+          purchase_id: string | null
+          status: string
+          ticket_id: string
+          to_address: string
+          token_id: number
+          transaction_id: string | null
+          tx_hash: string | null
+          updated_at: string
         }
         Insert: {
-          account_balance_id: string
-          amount: number
+          attempt?: number
+          contract_address: string
           created_at?: string
-          currency: Database["public"]["Enums"]["currency"]
+          error_message?: string | null
+          from_address?: string | null
           id?: string
-          movement_type: Database["public"]["Enums"]["balance_movement_type"]
-          profile_id: string
-          reference_id: string
-          reference_type: string
+          idempotency_key: string
+          listing_id?: string | null
+          metadata_uri?: string | null
+          op_type: string
+          purchase_id?: string | null
+          status?: string
+          ticket_id: string
+          to_address: string
+          token_id: number
+          transaction_id?: string | null
+          tx_hash?: string | null
+          updated_at?: string
         }
         Update: {
-          account_balance_id?: string
-          amount?: number
+          attempt?: number
+          contract_address?: string
           created_at?: string
-          currency?: Database["public"]["Enums"]["currency"]
+          error_message?: string | null
+          from_address?: string | null
           id?: string
-          movement_type?: Database["public"]["Enums"]["balance_movement_type"]
-          profile_id?: string
-          reference_id?: string
-          reference_type?: string
+          idempotency_key?: string
+          listing_id?: string | null
+          metadata_uri?: string | null
+          op_type?: string
+          purchase_id?: string | null
+          status?: string
+          ticket_id?: string
+          to_address?: string
+          token_id?: number
+          transaction_id?: string | null
+          tx_hash?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "balance_ledger_entries_account_balance_id_fkey"
-            columns: ["account_balance_id"]
+            foreignKeyName: "chain_ops_listing_id_fkey"
+            columns: ["listing_id"]
             isOneToOne: false
-            referencedRelation: "account_balances"
+            referencedRelation: "resale_listings"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "balance_ledger_entries_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "chain_ops_purchase_id_fkey"
+            columns: ["purchase_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chain_ops_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -251,69 +250,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["event_status"]
           updated_at?: string
           venue_name?: string
-        }
-        Relationships: []
-      }
-      chain_ops: {
-        Row: {
-          attempt: number
-          contract_address: string
-          created_at: string
-          error_message: string | null
-          from_address: string | null
-          id: string
-          idempotency_key: string
-          listing_id: string | null
-          metadata_uri: string | null
-          op_type: string
-          purchase_id: string | null
-          status: string
-          ticket_id: string
-          to_address: string
-          token_id: number
-          transaction_id: string | null
-          tx_hash: string | null
-          updated_at: string
-        }
-        Insert: {
-          attempt?: number
-          contract_address: string
-          created_at?: string
-          error_message?: string | null
-          from_address?: string | null
-          id?: string
-          idempotency_key: string
-          listing_id?: string | null
-          metadata_uri?: string | null
-          op_type: string
-          purchase_id?: string | null
-          status?: string
-          ticket_id: string
-          to_address: string
-          token_id: number
-          transaction_id?: string | null
-          tx_hash?: string | null
-          updated_at?: string
-        }
-        Update: {
-          attempt?: number
-          contract_address?: string
-          created_at?: string
-          error_message?: string | null
-          from_address?: string | null
-          id?: string
-          idempotency_key?: string
-          listing_id?: string | null
-          metadata_uri?: string | null
-          op_type?: string
-          purchase_id?: string | null
-          status?: string
-          ticket_id?: string
-          to_address?: string
-          token_id?: number
-          transaction_id?: string | null
-          tx_hash?: string | null
-          updated_at?: string
         }
         Relationships: []
       }
@@ -820,54 +756,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      account_balance_credit: {
-        Args: {
-          p_profile_id: string
-          p_currency: Database["public"]["Enums"]["currency"]
-          p_movement_type: Database["public"]["Enums"]["balance_movement_type"]
-          p_amount: number
-          p_reference_type: string
-          p_reference_id: string
-        }
-        Returns: {
-          account_balance_id: string
-          amount: number
-          created_at: string
-          currency: Database["public"]["Enums"]["currency"]
-          id: string
-          movement_type: Database["public"]["Enums"]["balance_movement_type"]
-          profile_id: string
-          reference_id: string
-          reference_type: string
-        }
-      }
-      account_balance_debit: {
-        Args: {
-          p_profile_id: string
-          p_currency: Database["public"]["Enums"]["currency"]
-          p_movement_type: Database["public"]["Enums"]["balance_movement_type"]
-          p_amount: number
-          p_reference_type: string
-          p_reference_id: string
-        }
-        Returns: {
-          account_balance_id: string
-          amount: number
-          created_at: string
-          currency: Database["public"]["Enums"]["currency"]
-          id: string
-          movement_type: Database["public"]["Enums"]["balance_movement_type"]
-          profile_id: string
-          reference_id: string
-          reference_type: string
-        }
-      }
-      assert_balance_holder: {
-        Args: {
-          p_profile_id: string
-        }
-        Returns: undefined
-      }
       current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
@@ -884,15 +772,7 @@ export type Database = {
       }
     }
     Enums: {
-      balance_movement_type:
-        | "seed_credit"
-        | "admin_topup_credit"
-        | "purchase_debit"
-        | "resale_buyer_debit"
-        | "resale_seller_credit"
-        | "refund_credit"
-        | "compensation_credit"
-      currency: "MAD"
+      currency: "EUR"
       event_status: "draft" | "published" | "canceled" | "completed"
       listing_status:
         | "active"
@@ -1621,8 +1501,6 @@ export type TicketRedemption = Tables<"ticket_redemptions">
 export type Purchase = Tables<"purchases">
 export type ResaleListing = Tables<"resale_listings">
 export type Wallet = Tables<"wallets">
-export type AccountBalance = Tables<"account_balances">
-export type BalanceLedgerEntry = Tables<"balance_ledger_entries">
 export type GateSession = Tables<"gate_sessions">
 export type AuditLog = Tables<"audit_logs">
 export type EventController = Tables<"event_controllers">
@@ -1631,4 +1509,3 @@ export type ChainOp = Tables<"chain_ops">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type RedemptionResult = Enums<"redemption_result">
-export type BalanceMovementType = Enums<"balance_movement_type">

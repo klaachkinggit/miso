@@ -1,10 +1,10 @@
 import type { Currency } from "@/types/db";
 
-export const EVENT_TIMEZONE = "Africa/Casablanca";
+export const EVENT_TIMEZONE = "Europe/Paris";
 
 export function formatPrice(amount: number | string, _currency: Currency): string {
   const value = typeof amount === "string" ? parseFloat(amount) : amount;
-  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)} MAD`;
+  return `€${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)}`;
 }
 
 export function formatDate(iso: string): string {

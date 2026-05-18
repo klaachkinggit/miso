@@ -54,7 +54,7 @@ async function seedTicket(
       event_id: event!.id,
       name: "GA",
       price: 100,
-      currency: "MAD",
+      currency: "EUR",
       supply: 1,
       resale_enabled: true,
     })
@@ -79,7 +79,7 @@ async function seedTicket(
       event_id: event!.id,
       ticket_id: ticket!.id,
       amount: 100,
-      currency: "MAD",
+      currency: "EUR",
       status: "pending",
     })
     .select("id")
@@ -239,7 +239,7 @@ test.describe("chain_ops invariants", () => {
         event_id: event!.id,
         name: "GA",
         price: 50,
-        currency: "MAD",
+        currency: "EUR",
         supply: 1,
         resale_enabled: true,
       })
@@ -265,7 +265,7 @@ test.describe("chain_ops invariants", () => {
         ticket_id: ticket!.id,
         seller_user_id: sellerId,
         price: 50,
-        currency: "MAD",
+        currency: "EUR",
         status: "active",
       })
       .select("id")
