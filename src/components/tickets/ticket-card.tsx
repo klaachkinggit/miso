@@ -8,7 +8,8 @@ import {
   ListForResaleButton,
   TransferToWalletButton,
 } from "@/components/tickets/list-for-resale-button";
-import { explorerUrl, formatDate, formatPrice, shortAddress } from "@/lib/format";
+import { formatDate, formatPrice } from "@/lib/format";
+import { explorerUrl, shortAddress } from "@/lib/chain/utils";
 import { cn } from "@/lib/utils";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
