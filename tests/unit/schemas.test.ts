@@ -37,7 +37,6 @@ describe("CreateCategorySchema", () => {
     const parsed = CreateCategorySchema.parse({
       ...base,
       kind: "club_table",
-      min_spending: "600",
       online_advance: "150",
       base_capacity: "4",
       color_hex: "#D4AF37",
@@ -55,7 +54,6 @@ describe("CreateCategorySchema", () => {
     const parsed = CreateCategorySchema.safeParse({
       ...base,
       kind: "club_table",
-      min_spending: "600",
       online_advance: "150",
       base_capacity: "4",
       color_hex: "#D4AF37",

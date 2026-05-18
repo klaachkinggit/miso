@@ -1,3 +1,4 @@
+import { computeClubTablePricing } from "@/lib/payments/pricing";
 import { settleFailedPurchase } from "@/lib/payments/settlement";
 import {
   createStripeCheckoutSession,
@@ -26,6 +27,7 @@ export class ExtraGuestsInvalidError extends Error {
     this.name = "ExtraGuestsInvalidError";
   }
 }
+
 
 export async function createPurchaseCheckout(params: {
   buyerUserId: string;
@@ -110,11 +112,10 @@ export async function createPurchaseCheckout(params: {
     let onlineAdvanceAmount: number | null = null;
     let minSpendingTotal: number | null = null;
     if (category.kind === "club_table") {
-      const advance = Number(category.online_advance ?? category.price);
-      const extraPrice = Number(category.price_per_extra_guest ?? 0);
-      amount = advance + extras * extraPrice;
-      onlineAdvanceAmount = amount;
-      minSpendingTotal = category.min_spending != null ? Number(category.min_spending) : null;
+      const pricing = computeClubTablePricing(category, extras);
+      amount = pricing.amount;
+      onlineAdvanceAmount = pricing.onlineAdvanceAmount;
+      minSpendingTotal = pricing.minSpendingTotal;
     } else {
       amount = Number(category.price);
     }

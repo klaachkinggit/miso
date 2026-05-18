@@ -232,6 +232,246 @@ function buildSeedEvents(): SeedEvent[] {
         },
       ],
     },
+    {
+      name: "Madrid Neon Rooftop",
+      date: atTime(addDays(now, 4), 22, 30),
+      venue_name: "Azotea Cibeles",
+      city: "Madrid",
+      capacity: 540,
+      description: "A skyline rooftop set with curated house DJs and gated member entry.",
+      categories: [
+        {
+          name: "Rooftop Entry",
+          description: "Standard rooftop access with NFT ticket.",
+          benefits: "QR entry, NFT collectible, official resale guarantee.",
+          price: 28,
+          supply: 40,
+        },
+        {
+          name: "Sunset Lounge",
+          description: "Reserved seating zone with bottle service add-on.",
+          benefits: "Reserved seating, fast lane, drink credit, member-only after-hours.",
+          price: 75,
+          supply: 10,
+        },
+      ],
+    },
+    {
+      name: "Brooklyn Warehouse Reset",
+      date: atTime(addDays(now, 9), 23, 30),
+      venue_name: "Knockdown Center",
+      city: "New York",
+      capacity: 1800,
+      description: "An all-night industrial techno marathon with on-chain ticket protection.",
+      categories: [
+        {
+          name: "Warehouse Pass",
+          description: "Full-night warehouse access.",
+          benefits: "NFT ticket, re-entry, secure transfer, coat check token.",
+          price: 38,
+          supply: 70,
+        },
+        {
+          name: "Producer Booth",
+          description: "Limited booth access with artist mingle.",
+          benefits: "Booth wristband, artist meet, signed vinyl drop, priority resale.",
+          price: 145,
+          supply: 8,
+        },
+      ],
+    },
+    {
+      name: "Tokyo Bass Cathedral",
+      date: atTime(addDays(now, 16), 21, 0),
+      venue_name: "Contact",
+      city: "Tokyo",
+      capacity: 700,
+      description: "A bass-driven night with collectible sticker drops and identity-bound tickets.",
+      categories: [
+        {
+          name: "Floor Wristband",
+          description: "Standard floor access with sticker drop.",
+          benefits: "Sticker collectible, NFT ticket, official QR scan.",
+          price: 31,
+          supply: 48,
+        },
+        {
+          name: "Director's Booth",
+          description: "Booth with private bar service.",
+          benefits: "Booth seat, private bar, limited art drop, VIP entry.",
+          price: 110,
+          supply: 6,
+        },
+      ],
+    },
+    {
+      name: "Marrakech Riad Sessions",
+      date: atTime(addDays(now, 11), 22, 0),
+      venue_name: "Riad Yima",
+      city: "Marrakech",
+      capacity: 280,
+      description: "An intimate riad night with live percussion and members-only entry list.",
+      categories: [
+        {
+          name: "Courtyard Entry",
+          description: "Courtyard access with welcome mint tea.",
+          benefits: "NFT ticket, welcome drink, courtyard seating.",
+          price: 24,
+          supply: 30,
+        },
+        {
+          name: "Salon Privé",
+          description: "Reserved salon access with chef tasting.",
+          benefits: "Private salon, tasting menu, signed memorabilia, priority transfer.",
+          price: 95,
+          supply: 8,
+        },
+      ],
+    },
+    {
+      name: "Ibiza Sunrise Circuit",
+      date: atTime(addDays(now, 21), 5, 0),
+      venue_name: "Cova Santa",
+      city: "Ibiza",
+      capacity: 1400,
+      description: "A sunrise open-air session with token-gated lounges and resale price caps.",
+      categories: [
+        {
+          name: "Open Air Pass",
+          description: "Open-air dance floor access.",
+          benefits: "NFT ticket, sunrise breakfast voucher, on-chain history.",
+          price: 42,
+          supply: 80,
+        },
+        {
+          name: "Cabana Member",
+          description: "Reserved cabana with private host.",
+          benefits: "Cabana seat, host, bottle credit, sunrise yoga add-on.",
+          price: 180,
+          supply: 12,
+        },
+      ],
+    },
+    {
+      name: "Mexico City Vinyl Lounge",
+      date: atTime(addDays(now, 6), 21, 0),
+      venue_name: "Departamento",
+      city: "Mexico City",
+      capacity: 320,
+      description: "A vinyl-only listening room with rotating selectors and limited member badges.",
+      categories: [
+        {
+          name: "Listening Room",
+          description: "Standing room with vinyl-only program.",
+          benefits: "NFT ticket, signed flyer, member badge eligibility.",
+          price: 19,
+          supply: 38,
+        },
+        {
+          name: "Selector Seat",
+          description: "Reserved seat behind the DJ booth.",
+          benefits: "Reserved seat, selector meet, vinyl raffle entry, member badge.",
+          price: 58,
+          supply: 8,
+        },
+      ],
+    },
+    {
+      name: "Seoul Garage Night",
+      date: atTime(addDays(now, 14), 23, 0),
+      venue_name: "Faust",
+      city: "Seoul",
+      capacity: 480,
+      description: "A garage and breaks marathon with member-only after-hours and digital collectibles.",
+      categories: [
+        {
+          name: "Garage Pass",
+          description: "Main floor access.",
+          benefits: "NFT ticket, sticker drop, member after-hours access.",
+          price: 27,
+          supply: 44,
+        },
+        {
+          name: "Selector Lounge",
+          description: "Private lounge with selector mingle.",
+          benefits: "Private lounge, selector mingle, drink credit, signed collectible.",
+          price: 82,
+          supply: 10,
+        },
+      ],
+    },
+    {
+      name: "Reykjavik Aurora Pulse",
+      date: nextMonthDate(now, 15, 22, 0),
+      venue_name: "Harpa",
+      city: "Reykjavik",
+      capacity: 600,
+      description: "An ambient and techno hybrid show under aurora projections.",
+      categories: [
+        {
+          name: "Aurora Floor",
+          description: "Main floor access with projection-mapped lighting.",
+          benefits: "NFT ticket, glow band, aurora program collectible.",
+          price: 36,
+          supply: 50,
+        },
+        {
+          name: "Glacier Suite",
+          description: "Private suite with curated tasting flight.",
+          benefits: "Suite access, tasting flight, art print drop, priority resale.",
+          price: 140,
+          supply: 8,
+        },
+      ],
+    },
+    {
+      name: "Cape Town Atlantic Drift",
+      date: nextMonthDate(now, 22, 19, 30),
+      venue_name: "Sea Point Pavilion",
+      city: "Cape Town",
+      capacity: 1100,
+      description: "A coastal afterparty with sunset DJs, capped resale, and identity-bound NFTs.",
+      categories: [
+        {
+          name: "Coastal Pass",
+          description: "Pavilion access with sunset set.",
+          benefits: "NFT ticket, sunset cocktail, coastal program collectible.",
+          price: 33,
+          supply: 60,
+        },
+        {
+          name: "Yacht Deck",
+          description: "Reserved deck access with curated host.",
+          benefits: "Deck access, host, drink package, priority transfer, member raffle.",
+          price: 165,
+          supply: 10,
+        },
+      ],
+    },
+    {
+      name: "Bali Jungle Reset",
+      date: nextMonthDate(now, 27, 16, 0),
+      venue_name: "The Lawn",
+      city: "Canggu",
+      capacity: 900,
+      description: "A daytime jungle session with breathwork add-ons and on-chain ticket history.",
+      categories: [
+        {
+          name: "Jungle Pass",
+          description: "Day session entry with breathwork open class.",
+          benefits: "NFT ticket, juice voucher, breathwork open class.",
+          price: 26,
+          supply: 55,
+        },
+        {
+          name: "Tree House Lounge",
+          description: "Reserved tree house with private bar.",
+          benefits: "Private lounge, bar credit, signed print, member loyalty boost.",
+          price: 92,
+          supply: 8,
+        },
+      ],
+    },
   ];
 }
 
@@ -445,6 +685,93 @@ async function ensureController(eventId: string, controllerUserId: string) {
     .upsert({ event_id: eventId, user_id: controllerUserId });
 }
 
+async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) {
+  const { data: ownedRows, error: ownedErr } = await sb
+    .from("tickets")
+    .select("id")
+    .eq("owner_user_id", buyerUserId);
+  if (ownedErr) throw new Error(`Failed to read buyer tickets: ${ownedErr.message}`);
+  const alreadyOwned = ownedRows?.length ?? 0;
+  const needed = Math.max(0, targetCount - alreadyOwned);
+  if (needed === 0) {
+    console.log(`  buyer already owns ${alreadyOwned} ticket(s) — skipping claim`);
+    return;
+  }
+
+  const { data: pool, error: poolErr } = await sb
+    .from("tickets")
+    .select("id, event_id, category_id")
+    .eq("status", "available")
+    .limit(needed * 3);
+  if (poolErr) throw new Error(`Failed to read available tickets: ${poolErr.message}`);
+  if (!pool || pool.length === 0) throw new Error("No available tickets to claim for buyer");
+
+  const claimedEvents = new Set<string>();
+  const claims: Array<{ id: string; event_id: string; category_id: string }> = [];
+  for (const row of pool) {
+    if (claimedEvents.has(row.event_id)) continue;
+    claims.push(row);
+    claimedEvents.add(row.event_id);
+    if (claims.length >= needed) break;
+  }
+  if (claims.length < needed) {
+    for (const row of pool) {
+      if (claims.find((c) => c.id === row.id)) continue;
+      claims.push(row);
+      if (claims.length >= needed) break;
+    }
+  }
+
+  for (const ticket of claims) {
+    const { data: cat, error: catErr } = await sb
+      .from("ticket_categories")
+      .select("price, currency, sold_count")
+      .eq("id", ticket.category_id)
+      .single<{ price: number; currency: "EUR"; sold_count: number }>();
+    if (catErr || !cat) throw new Error(`Failed to read category for ticket ${ticket.id}: ${catErr?.message}`);
+
+    const sessionKey = `seed_buyer_${ticket.id}`;
+    const { data: purchase, error: purchaseErr } = await sb
+      .from("purchases")
+      .upsert(
+        {
+          buyer_user_id: buyerUserId,
+          event_id: ticket.event_id,
+          ticket_id: ticket.id,
+          provider_session_id: sessionKey,
+          provider_payment_id: `seed_pi_${ticket.id}`,
+          payment_provider: "mock",
+          checkout_idempotency_key: sessionKey,
+          amount: cat.price,
+          currency: cat.currency,
+          status: "paid",
+          paid_at: new Date().toISOString(),
+        },
+        { onConflict: "provider_session_id" },
+      )
+      .select("id")
+      .single<{ id: string }>();
+    if (purchaseErr || !purchase) throw new Error(`Failed to seed purchase: ${purchaseErr?.message}`);
+
+    const { error: ticketErr } = await sb
+      .from("tickets")
+      .update({
+        status: "sold",
+        owner_user_id: buyerUserId,
+        minted_at: new Date().toISOString(),
+        original_purchase_id: purchase.id,
+      })
+      .eq("id", ticket.id);
+    if (ticketErr) throw new Error(`Failed to claim ticket ${ticket.id}: ${ticketErr.message}`);
+
+    await sb
+      .from("ticket_categories")
+      .update({ sold_count: cat.sold_count + 1 })
+      .eq("id", ticket.category_id);
+  }
+  console.log(`  buyer claimed ${claims.length} ticket(s) (total ${alreadyOwned + claims.length})`);
+}
+
 async function main() {
   console.log(`Seeding against ${supabaseUrl}`);
   const userIds: Record<string, string> = {};
@@ -476,6 +803,8 @@ async function main() {
     await ensureController(eventId, userIds["controller@miso.local"]);
   }
   console.log("  events, categories, tickets, and controllers seeded");
+
+  await ensureBuyerOwnsTickets(userIds["buyer@miso.local"], 4);
 
   console.log("\nDone. Demo credentials:");
   for (const user of demoUsers) {

@@ -20,7 +20,6 @@ export const CreateEventSchema = z.object({
 });
 
 const ClubTableFields = z.object({
-  min_spending: z.coerce.number().min(0).optional().nullable(),
   online_advance: z.coerce.number().min(0).optional().nullable(),
   base_capacity: z.coerce.number().int().positive().optional().nullable(),
   extra_guests_enabled: z.coerce.boolean().default(false),
@@ -49,13 +48,10 @@ export const CreateCategorySchema = z
   .refine(
     (v) =>
       v.kind === "standard" ||
-      (v.min_spending != null &&
-        v.online_advance != null &&
-        v.base_capacity != null &&
-        v.color_hex != null),
+      (v.online_advance != null && v.base_capacity != null && v.color_hex != null),
     {
       message:
-        "Club Table requires minimum spending, online advance, base capacity, and a color.",
+        "Club Table requires online advance, base capacity, and a color.",
     },
   )
   .refine(
@@ -98,6 +94,7 @@ export const InviteControllerSchema = z.object({
 export const OpenGateSchema = z.object({
   event_id: z.string().uuid(),
   gate_name: z.string().max(80).optional().nullable(),
+  allowed_category_ids: z.array(z.string().uuid()).max(50).optional().nullable(),
   ttl_hours: z.coerce.number().int().min(1).max(24).optional(),
 });
 

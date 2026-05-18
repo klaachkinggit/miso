@@ -102,18 +102,10 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
           {isClub ? (
             <div className="grid gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
               <p className="text-xs uppercase tracking-wide text-amber-300/80">Club table</p>
+              <p className="text-xs text-amber-200/70">
+                The table price above doubles as the minimum spending for the table.
+              </p>
               <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="min_spending">Minimum spending</Label>
-                  <Input
-                    id="min_spending"
-                    name="min_spending"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required={isClub}
-                  />
-                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="online_advance">Online advance</Label>
                   <Input
@@ -125,8 +117,6 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
                     required={isClub}
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="base_capacity">Base guests included</Label>
                   <Input
@@ -138,6 +128,8 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
                     required={isClub}
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="color_hex">Color vignette</Label>
                   <div className="flex items-center gap-2">

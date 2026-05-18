@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       eventId: body.event_id,
       profile,
       gateName: body.gate_name ?? null,
+      allowedCategoryIds: body.allowed_category_ids ?? null,
       ttlHours: body.ttl_hours,
     });
     return NextResponse.json(session);

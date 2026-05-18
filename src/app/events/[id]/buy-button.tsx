@@ -27,7 +27,6 @@ export interface BuyButtonCategory {
   price_per_extra_guest: number | string | null;
   max_extra_guests: number | null;
   base_capacity: number | null;
-  min_spending: number | string | null;
 }
 
 export function BuyButton({
@@ -191,12 +190,12 @@ export function BuyButton({
                 {formatPrice(onlineTotal, category.currency)}
               </span>
             </div>
-            {isClub && category.min_spending != null ? (
+            {isClub ? (
               <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                 <span>Remaining minimum spending due at the venue</span>
                 <span>
                   {formatPrice(
-                    Math.max(0, Number(category.min_spending) - onlineTotal),
+                    Math.max(0, Number(category.price ?? 0) - onlineTotal),
                     category.currency,
                   )}
                 </span>

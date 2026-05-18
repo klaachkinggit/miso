@@ -159,12 +159,24 @@ export function DetailsForm({ event }: { event: EventRow }) {
                 </div>
               </div>
               {floorPlanUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={floorPlanUrl}
-                  alt="Floor plan preview"
-                  className="mt-2 max-h-48 w-auto rounded border border-border/60 object-contain"
-                />
+                <>
+                  <a
+                    href={floorPlanUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open map preview"
+                    data-testid="open-map"
+                    className="mt-2 inline-flex h-10 w-fit items-center gap-2 rounded-md border border-input bg-background/40 px-3 text-sm hover:bg-background/60"
+                  >
+                    <Map className="h-4 w-4" /> Open map
+                  </a>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={floorPlanUrl}
+                    alt="Floor plan preview"
+                    className="mt-2 max-h-48 w-auto rounded border border-border/60 object-contain"
+                  />
+                </>
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">

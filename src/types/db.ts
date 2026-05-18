@@ -269,6 +269,7 @@ export type Database = {
       }
       gate_sessions: {
         Row: {
+          allowed_category_ids: string[] | null
           closed_at: string | null
           controller_user_id: string
           created_at: string
@@ -284,6 +285,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          allowed_category_ids?: string[] | null
           closed_at?: string | null
           controller_user_id: string
           created_at?: string
@@ -299,6 +301,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          allowed_category_ids?: string[] | null
           closed_at?: string | null
           controller_user_id?: string
           created_at?: string
@@ -946,6 +949,7 @@ export type Database = {
         | "expired"
         | "owner_mismatch"
         | "invalid_signature"
+        | "wrong_category"
         | "tx_failed"
         | "tx_pending"
         | "no_ticket"

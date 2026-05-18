@@ -92,6 +92,25 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
             </CardContent>
           </Card>
 
+          {event.floor_plan_url ? (
+            <Card className="glass rounded-lg">
+              <CardHeader>
+                <CardTitle className="text-base">Floor plan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={event.floor_plan_url}
+                  alt="Venue floor plan"
+                  className="w-full rounded-md border border-border/60 object-contain"
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Colors on the map match the color vignette of each Club Table tier.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <Card className="glass rounded-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -146,14 +165,12 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
                           ) : null}
                           {isClub ? (
                             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                              {category.min_spending != null ? (
-                                <p>
-                                  Minimum spending:{" "}
-                                  <span className="font-medium text-foreground">
-                                    {formatPrice(category.min_spending, category.currency)}
-                                  </span>
-                                </p>
-                              ) : null}
+                              <p>
+                                Minimum spending:{" "}
+                                <span className="font-medium text-foreground">
+                                  {formatPrice(category.price, category.currency)}
+                                </span>
+                              </p>
                               {category.base_capacity != null ? (
                                 <p className="flex items-center gap-1">
                                   <Users className="h-3.5 w-3.5" /> Includes {category.base_capacity} guests
@@ -192,7 +209,6 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
                           price_per_extra_guest: category.price_per_extra_guest,
                           max_extra_guests: category.max_extra_guests,
                           base_capacity: category.base_capacity,
-                          min_spending: category.min_spending,
                         }}
                         disabled={disabled}
                         reason={reason}
@@ -207,25 +223,6 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
               <CardContent className="p-5 text-sm text-muted-foreground">No ticket tiers are available.</CardContent>
             </Card>
           )}
-
-          {event.floor_plan_url ? (
-            <Card className="glass rounded-lg">
-              <CardHeader>
-                <CardTitle className="text-base">Floor plan</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={event.floor_plan_url}
-                  alt="Venue floor plan"
-                  className="w-full rounded-md border border-border/60 object-contain"
-                />
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Colors on the map match the color vignette of each Club Table tier above.
-                </p>
-              </CardContent>
-            </Card>
-          ) : null}
         </aside>
       </div>
 

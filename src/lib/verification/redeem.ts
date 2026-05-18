@@ -18,7 +18,12 @@ import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
 import { DomainError } from "@/lib/api/errors";
-import { getGateSessionByShortCode, isGateSessionUsable, updateGateLastRedemption } from "@/lib/gates/operations";
+import {
+  gateAllowsTicketCategory,
+  getGateSessionByShortCode,
+  isGateSessionUsable,
+  updateGateLastRedemption,
+} from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   backendWallet,
@@ -102,6 +107,9 @@ export async function prepareRedemption(params: {
   if (!ticket) throw new Error("Ticket not found");
   if (ticket.owner_user_id !== params.userId) throw new DomainError("Not ticket owner");
   if (ticket.event_id !== gate.event_id) throw new DomainError("Ticket is for a different event");
+  if (!gateAllowsTicketCategory(gate, ticket.category_id)) {
+    throw new DomainError("Ticket category is not accepted at this gate");
+  }
   if (ticket.status !== "sold") throw new Error(`Ticket not redeemable (status: ${ticket.status})`);
   if (!ticket.nft_contract_address || ticket.nft_token_id === null) {
     throw new Error("Ticket has no on-chain identity");
@@ -195,6 +203,27 @@ export async function confirmRedemption(params: {
       redeem_tx_hash: null,
     });
     return { result: "wrong_event", reason: "Ticket belongs to another event" };
+  }
+  if (!gateAllowsTicketCategory(gate, ticket.category_id)) {
+    const redemption_id = await recordRedemption({
+      ticket_id: ticket.id,
+      event_id: ticket.event_id,
+      controller_user_id: gate.controller_user_id,
+      evm_address: smartAccount,
+      result: "wrong_category",
+      gate_session_id: gate.id,
+      gate_name: gate.gate_name,
+      redeem_tx_hash: null,
+    });
+    if (redemption_id) {
+      await updateGateLastRedemption({
+        gateSessionId: gate.id,
+        redemptionId: redemption_id,
+        ticketId: ticket.id,
+        result: "wrong_category",
+      });
+    }
+    return { result: "wrong_category", reason: "Ticket category is not accepted at this gate" };
   }
 
   const { data: event } = await sb

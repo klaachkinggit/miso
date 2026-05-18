@@ -213,7 +213,6 @@ export async function createCategory(formData: FormData) {
     public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
     benefits: formData.get("benefits") || null,
     image_url: formData.get("image_url") || null,
-    min_spending: formData.get("min_spending") || null,
     online_advance: formData.get("online_advance") || null,
     base_capacity: formData.get("base_capacity") || null,
     extra_guests_enabled: checkbox(formData, "extra_guests_enabled"),

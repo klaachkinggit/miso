@@ -47,16 +47,27 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
     ? await sb.from("ticket_categories").select("*").in("id", categoryIds).returns<TicketCategory[]>()
     : { data: [] as TicketCategory[] };
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
+  const scopedCategoryIds = new Set(gate.allowed_category_ids ?? []);
+  const gateAcceptsCategory = (categoryId: string) =>
+    scopedCategoryIds.size === 0 || scopedCategoryIds.has(categoryId);
 
   const eligible = (tickets ?? []).filter(
     (t) =>
       t.status === "sold" &&
       t.nft_contract_address !== null &&
-      t.nft_token_id !== null,
+      t.nft_token_id !== null &&
+      gateAcceptsCategory(t.category_id),
   );
-  const ineligible = (tickets ?? []).filter(
-    (t) => !eligible.some((eligibleTicket) => eligibleTicket.id === t.id),
+  const ownsAcceptedCategory = (tickets ?? []).some((ticket) =>
+    gateAcceptsCategory(ticket.category_id),
   );
+  const noEligibleDescription = !(tickets ?? []).length
+    ? scopedCategoryIds.size > 0
+      ? "You don't own a ticket category accepted by this gate."
+      : "You don't own a ticket for this event."
+    : scopedCategoryIds.size > 0 && !ownsAcceptedCategory
+      ? "Your tickets are not in a category accepted by this gate."
+      : "You hold tickets for this event but none are currently eligible (already used, refunded, or not yet minted).";
 
   return (
     <div className="container max-w-3xl py-10">
@@ -80,11 +91,7 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
       ) : eligible.length === 0 ? (
         <EmptyState
           title="No eligible tickets"
-          description={
-            ineligible.length
-              ? "You hold tickets for this event but none are currently eligible (already used, refunded, or not yet minted)."
-              : "You don't own a ticket for this event."
-          }
+          description={noEligibleDescription}
         />
       ) : !wallet?.smart_account_address ? (
         <EmptyState
