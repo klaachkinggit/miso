@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
+import { redirectToCheckout } from "@/lib/checkout/client";
 
 export function BuyListingButton({
   listingId,
@@ -18,29 +18,11 @@ export function BuyListingButton({
 
   async function startCheckout() {
     setLoading(true);
-    try {
-      const res = await fetch("/api/marketplace/checkout", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ listing_id: listingId }),
-      });
-
-      if (res.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-        return;
-      }
-
-      const payload = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok || !payload.url) {
-        throw new Error(payload.error ?? "Checkout could not be started.");
-      }
-      window.location.href = payload.url;
-    } catch (error) {
-      toast({
-        title: "Checkout failed",
-        description: error instanceof Error ? error.message : "Please try again.",
-        variant: "destructive",
-      });
+    const redirected = await redirectToCheckout({
+      endpoint: "/api/marketplace/checkout",
+      body: { listing_id: listingId },
+    });
+    if (!redirected) {
       setLoading(false);
     }
   }

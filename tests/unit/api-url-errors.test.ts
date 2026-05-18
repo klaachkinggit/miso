@@ -1,0 +1,88 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { NextRequest } from "next/server";
+import {
+  ApiRouteError,
+  DomainError,
+  apiErrorResponse,
+  errorMessage,
+} from "@/lib/api/errors";
+import { getRequestOrigin } from "@/lib/url";
+
+const originalEnv = { ...process.env };
+
+function request(url: string, headers: Record<string, string> = {}): NextRequest {
+  return new NextRequest(url, { headers });
+}
+
+describe("getRequestOrigin", () => {
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("uses canonical APP_URL for non-local requests and strips trailing slashes", () => {
+    process.env.APP_URL = "https://miso.example.com///";
+
+    expect(getRequestOrigin(request("https://attacker.example/checkout"))).toBe("https://miso.example.com");
+  });
+
+  it("honors forwarded hosts only when allowlisted", () => {
+    process.env.APP_URL = "";
+    process.env.TRUSTED_FORWARDED_HOSTS = "miso.example.com";
+
+    expect(
+      getRequestOrigin(
+        request("https://internal.example/checkout", {
+          "x-forwarded-host": "miso.example.com",
+          "x-forwarded-proto": "https",
+        }),
+      ),
+    ).toBe("https://miso.example.com");
+    expect(
+      getRequestOrigin(
+        request("https://internal.example/checkout", {
+          "x-forwarded-host": "evil.example.com",
+          "x-forwarded-proto": "https",
+        }),
+      ),
+    ).toBe("https://internal.example");
+  });
+
+  it("keeps localhost origins usable even when APP_URL is set", () => {
+    process.env.APP_URL = "https://miso.example.com";
+
+    expect(getRequestOrigin(request("http://localhost:3002/checkout"))).toBe("http://localhost:3002");
+  });
+});
+
+describe("API error response safety", () => {
+  it("returns explicit API route errors with their status", async () => {
+    const response = apiErrorResponse(new ApiRouteError("Authentication required.", 401));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "Authentication required." });
+  });
+
+  it("exposes domain errors but suppresses generic internals", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const domain = apiErrorResponse(new DomainError("Ticket category is not accepted at this gate"));
+    const generic = apiErrorResponse(new Error("database column leaked"), { fallback: "Checkout failed." });
+
+    expect(domain.status).toBe(400);
+    await expect(domain.json()).resolves.toEqual({
+      error: "Ticket category is not accepted at this gate",
+    });
+    expect(generic.status).toBe(400);
+    await expect(generic.json()).resolves.toEqual({ error: "Checkout failed." });
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it("extracts messages from error-like values with fallback", () => {
+    expect(errorMessage({ message: "bad input" }, "fallback")).toBe("bad input");
+    expect(errorMessage(null, "fallback")).toBe("fallback");
+  });
+});

@@ -25,6 +25,19 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  try {
+    const result = await supabase.auth.getUser();
+    if (!result.error) user = result.data.user;
+    else {
+      for (const cookie of request.cookies.getAll()) {
+        if (cookie.name.startsWith("sb-")) supabaseResponse.cookies.delete(cookie.name);
+      }
+    }
+  } catch {
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-")) supabaseResponse.cookies.delete(cookie.name);
+    }
+  }
   return { response: supabaseResponse, user, supabase };
 }

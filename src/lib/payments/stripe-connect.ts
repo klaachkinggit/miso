@@ -4,7 +4,6 @@
 // from the account back onto the profile. Once Stripe confirms
 // details_submitted + charges_enabled the profile is promoted to the
 // `organizer` role so they can access /admin scoped to their own events.
-import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { stripe } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -123,10 +122,4 @@ export async function syncConnectAccountStatus(profileId: string): Promise<Conne
   }
 
   return { charges_enabled, details_submitted, payouts_enabled, onboarding_complete };
-}
-
-export async function redirectToOrganizerOnboarding(profile: Profile): Promise<never> {
-  const accountId = await ensureConnectAccountForProfile(profile);
-  const url = await createOrganizerOnboardingLink(accountId);
-  redirect(url);
 }

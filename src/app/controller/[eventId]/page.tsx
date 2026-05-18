@@ -6,12 +6,11 @@ import { getCurrentProfile } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { canOperateEventGate } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, TicketRedemption } from "@/types/db";
+import type { EventRow, TicketCategory, TicketRedemption } from "@/types/db";
 import { GatePanel } from "./gate-panel";
 
 export default async function ControllerEventPage({ params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId } = await params;
-  const profile = await getCurrentProfile();
+  const [{ eventId }, profile] = await Promise.all([params, getCurrentProfile()]);
   if (!profile || !["controller", "admin"].includes(profile.role)) redirect("/");
 
   const sb = createServiceClient();
@@ -29,6 +28,13 @@ export default async function ControllerEventPage({ params }: { params: Promise<
     .limit(20)
     .returns<TicketRedemption[]>();
 
+  const { data: categories } = await sb
+    .from("ticket_categories")
+    .select("id, name, kind")
+    .eq("event_id", eventId)
+    .order("price", { ascending: true })
+    .returns<Array<Pick<TicketCategory, "id" | "name" | "kind">>>();
+
   const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
   const host = hdrs.get("host") ?? "localhost:3000";
@@ -43,7 +49,7 @@ export default async function ControllerEventPage({ params }: { params: Promise<
             {formatDate(event.date)} · {event.venue_name}, {event.city}
           </p>
         </div>
-        <GatePanel eventId={event.id} origin={origin} />
+        <GatePanel eventId={event.id} origin={origin} categories={categories ?? []} />
       </div>
 
       <section>

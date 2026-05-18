@@ -24,6 +24,13 @@ export function isGateSessionUsable(session: GateSession): boolean {
   return new Date(session.expires_at).getTime() > Date.now();
 }
 
+export function gateAllowsTicketCategory(
+  session: Pick<GateSession, "allowed_category_ids">,
+  categoryId: string,
+): boolean {
+  return !session.allowed_category_ids?.length || session.allowed_category_ids.includes(categoryId);
+}
+
 export async function canOperateEventGate(params: {
   eventId: string;
   profile: Pick<Profile, "id" | "role">;
@@ -49,6 +56,33 @@ async function requireEventGateOperator(params: {
   if (!allowed) throw new Error("Not assigned to this event.");
 }
 
+function normalizeAllowedCategoryIds(categoryIds?: string[] | null): string[] {
+  return Array.from(new Set(categoryIds?.filter(Boolean) ?? []));
+}
+
+async function requireEventCategories(params: {
+  eventId: string;
+  categoryIds?: string[] | null;
+}): Promise<string[] | null> {
+  const categoryIds = normalizeAllowedCategoryIds(params.categoryIds);
+  if (categoryIds.length === 0) return null;
+
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from("ticket_categories")
+    .select("id")
+    .eq("event_id", params.eventId)
+    .in("id", categoryIds)
+    .returns<Array<{ id: string }>>();
+  if (error) throw new Error(error.message);
+
+  if ((data ?? []).length !== categoryIds.length) {
+    throw new Error("One or more ticket categories are not part of this event.");
+  }
+
+  return categoryIds;
+}
+
 export async function getGateSessionByShortCode(code: string): Promise<GateSession | null> {
   const sb = createServiceClient();
   const { data } = await sb
@@ -63,6 +97,7 @@ export async function openGateForController(params: {
   eventId: string;
   profile: Pick<Profile, "id" | "role">;
   gateName?: string | null;
+  allowedCategoryIds?: string[] | null;
   ttlHours?: number;
 }): Promise<GateSession> {
   await requireEventGateOperator({ eventId: params.eventId, profile: params.profile });
@@ -70,6 +105,10 @@ export async function openGateForController(params: {
   const sb = createServiceClient();
   const ttl = (params.ttlHours ?? GATE_TTL_HOURS) * 3600 * 1000;
   const expires_at = new Date(Date.now() + ttl).toISOString();
+  const allowed_category_ids = await requireEventCategories({
+    eventId: params.eventId,
+    categoryIds: params.allowedCategoryIds,
+  });
 
   for (let attempt = 0; attempt < 4; attempt++) {
     const short_code = generateShortCode();
@@ -79,6 +118,7 @@ export async function openGateForController(params: {
         event_id: params.eventId,
         controller_user_id: params.profile.id,
         gate_name: params.gateName ?? null,
+        allowed_category_ids,
         short_code,
         status: "open",
         expires_at,

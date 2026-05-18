@@ -1,6 +1,7 @@
 import type { Currency } from "@/types/db";
 
 const EVENT_TIMEZONE = "Europe/Paris";
+const APP_LOCALE = "en-GB";
 
 export function formatPrice(amount: number | string, _currency: Currency): string {
   const value = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -8,7 +9,7 @@ export function formatPrice(amount: number | string, _currency: Currency): strin
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
+  return new Date(iso).toLocaleString(APP_LOCALE, {
     timeZone: EVENT_TIMEZONE,
     day: "2-digit",
     month: "short",
@@ -19,7 +20,7 @@ export function formatDate(iso: string): string {
 }
 
 export function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
+  return new Date(iso).toLocaleString(APP_LOCALE, {
     timeZone: EVENT_TIMEZONE,
     day: "2-digit",
     month: "short",
@@ -72,16 +73,4 @@ export function casablancaInputToIso(value: string): string {
   const naive = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0));
   const offset = tzOffsetMs(naive, EVENT_TIMEZONE);
   return new Date(naive.getTime() - offset).toISOString();
-}
-
-export function shortAddress(addr: string | null | undefined, edge = 4): string {
-  if (!addr) return "—";
-  return `${addr.slice(0, edge)}…${addr.slice(-edge)}`;
-}
-
-export function explorerUrl(kind: "address" | "tx", value: string): string {
-  const base =
-    process.env.NEXT_PUBLIC_EXPLORER_BASE ?? "https://sepolia.basescan.org";
-  const path = kind === "address" ? "address" : "tx";
-  return `${base}/${path}/${value}`;
 }

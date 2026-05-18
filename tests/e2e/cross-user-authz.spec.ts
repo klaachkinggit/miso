@@ -5,6 +5,7 @@
 
 import { expect, test } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import "./helpers/env";
 import { DEMO_BUYER, DEMO_SELLER, login } from "./helpers/auth";
 
 const enabled = process.env.MISO_E2E_INVARIANTS === "1";
@@ -191,5 +192,76 @@ test.describe("Cross-user authz", () => {
       data: { category_id: "00000000-0000-0000-0000-000000000000" },
     });
     expect(res.status()).toBe(403);
+  });
+
+  test("non-owner cannot transfer another user's ticket to personal wallet", async ({ page }) => {
+    const client = sb();
+    const buyerId = await getProfileIdByEmail(client, DEMO_BUYER.email);
+
+    const { data: event } = await client
+      .from("events")
+      .insert({
+        name: `Wallet Export Authz ${Date.now()}`,
+        date: new Date(Date.now() - 86_400_000).toISOString(),
+        venue_name: "Test",
+        city: "Test",
+        capacity: 1,
+        status: "published",
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    const { data: category } = await client
+      .from("ticket_categories")
+      .insert({
+        event_id: event!.id,
+        name: "GA",
+        price: 100,
+        currency: "EUR",
+        supply: 1,
+        resale_enabled: true,
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    const { data: ticket, error: ticketError } = await client
+      .from("tickets")
+      .insert({
+        event_id: event!.id,
+        category_id: category!.id,
+        serial_number: 1,
+        status: "sold",
+        owner_user_id: buyerId,
+        owner_evm_address: "0x1111111111111111111111111111111111111111",
+        nft_contract_address: "0x2222222222222222222222222222222222222222",
+        nft_token_id: Date.now(),
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (ticketError) console.error("TICKET INSERT ERROR:", ticketError);
+
+    await login(page, DEMO_SELLER);
+    const res = await page.request.post("/api/tickets/transfer-to-wallet", {
+      data: {
+        ticket_id: ticket!.id,
+        destination_address: "0x3333333333333333333333333333333333333333",
+      },
+    });
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(String(body?.error ?? "").toLowerCase()).toContain("not ticket owner");
+
+    const { data: unchanged } = await client
+      .from("tickets")
+      .select("transferred_off_platform_at, owner_evm_address")
+      .eq("id", ticket!.id)
+      .single<{ transferred_off_platform_at: string | null; owner_evm_address: string | null }>();
+    expect(unchanged?.transferred_off_platform_at).toBeNull();
+    expect(unchanged?.owner_evm_address).toBe("0x1111111111111111111111111111111111111111");
+
+    await client.from("tickets").delete().eq("id", ticket!.id);
+    await client.from("ticket_categories").delete().eq("id", category!.id);
+    await client.from("events").delete().eq("id", event!.id);
   });
 });

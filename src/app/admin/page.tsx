@@ -25,8 +25,7 @@ export default async function OrganizerDashboardPage({
 }: {
   searchParams?: Promise<{ error?: string; success?: string }>;
 }) {
-  const params = await searchParams;
-  const profile = await requireOrganizerWorkspace();
+  const [params, profile] = await Promise.all([searchParams, requireOrganizerWorkspace()]);
   const { totals, events } = await loadOrganizerOverview({ profile });
 
   return (

@@ -6,8 +6,10 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   CancelListingButton,
   ListForResaleButton,
+  TransferToWalletButton,
 } from "@/components/tickets/list-for-resale-button";
-import { explorerUrl, formatDate, formatPrice, shortAddress } from "@/lib/format";
+import { formatDate, formatPrice } from "@/lib/format";
+import { explorerUrl, shortAddress } from "@/lib/chain/utils";
 import { cn } from "@/lib/utils";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
@@ -17,12 +19,18 @@ export function TicketCard({
   category,
   listing,
   canList,
+  canExport,
+  originalOnlineTotal,
+  maxListPrice,
 }: {
   ticket: Ticket;
   event: EventRow;
   category: TicketCategory | null;
   listing?: ResaleListing | null;
   canList?: boolean;
+  canExport?: boolean;
+  originalOnlineTotal?: number | null;
+  maxListPrice?: number | null;
 }) {
   const eventInPast = new Date(event.date).getTime() < Date.now();
   const eventCanceled = event.status === "canceled";
@@ -102,9 +110,26 @@ export function TicketCard({
           </div>
           <div>
             <p className="text-muted-foreground">Price</p>
-            <p>{category ? formatPrice(category.price, category.currency) : "Paid"}</p>
+            <p>{category ? formatPrice(originalOnlineTotal ?? category.price, category.currency) : "Paid"}</p>
           </div>
+          {ticket.total_headcount ? (
+            <div>
+              <p className="text-muted-foreground">Headcount</p>
+              <p>{ticket.total_headcount} guests</p>
+            </div>
+          ) : null}
+          {ticket.min_spending_remaining != null && category ? (
+            <div>
+              <p className="text-muted-foreground">Venue balance</p>
+              <p>{formatPrice(ticket.min_spending_remaining, category.currency)}</p>
+            </div>
+          ) : null}
         </div>
+        {ticket.transferred_off_platform_at ? (
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+            Transferred to personal wallet {shortAddress(ticket.transferred_to_address)}.
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           {ticket.nft_contract_address && ticket.mint_tx_hash ? (
             <Button asChild variant="outline">
@@ -120,9 +145,12 @@ export function TicketCard({
             <ListForResaleButton
               ticketId={ticket.id}
               currency={category.currency}
-              maxResalePrice={category.max_resale_price}
-              defaultPrice={category.max_resale_price ?? category.price}
+              maxResalePrice={maxListPrice ?? originalOnlineTotal ?? category.max_resale_price}
+              defaultPrice={maxListPrice ?? originalOnlineTotal ?? category.max_resale_price ?? category.price}
             />
+          ) : null}
+          {canExport && !ticket.transferred_off_platform_at ? (
+            <TransferToWalletButton ticketId={ticket.id} />
           ) : null}
         </div>
         {displayStatus === "listed" && listing ? (

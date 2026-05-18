@@ -17,7 +17,7 @@ import {
   TransactionTimeoutError,
   waitForTransaction,
 } from "@/lib/thirdweb/transactions";
-import type { Currency, EventRow, Ticket } from "@/types/db";
+import type { Currency, EventRow, Ticket, TicketCategoryKind } from "@/types/db";
 
 export interface EventDetailsInput {
   name: string;
@@ -28,22 +28,32 @@ export interface EventDetailsInput {
   image_url?: string | null;
   description?: string | null;
   conditions?: string | null;
-  sales_enabled: boolean;
-  resale_enabled: boolean;
-  public_sales_counter_enabled: boolean;
+  floor_plan_url?: string | null;
 }
 
 export interface CategoryInput {
   event_id: string;
+  kind: TicketCategoryKind;
   name: string;
   description?: string | null;
   price: number;
   currency: Currency;
   supply: number;
   max_resale_price?: number | null;
+  sales_enabled: boolean;
   resale_enabled: boolean;
+  public_sales_counter_enabled: boolean;
   benefits?: string | null;
   image_url?: string | null;
+  // Club Table fields (required when kind === 'club_table').
+  // Note: `min_spending` is no longer collected — the table `price`
+  // doubles as the minimum spending floor at the venue.
+  online_advance?: number | null;
+  base_capacity?: number | null;
+  extra_guests_enabled?: boolean;
+  price_per_extra_guest?: number | null;
+  max_extra_guests?: number | null;
+  color_hex?: string | null;
 }
 
 
@@ -417,6 +427,27 @@ async function assertResolvedHostIsPublic(hostname: string): Promise<void> {
   }
 }
 
+export type ImageHostClass = "local-supabase" | "blocked" | "public-candidate";
+
+export function classifyImageHost(
+  url: URL,
+  opts: { supabaseUrl: string | undefined; nodeEnv: string | undefined },
+): ImageHostClass {
+  let supabaseHost = "";
+  if (opts.supabaseUrl) {
+    try {
+      supabaseHost = new URL(opts.supabaseUrl).hostname;
+    } catch {
+      supabaseHost = "";
+    }
+  }
+  const isLocalSupabase =
+    opts.nodeEnv !== "production" && !!supabaseHost && url.hostname === supabaseHost;
+  if (isLocalSupabase) return "local-supabase";
+  if (isPrivateOrLocalHost(url.hostname)) return "blocked";
+  return "public-candidate";
+}
+
 async function pinImageToIpfs(imageUrl: string): Promise<string> {
   let url: URL;
   try {
@@ -427,10 +458,17 @@ async function pinImageToIpfs(imageUrl: string): Promise<string> {
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     throw new Error("Event image URL must be http(s)");
   }
-  if (isPrivateOrLocalHost(url.hostname)) {
-    throw new Error("Event image URL host is not allowed");
+  const hostClass = classifyImageHost(url, {
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    nodeEnv: process.env.NODE_ENV,
+  });
+  const isLocalSupabase = hostClass === "local-supabase";
+  if (!isLocalSupabase) {
+    if (hostClass === "blocked") {
+      throw new Error("Event image URL host is not allowed");
+    }
+    await assertResolvedHostIsPublic(url.hostname);
   }
-  await assertResolvedHostIsPublic(url.hostname);
 
   const res = await fetch(imageUrl, { redirect: "follow" });
   if (!res.ok) {
@@ -441,11 +479,13 @@ async function pinImageToIpfs(imageUrl: string): Promise<string> {
   // If `fetch` followed redirects, recheck the final host both syntactically
   // and via DNS — a public hostname can redirect to one that resolves private.
   const finalUrl = new URL(res.url);
-  if (isPrivateOrLocalHost(finalUrl.hostname)) {
-    throw new Error("Event image URL redirected to a private host");
-  }
-  if (finalUrl.hostname !== url.hostname) {
-    await assertResolvedHostIsPublic(finalUrl.hostname);
+  if (!isLocalSupabase) {
+    if (isPrivateOrLocalHost(finalUrl.hostname)) {
+      throw new Error("Event image URL redirected to a private host");
+    }
+    if (finalUrl.hostname !== url.hostname) {
+      await assertResolvedHostIsPublic(finalUrl.hostname);
+    }
   }
   const mimeType = res.headers.get("content-type") ?? "application/octet-stream";
   if (!ALLOWED_IMAGE_MIME.test(mimeType.split(";")[0]!.trim())) {

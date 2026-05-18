@@ -1,53 +1,58 @@
 # Tests
 
-Four layers, all under `tests/e2e/` (Playwright is the only runner).
+Test process now has five layers. Goal: every new pure module gets unit
+coverage, every API/service boundary gets integration or e2e coverage,
+every DB invariant gets a migration/e2e assertion, and every chain path
+gets mock coverage plus one live Base Sepolia smoke.
 
-## Smoke (`smoke.spec.ts`)
+## Unit: isolated modules
+
+Pure, no DB, no Stripe, no Thirdweb. Covers V2 pricing, wallet export
+policy, and request schemas.
+
+```
+npm run test:unit
+```
+
+## Static checks
+
+```
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Smoke e2e
 
 Always-on shallow checks: pages render, auth-gated routes redirect.
-No DB seed required. Runs in CI on every push.
+No DB seed required.
 
 ```
 npm run test:e2e
 ```
 
-## Full path (`full-path.spec.ts`)
+## Full local e2e + invariants
 
-Authenticated journeys (login → buy → tickets → redeem, resale list +
-checkout). Requires a seeded Supabase. Local checkout runs with
-`MISO_MOCK_CHAIN=1` so the suite verifies UI and database behavior
-without broadcasting Thirdweb transactions. Gated behind `MISO_E2E_FULL=1`
-so CI without a seeded DB stays green on smoke alone.
+Authenticated journeys and DB-level invariants. Uses `MISO_MOCK_CHAIN=1`
+to verify UI/database behavior without broadcasting Thirdweb txs.
 
 ```
 supabase start
 supabase migration up
 npm run demo:seed
-MISO_MOCK_CHAIN=1 MISO_E2E_FULL=1 npm run test:e2e
+npm run test:e2e:all-local
 ```
 
-## Invariants + authz + controller (`invariants.spec.ts`, `cross-user-authz.spec.ts`, `controller-flow.spec.ts`)
+Covers checkout, wallet, redemption, resale, role gates, controller
+flows, authz, reservation races, chain-op constraints, V2 gift guard,
+wallet export authz, and marketplace fee persistence.
 
-Deterministic DB-level invariants and HTTP authz checks. No chain calls.
-Covers: redemption unique index, reservation race, cancellation refund state transitions, cross-user listing
-cancel/buy, role-based marketplace gates, controller gate
-open/poll/close + cross-controller authz. Gated behind
-`MISO_E2E_INVARIANTS=1`.
+## Live Base Sepolia
 
-```
-supabase start
-supabase migration up
-npm run demo:seed
-MISO_E2E_INVARIANTS=1 npm run test:e2e
-```
-
-## Live Base Sepolia (`live-chain.spec.ts`)
-
-End-to-end on-chain smoke that hits the real Thirdweb Transactions API
-on Base Sepolia (chain 84532). Deploys a fresh MisoTicket contract,
-mints to a pregenerated In-App Wallet, then reads `ownerOf` and
-`tokenURI` back over RPC. Off by default — burns Sepolia ETH from the
-backend wallet (free, but rate-limited by the faucet).
+Real Thirdweb Transactions API on Base Sepolia (`84532`). Deploys fresh
+MisoTicket, mints to a pregenerated In-App Wallet, then reads `ownerOf`
+and `tokenURI` over RPC. Off by default because it needs funded backend
+wallet and live API credentials.
 
 ```
 LIVE_CHAIN=true \
@@ -58,13 +63,20 @@ CHAIN_ID=84532 \
 npx playwright test tests/e2e/live-chain.spec.ts
 ```
 
-The backend wallet must hold Sepolia ETH (≈0.05 ETH covers many runs).
-Faucet: https://www.alchemy.com/faucets/base-sepolia.
+## Release gate
 
-## Why no unit-test runner?
+Run this before merging feature branches:
 
-The on-chain plan called for msw-mocked unit tests around the Thirdweb
-client. The repo only ships Playwright today; adding vitest/jest just
-for three clients was scoped out. Coverage is satisfied by the live
-smoke test plus the full-path e2e once seeded. Revisit if the
-on-chain surface area grows.
+```
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run build
+npm run test:e2e
+npm run test:e2e:all-local
+LIVE_CHAIN=true npx playwright test tests/e2e/live-chain.spec.ts
+```
+
+No suite can prove literally every UI state forever. Rule: new module or
+regression gets smallest isolated test first, then one end-to-end path if
+behavior crosses UI/API/DB/chain.

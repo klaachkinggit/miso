@@ -198,6 +198,7 @@ export type Database = {
           created_at: string
           date: string
           description: string | null
+          floor_plan_url: string | null
           id: string
           image_ipfs_uri: string | null
           image_url: string | null
@@ -219,6 +220,7 @@ export type Database = {
           created_at?: string
           date: string
           description?: string | null
+          floor_plan_url?: string | null
           id?: string
           image_ipfs_uri?: string | null
           image_url?: string | null
@@ -240,6 +242,7 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string | null
+          floor_plan_url?: string | null
           id?: string
           image_ipfs_uri?: string | null
           image_url?: string | null
@@ -266,6 +269,7 @@ export type Database = {
       }
       gate_sessions: {
         Row: {
+          allowed_category_ids: string[] | null
           closed_at: string | null
           controller_user_id: string
           created_at: string
@@ -281,6 +285,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          allowed_category_ids?: string[] | null
           closed_at?: string | null
           controller_user_id: string
           created_at?: string
@@ -296,6 +301,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          allowed_category_ids?: string[] | null
           closed_at?: string | null
           controller_user_id?: string
           created_at?: string
@@ -391,7 +397,11 @@ export type Database = {
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
           event_id: string
+          extra_guests_count: number
+          gift_recipient_user_id: string | null
           id: string
+          min_spending_total: number | null
+          online_advance_amount: number | null
           paid_at: string | null
           payment_provider: string | null
           provider_payment_id: string | null
@@ -406,7 +416,11 @@ export type Database = {
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
           event_id: string
+          extra_guests_count?: number
+          gift_recipient_user_id?: string | null
           id?: string
+          min_spending_total?: number | null
+          online_advance_amount?: number | null
           paid_at?: string | null
           payment_provider?: string | null
           provider_payment_id?: string | null
@@ -421,7 +435,11 @@ export type Database = {
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
           event_id?: string
+          extra_guests_count?: number
+          gift_recipient_user_id?: string | null
           id?: string
+          min_spending_total?: number | null
+          online_advance_amount?: number | null
           paid_at?: string | null
           payment_provider?: string | null
           provider_payment_id?: string | null
@@ -455,11 +473,14 @@ export type Database = {
       }
       resale_listings: {
         Row: {
+          buyer_total_amount: number | null
           buyer_user_id: string | null
+          checkout_idempotency_key: string | null
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
           id: string
           payment_provider: string | null
+          platform_fee_amount: number
           price: number
           provider_session_id: string | null
           seller_user_id: string
@@ -468,11 +489,14 @@ export type Database = {
           ticket_id: string
         }
         Insert: {
+          buyer_total_amount?: number | null
           buyer_user_id?: string | null
+          checkout_idempotency_key?: string | null
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
           id?: string
           payment_provider?: string | null
+          platform_fee_amount?: number
           price: number
           provider_session_id?: string | null
           seller_user_id: string
@@ -481,11 +505,14 @@ export type Database = {
           ticket_id: string
         }
         Update: {
+          buyer_total_amount?: number | null
           buyer_user_id?: string | null
+          checkout_idempotency_key?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
           id?: string
           payment_provider?: string | null
+          platform_fee_amount?: number
           price?: number
           provider_session_id?: string | null
           seller_user_id?: string
@@ -517,52 +544,130 @@ export type Database = {
           },
         ]
       }
+      resale_seller_settlements: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: Database["public"]["Enums"]["currency"]
+          id: string
+          listing_id: string
+          provider_transfer_id: string | null
+          seller_user_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: Database["public"]["Enums"]["currency"]
+          id?: string
+          listing_id: string
+          provider_transfer_id?: string | null
+          seller_user_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency"]
+          id?: string
+          listing_id?: string
+          provider_transfer_id?: string | null
+          seller_user_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resale_seller_settlements_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "resale_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resale_seller_settlements_seller_user_id_fkey"
+            columns: ["seller_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_categories: {
         Row: {
+          base_capacity: number | null
           benefits: string | null
+          color_hex: string | null
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
           description: string | null
           event_id: string
+          extra_guests_enabled: boolean
           id: string
           image_ipfs_uri: string | null
           image_url: string | null
+          kind: Database["public"]["Enums"]["ticket_category_kind"]
+          max_extra_guests: number | null
           max_resale_price: number | null
+          min_spending: number | null
           name: string
+          online_advance: number | null
           price: number
+          price_per_extra_guest: number | null
+          public_sales_counter_enabled: boolean
           resale_enabled: boolean
+          sales_enabled: boolean
           sold_count: number
           supply: number
         }
         Insert: {
+          base_capacity?: number | null
           benefits?: string | null
+          color_hex?: string | null
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
           description?: string | null
           event_id: string
+          extra_guests_enabled?: boolean
           id?: string
           image_ipfs_uri?: string | null
           image_url?: string | null
+          kind?: Database["public"]["Enums"]["ticket_category_kind"]
+          max_extra_guests?: number | null
           max_resale_price?: number | null
+          min_spending?: number | null
           name: string
+          online_advance?: number | null
           price: number
+          price_per_extra_guest?: number | null
+          public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
+          sales_enabled?: boolean
           sold_count?: number
           supply: number
         }
         Update: {
+          base_capacity?: number | null
           benefits?: string | null
+          color_hex?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
           description?: string | null
           event_id?: string
+          extra_guests_enabled?: boolean
           id?: string
           image_ipfs_uri?: string | null
           image_url?: string | null
+          kind?: Database["public"]["Enums"]["ticket_category_kind"]
+          max_extra_guests?: number | null
           max_resale_price?: number | null
+          min_spending?: number | null
           name?: string
+          online_advance?: number | null
           price?: number
+          price_per_extra_guest?: number | null
+          public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
+          sales_enabled?: boolean
           sold_count?: number
           supply?: number
         }
@@ -648,13 +753,17 @@ export type Database = {
         Row: {
           canceled_at: string | null
           category_id: string
+          color_hex_snapshot: string | null
           created_at: string
           current_listing_id: string | null
           event_id: string
+          extra_guests_count: number
           id: string
           image_url: string | null
           last_transfer_tx_hash: string | null
           metadata_uri: string | null
+          min_spending_remaining: number | null
+          min_spending_total: number | null
           mint_tx_hash: string | null
           minted_at: string | null
           nft_contract_address: string | null
@@ -667,19 +776,26 @@ export type Database = {
           reserved_until: string | null
           serial_number: number
           status: Database["public"]["Enums"]["ticket_status"]
+          total_headcount: number | null
+          transferred_off_platform_at: string | null
+          transferred_to_address: string | null
           updated_at: string
           used_at: string | null
         }
         Insert: {
           canceled_at?: string | null
           category_id: string
+          color_hex_snapshot?: string | null
           created_at?: string
           current_listing_id?: string | null
           event_id: string
+          extra_guests_count?: number
           id?: string
           image_url?: string | null
           last_transfer_tx_hash?: string | null
           metadata_uri?: string | null
+          min_spending_remaining?: number | null
+          min_spending_total?: number | null
           mint_tx_hash?: string | null
           minted_at?: string | null
           nft_contract_address?: string | null
@@ -692,19 +808,26 @@ export type Database = {
           reserved_until?: string | null
           serial_number: number
           status?: Database["public"]["Enums"]["ticket_status"]
+          total_headcount?: number | null
+          transferred_off_platform_at?: string | null
+          transferred_to_address?: string | null
           updated_at?: string
           used_at?: string | null
         }
         Update: {
           canceled_at?: string | null
           category_id?: string
+          color_hex_snapshot?: string | null
           created_at?: string
           current_listing_id?: string | null
           event_id?: string
+          extra_guests_count?: number
           id?: string
           image_url?: string | null
           last_transfer_tx_hash?: string | null
           metadata_uri?: string | null
+          min_spending_remaining?: number | null
+          min_spending_total?: number | null
           mint_tx_hash?: string | null
           minted_at?: string | null
           nft_contract_address?: string | null
@@ -717,6 +840,9 @@ export type Database = {
           reserved_until?: string | null
           serial_number?: number
           status?: Database["public"]["Enums"]["ticket_status"]
+          total_headcount?: number | null
+          transferred_off_platform_at?: string | null
+          transferred_to_address?: string | null
           updated_at?: string
           used_at?: string | null
         }
@@ -826,6 +952,7 @@ export type Database = {
         | "expired"
         | "owner_mismatch"
         | "invalid_signature"
+        | "wrong_category"
         | "tx_failed"
         | "tx_pending"
         | "no_ticket"
@@ -843,6 +970,7 @@ export type Database = {
         | "minting"
         | "transferring"
         | "repair_needed"
+      ticket_category_kind: "standard" | "club_table"
       user_role: "user" | "controller" | "admin" | "organizer"
     }
     CompositeTypes: {
@@ -1544,3 +1672,4 @@ export type ChainOp = Tables<"chain_ops">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type RedemptionResult = Enums<"redemption_result">
+export type TicketCategoryKind = Enums<"ticket_category_kind">

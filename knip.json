@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreDependencies": [
+    "@openzeppelin/contracts",
+    "eslint",
+    "eslint-config-next"
+  ],
+  "ignoreIssues": {
+    "src/types/db.ts": ["types"]
+  }
+}

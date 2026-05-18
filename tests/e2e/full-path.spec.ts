@@ -24,6 +24,8 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
     const buyButton = page.getByRole("button", { name: /get ticket/i }).first();
     await expect(buyButton).toBeEnabled();
     await buyButton.click();
+    await expect(page.getByRole("heading", { name: /buy this ticket/i })).toBeVisible();
+    await page.getByRole("button", { name: /continue to payment/i }).click();
 
     // Button redirects to Stripe Checkout; wait for Stripe domain or success URL.
     await page.waitForURL(/checkout\.stripe\.com|\/checkout\/success/, { timeout: 30_000 });
@@ -32,7 +34,7 @@ test.describe("Full path: discover → checkout → my tickets → redeem", () =
   test("ticket appears in /tickets after purchase", async ({ page }) => {
     await login(page, DEMO_BUYER);
     await page.goto("/tickets");
-    await expect(page.getByRole("heading", { name: "Wallet" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Wallet", exact: true })).toBeVisible();
     // Either we have tickets (purchased above) or empty state if seed was reset.
     const ticketCards = page.getByText(/serial/i);
     const empty = page.getByText("No tickets yet");
@@ -46,10 +48,10 @@ test.describe("Marketplace: list → purchase", () => {
   test("seller can open list-for-resale dialog on a valid ticket", async ({ page }) => {
     await login(page, DEMO_BUYER);
     await page.goto("/tickets");
-    const listButton = page.getByRole("button", { name: /list for resale/i }).first();
+    const listButton = page.getByRole("button", { name: /list ticket/i }).first();
     if (await listButton.count()) {
       await listButton.click();
-      await expect(page.getByRole("heading", { name: /list ticket for resale/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /list ticket/i })).toBeVisible();
       await page.getByRole("button", { name: /^cancel$/i }).click();
     }
   });

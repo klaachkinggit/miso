@@ -2,7 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { formatDateShort, shortAddress } from "@/lib/format";
+import { formatDateShort } from "@/lib/format";
+import { shortAddress } from "@/lib/chain/utils";
 import type { Ticket, TicketCategory } from "@/types/db";
 import { refundTicketAction } from "../../actions";
 

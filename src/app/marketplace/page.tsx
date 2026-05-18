@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { PageHeader } from "@/components/site/page-header";
 import { formatDate, formatPrice } from "@/lib/format";
+import { resalePlatformFee } from "@/lib/resale/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
@@ -49,7 +50,6 @@ export default async function MarketplacePage() {
     const event = eventById.get(ticket.event_id);
     if (!event || event.status !== "published") return false;
     if (new Date(event.date).getTime() < now) return false;
-    if (!event.resale_enabled) return false;
     const category = categoryById.get(ticket.category_id);
     if (!category?.resale_enabled) return false;
     return true;
@@ -68,6 +68,8 @@ export default async function MarketplacePage() {
             const ticket = ticketById.get(listing.ticket_id)!;
             const event = eventById.get(ticket.event_id)!;
             const category = categoryById.get(ticket.category_id);
+            const platformFee = resalePlatformFee(Number(listing.price));
+            const buyerTotal = Number(listing.price) + platformFee;
             return (
               <Card key={listing.id} className="glass overflow-hidden rounded-lg">
                 <Link href={`/marketplace/${listing.id}`} className="block">
@@ -109,11 +111,24 @@ export default async function MarketplacePage() {
                           {category.name}
                         </span>
                       ) : null}
+                      {ticket.total_headcount ? (
+                        <span>As-is group pass: {ticket.total_headcount} guests</span>
+                      ) : null}
+                      {ticket.min_spending_remaining != null && category ? (
+                        <span>Venue balance due: {formatPrice(ticket.min_spending_remaining, category.currency)}</span>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="text-xl font-semibold">
-                      {formatPrice(listing.price, listing.currency)}
+                    <div>
+                      <div className="text-xl font-semibold">
+                        {formatPrice(buyerTotal, listing.currency)}
+                      </div>
+                      {platformFee > 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Includes {formatPrice(platformFee, listing.currency)} MISO fee
+                        </p>
+                      ) : null}
                     </div>
                     <Button asChild>
                       <Link href={`/marketplace/${listing.id}`}>View</Link>

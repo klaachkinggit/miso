@@ -1,23 +1,28 @@
 // Role helpers — server-side only.
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Profile, UserRole } from "@/types/db";
 
-export async function getCurrentUser(): Promise<{ id: string; email: string } | null> {
+export const getCurrentUser = cache(async (): Promise<{ id: string; email: string } | null> => {
   const sb = await createClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return null;
-  return { id: user.id, email: user.email ?? "" };
-}
+  try {
+    const { data: { user }, error } = await sb.auth.getUser();
+    if (error || !user) return null;
+    return { id: user.id, email: user.email ?? "" };
+  } catch {
+    return null;
+  }
+});
 
-export async function getCurrentProfile(): Promise<Profile | null> {
+export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   const user = await getCurrentUser();
   if (!user) return null;
   const sb = createServiceClient();
   const { data } = await sb.from("profiles").select("*").eq("id", user.id).single<Profile>();
   return data ?? null;
-}
+});
 
 export async function requireUser() {
   const u = await getCurrentUser();
@@ -33,16 +38,8 @@ export async function requireRole(role: UserRole | UserRole[]) {
   return profile;
 }
 
-export async function requireAdmin() {
-  return requireRole("admin");
-}
-
 export async function requireOrganizerWorkspace() {
   return requireRole(["admin", "organizer"]);
-}
-
-export function isGlobalAdmin(profile: Pick<Profile, "role">): boolean {
-  return profile.role === "admin";
 }
 
 export function canUseOrganizerWorkspace(profile: Pick<Profile, "role">): boolean {

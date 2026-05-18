@@ -1,8 +1,10 @@
+import { computeClubTablePricing } from "@/lib/payments/pricing";
 import { settleFailedPurchase } from "@/lib/payments/settlement";
 import {
   createStripeCheckoutSession,
   expireStripeCheckoutSession,
 } from "@/lib/payments/stripe";
+import { DomainError } from "@/lib/api/errors";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reserveTicket } from "@/lib/tickets/lifecycle";
 import type { EventRow, Purchase, TicketCategory } from "@/types/db";
@@ -13,16 +15,39 @@ export interface PurchaseCheckoutResult {
   idempotentReplay: boolean;
 }
 
+export class GiftRecipientNotFoundError extends DomainError {
+  constructor(email: string) {
+    super(`No MISO account is registered for ${email}.`);
+    this.name = "GiftRecipientNotFoundError";
+  }
+}
+
+class ExtraGuestsInvalidError extends DomainError {
+  constructor(message: string) {
+    super(message);
+    this.name = "ExtraGuestsInvalidError";
+  }
+}
+
 export async function createPurchaseCheckout(params: {
   buyerUserId: string;
   categoryId: string;
+  extraGuestsCount?: number;
+  giftRecipientEmail?: string | null;
   idempotencyKey?: string;
   successUrl: string;
   cancelUrl: string;
 }): Promise<PurchaseCheckoutResult> {
   let ticketId: string | undefined;
   let purchaseId: string | undefined;
+  let compensated = false;
   const sb = createServiceClient();
+  const extras = Math.max(0, Math.floor(params.extraGuestsCount ?? 0));
+  const compensateStartedCheckout = async () => {
+    if (compensated || (!ticketId && !purchaseId)) return;
+    compensated = true;
+    await settleFailedPurchase({ ticketId, purchaseId });
+  };
 
   try {
     if (params.idempotencyKey) {
@@ -43,11 +68,42 @@ export async function createPurchaseCheckout(params: {
       }
     }
 
+    // Resolve gift recipient against profiles BEFORE reserving inventory.
+    // Strict guardrail: block the transaction if the email is not a
+    // registered MISO account (no auto-invite — friend must exist).
+    let giftRecipientUserId: string | null = null;
+    if (params.giftRecipientEmail) {
+      const email = params.giftRecipientEmail.toLowerCase();
+      const { data: friend } = await sb
+        .from("profiles")
+        .select("id, email")
+        .eq("email", email)
+        .maybeSingle<{ id: string; email: string }>();
+      if (!friend) throw new GiftRecipientNotFoundError(email);
+      giftRecipientUserId = friend.id;
+    }
+
     const { ticket, category } = await reserveTicket({
       categoryId: params.categoryId,
       buyerUserId: params.buyerUserId,
     });
     ticketId = ticket.id;
+
+    // Validate extras against category configuration.
+    if (extras > 0) {
+      if (category.kind !== "club_table" || !category.extra_guests_enabled) {
+        throw new ExtraGuestsInvalidError("This category does not allow extra guests.");
+      }
+      const maxExtras = category.max_extra_guests ?? 0;
+      if (extras > maxExtras) {
+        throw new ExtraGuestsInvalidError(
+          `At most ${maxExtras} extra guest(s) allowed for this table.`,
+        );
+      }
+      if (category.price_per_extra_guest == null) {
+        throw new ExtraGuestsInvalidError("Extra guest price is not configured.");
+      }
+    }
 
     const [{ data: event }, { data: cat }] = await Promise.all([
       sb.from("events").select("*").eq("id", ticket.event_id).single<EventRow>(),
@@ -55,16 +111,35 @@ export async function createPurchaseCheckout(params: {
     ]);
     if (!event) throw new Error("Event not found.");
 
+    // Pricing:
+    //  - standard: full price online
+    //  - club_table: online_advance + extras * price_per_extra_guest
+    let amount: number;
+    let onlineAdvanceAmount: number | null = null;
+    let minSpendingTotal: number | null = null;
+    if (category.kind === "club_table") {
+      const pricing = computeClubTablePricing(category, extras);
+      amount = pricing.amount;
+      onlineAdvanceAmount = pricing.onlineAdvanceAmount;
+      minSpendingTotal = pricing.minSpendingTotal;
+    } else {
+      amount = Number(category.price);
+    }
+
     const { data: purchase, error: purchaseError } = await sb
       .from("purchases")
       .insert({
         buyer_user_id: params.buyerUserId,
         event_id: event.id,
         ticket_id: ticket.id,
-        amount: category.price,
+        amount,
         currency: category.currency,
         status: "pending",
         checkout_idempotency_key: params.idempotencyKey,
+        gift_recipient_user_id: giftRecipientUserId,
+        extra_guests_count: extras,
+        online_advance_amount: onlineAdvanceAmount,
+        min_spending_total: minSpendingTotal,
       })
       .select("*")
       .single<Purchase>();
@@ -73,17 +148,26 @@ export async function createPurchaseCheckout(params: {
     }
     purchaseId = purchase.id;
 
-    const session = await createStripeCheckoutSession({
-      purchaseId: purchase.id,
-      amount: Number(category.price),
-      currency: category.currency,
-      eventName: event.name,
-      categoryName: cat?.name ?? "Ticket",
-      successUrl: params.successUrl,
-      cancelUrl: params.cancelUrl,
-    }, {
-      idempotencyKey: params.idempotencyKey,
-    });
+    const categoryLabel = cat?.name ?? "Ticket";
+    const extraLabel = extras > 0 ? ` + ${extras} extra guest(s)` : "";
+    const session = await createStripeCheckoutSession(
+      {
+        purchaseId: purchase.id,
+        amount,
+        currency: category.currency,
+        eventName: event.name,
+        categoryName: `${categoryLabel}${extraLabel}`,
+        successUrl: params.successUrl,
+        cancelUrl: params.cancelUrl,
+      },
+      {
+        idempotencyKey: params.idempotencyKey,
+      },
+    );
+    if (!session.url) {
+      await expireStripeCheckoutSession(session.id);
+      throw new Error("Stripe Checkout session did not include a URL.");
+    }
 
     const { error: providerUpdateError } = await sb
       .from("purchases")
@@ -93,18 +177,18 @@ export async function createPurchaseCheckout(params: {
       })
       .eq("id", purchase.id);
     if (providerUpdateError) {
-      await settleFailedPurchase({ ticketId, purchaseId });
+      await compensateStartedCheckout();
       await expireStripeCheckoutSession(session.id);
       throw providerUpdateError;
     }
 
     return {
       purchaseId: purchase.id,
-      checkoutUrl: session.url!,
+      checkoutUrl: session.url,
       idempotentReplay: false,
     };
   } catch (error) {
-    await settleFailedPurchase({ ticketId, purchaseId });
+    await compensateStartedCheckout();
     throw error;
   }
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { CheckCircle2, Copy, Loader2, Link as LinkIcon, ScanLine, XCircle } from "lucide-react";
+import { CheckCircle2, Copy, Loader2, Link as LinkIcon, ScanLine, Tags, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ interface GateSession {
   id: string;
   short_code: string;
   gate_name: string | null;
+  allowed_category_ids: string[] | null;
   status: "open" | "closed" | "expired";
   expires_at: string;
   last_result: string | null;
@@ -24,12 +25,28 @@ interface GateSession {
 
 interface PollResponse {
   session: GateSession;
-  last_redemption: { id: string; result: string; redeemed_at: string; wallet_address: string | null } | null;
+  last_redemption: { id: string; result: string; redeemed_at: string; evm_address: string | null } | null;
   last_ticket: { id: string; serial_number: number; status: string } | null;
 }
 
-export function GatePanel({ eventId, origin }: { eventId: string; origin: string }) {
+interface GateCategoryOption {
+  id: string;
+  name: string;
+  kind: string;
+}
+
+export function GatePanel({
+  eventId,
+  origin,
+  categories,
+}: {
+  eventId: string;
+  origin: string;
+  categories: GateCategoryOption[];
+}) {
   const [gateName, setGateName] = useState("");
+  const [scope, setScope] = useState<"all" | "selected">("all");
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [session, setSession] = useState<GateSession | null>(null);
   const [last, setLast] = useState<PollResponse["last_redemption"]>(null);
@@ -38,14 +55,29 @@ export function GatePanel({ eventId, origin }: { eventId: string; origin: string
   const [copied, setCopied] = useState(false);
   const sessionId = session?.id;
   const sessionStatus = session?.status;
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const needsCategorySelection = scope === "selected" && selectedCategoryIds.length === 0;
+
+  function toggleCategory(categoryId: string) {
+    setSelectedCategoryIds((current) =>
+      current.includes(categoryId)
+        ? current.filter((id) => id !== categoryId)
+        : [...current, categoryId],
+    );
+  }
 
   async function openGate() {
+    if (needsCategorySelection) return;
     setCreating(true);
     try {
       const res = await fetch("/api/controller/gates", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ event_id: eventId, gate_name: gateName || undefined }),
+        body: JSON.stringify({
+          event_id: eventId,
+          gate_name: gateName || undefined,
+          allowed_category_ids: scope === "selected" ? selectedCategoryIds : undefined,
+        }),
       });
       const payload = (await res.json()) as GateSession & { error?: string };
       if (!res.ok) throw new Error(payload.error ?? "Could not open gate");
@@ -150,7 +182,62 @@ export function GatePanel({ eventId, origin }: { eventId: string; origin: string
                 onChange={(event) => setGateName(event.target.value)}
               />
             </div>
-            <Button type="button" onClick={openGate} disabled={creating}>
+            <div className="grid gap-3">
+              <Label>Accepted categories</Label>
+              <div className="grid grid-cols-2 rounded-md border border-border/70 p-1">
+                <button
+                  type="button"
+                  onClick={() => setScope("all")}
+                  className={`rounded px-3 py-2 text-sm font-medium transition ${
+                    scope === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-pressed={scope === "all"}
+                >
+                  All categories
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScope("selected")}
+                  className={`rounded px-3 py-2 text-sm font-medium transition ${
+                    scope === "selected"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-pressed={scope === "selected"}
+                >
+                  Selected
+                </button>
+              </div>
+              {scope === "selected" ? (
+                <div className="grid gap-2">
+                  {categories.map((category) => (
+                    <label
+                      key={category.id}
+                      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border/60 px-3 py-2 text-sm transition hover:border-border"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCategoryIds.includes(category.id)}
+                        onChange={() => toggleCategory(category.id)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      <span className="flex-1">{category.name}</span>
+                      <Badge variant="secondary">
+                        {category.kind === "club_table" ? "Table" : "Ticket"}
+                      </Badge>
+                    </label>
+                  ))}
+                  {categories.length === 0 ? (
+                    <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                      No ticket categories have been created for this event.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <Button type="button" onClick={openGate} disabled={creating || needsCategorySelection}>
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
               Open gate
             </Button>
@@ -160,6 +247,23 @@ export function GatePanel({ eventId, origin }: { eventId: string; origin: string
             <div className="flex items-center justify-between">
               <Badge variant={session.status === "open" ? "success" : "secondary"}>{session.status}</Badge>
               {session.gate_name ? <span className="text-sm text-muted-foreground">{session.gate_name}</span> : null}
+            </div>
+            <div className="rounded-md border border-border/70 p-3 text-sm">
+              <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+                <Tags className="h-4 w-4" />
+                Accepted categories
+              </div>
+              {session.allowed_category_ids?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {session.allowed_category_ids.map((categoryId) => (
+                    <Badge key={categoryId} variant="secondary">
+                      {categoryById.get(categoryId)?.name ?? "Category"}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <Badge variant="secondary">All categories</Badge>
+              )}
             </div>
             <div className="grid gap-2 text-sm">
               <div className="grid justify-items-center gap-3 rounded-md border border-border/70 bg-white p-4">
@@ -216,7 +320,7 @@ export function GatePanel({ eventId, origin }: { eventId: string; origin: string
               <p className="mt-2 text-sm text-muted-foreground">
                 {last
                   ? lastTicket
-                    ? `Ticket #${lastTicket.serial_number} · ${last.wallet_address?.slice(0, 6)}…`
+                    ? `Ticket #${lastTicket.serial_number} · ${last.evm_address?.slice(0, 6)}…`
                     : "Awaiting backend write"
                   : "Waiting for customer to redeem."}
               </p>
