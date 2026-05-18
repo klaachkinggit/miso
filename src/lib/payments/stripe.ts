@@ -74,6 +74,7 @@ export interface ResaleStripeCheckoutInput {
   listingId: string;
   buyerUserId: string;
   amount: number;
+  platformFeeAmount?: number;
   currency: Currency;
   eventName: string;
   categoryName: string;
@@ -84,26 +85,45 @@ export interface ResaleStripeCheckoutInput {
 export async function createResaleStripeCheckoutSession(
   input: ResaleStripeCheckoutInput,
 ): Promise<Stripe.Checkout.Session> {
+  const platformFeeAmount = input.platformFeeAmount ?? 0;
+  const lineItems = [
+    {
+      price_data: {
+        currency: stripeCurrency(input.currency),
+        unit_amount: toCents(input.amount),
+        product_data: {
+          name: `${input.eventName} — ${input.categoryName} (Resale)`,
+        },
+      },
+      quantity: 1,
+    },
+  ];
+
+  if (platformFeeAmount > 0) {
+    lineItems.push({
+      price_data: {
+        currency: stripeCurrency(input.currency),
+        unit_amount: toCents(platformFeeAmount),
+        product_data: {
+          name: "MISO marketplace platform fee",
+        },
+      },
+      quantity: 1,
+    });
+  }
+
   return stripe.checkout.sessions.create({
     mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: stripeCurrency(input.currency),
-          unit_amount: toCents(input.amount),
-          product_data: {
-            name: `${input.eventName} — ${input.categoryName} (Resale)`,
-          },
-        },
-        quantity: 1,
-      },
-    ],
+    line_items: lineItems,
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
     metadata: {
       type: "resale",
       listing_id: input.listingId,
       buyer_id: input.buyerUserId,
+      seller_amount: String(input.amount),
+      platform_fee_amount: String(platformFeeAmount),
+      buyer_total: String(input.amount + platformFeeAmount),
     },
     expires_at: Math.floor(Date.now() / 1000) + RESERVATION_TTL_SECONDS,
   });

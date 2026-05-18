@@ -21,7 +21,7 @@ import {
 import type { Address } from "viem";
 import type { ChainOp } from "@/types/db";
 
-type ChainOpType = "mint" | "transfer";
+type ChainOpType = "mint" | "transfer" | "wallet_export";
 
 export interface OpenChainOpInput {
   opType: ChainOpType;
@@ -66,8 +66,10 @@ export async function openOrResumeChainOp(
       .in("status", liveStatuses as unknown as string[]);
     if (input.opType === "mint") {
       query = query.eq("purchase_id", input.purchaseId!);
-    } else {
+    } else if (input.opType === "transfer") {
       query = query.eq("listing_id", input.listingId!);
+    } else {
+      query = query.eq("ticket_id", input.ticketId);
     }
     const { data } = await query.maybeSingle<ChainOp>();
     return data ?? null;
@@ -82,8 +84,10 @@ export async function openOrResumeChainOp(
       .limit(1);
     if (input.opType === "mint") {
       attemptQuery = attemptQuery.eq("purchase_id", input.purchaseId!);
-    } else {
+    } else if (input.opType === "transfer") {
       attemptQuery = attemptQuery.eq("listing_id", input.listingId!);
+    } else {
+      attemptQuery = attemptQuery.eq("ticket_id", input.ticketId);
     }
     const { data: prior } = await attemptQuery.maybeSingle<{ attempt: number }>();
     return prior ? prior.attempt + 1 : 1;
@@ -100,7 +104,9 @@ export async function openOrResumeChainOp(
     const idempotencyKey =
       input.opType === "mint"
         ? `mint:${input.purchaseId}:${nextAttempt}`
-        : `transfer:${input.listingId}:${nextAttempt}`;
+        : input.opType === "transfer"
+          ? `transfer:${input.listingId}:${nextAttempt}`
+          : `wallet_export:${input.ticketId}:${nextAttempt}`;
 
     const { data: inserted, error } = await sb
       .from("chain_ops")

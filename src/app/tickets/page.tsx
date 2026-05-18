@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/site/page-header";
 import { TicketCard } from "@/components/tickets/ticket-card";
 import { getCurrentProfile } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
+import type { EventRow, Purchase, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
 export default async function TicketsPage() {
   const profile = await getCurrentProfile();
@@ -29,8 +29,15 @@ export default async function TicketsPage() {
         .filter((id): id is string => Boolean(id)),
     ),
   ];
+  const purchaseIds = [
+    ...new Set(
+      (tickets ?? [])
+        .map((t) => t.original_purchase_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
 
-  const [{ data: events }, { data: categories }, { data: listings }] = await Promise.all([
+  const [{ data: events }, { data: categories }, { data: listings }, { data: purchases }] = await Promise.all([
     eventIds.length
       ? sb.from("events").select("*").in("id", eventIds).returns<EventRow[]>()
       : Promise.resolve({ data: [] as EventRow[] }),
@@ -40,11 +47,15 @@ export default async function TicketsPage() {
     listingIds.length
       ? sb.from("resale_listings").select("*").in("id", listingIds).returns<ResaleListing[]>()
       : Promise.resolve({ data: [] as ResaleListing[] }),
+    purchaseIds.length
+      ? sb.from("purchases").select("*").in("id", purchaseIds).returns<Purchase[]>()
+      : Promise.resolve({ data: [] as Purchase[] }),
   ]);
 
   const eventById = new Map((events ?? []).map((event) => [event.id, event]));
   const categoryById = new Map((categories ?? []).map((category) => [category.id, category]));
   const listingById = new Map((listings ?? []).map((listing) => [listing.id, listing]));
+  const purchaseById = new Map((purchases ?? []).map((purchase) => [purchase.id, purchase]));
 
   return (
     <div className="container py-10">
@@ -63,12 +74,22 @@ export default async function TicketsPage() {
               ? listingById.get(ticket.current_listing_id) ?? null
               : null;
             const eventFuture = new Date(event.date).getTime() > Date.now();
+            const eventPast = new Date(event.date).getTime() < Date.now();
+            const purchase = ticket.original_purchase_id ? purchaseById.get(ticket.original_purchase_id) : null;
+            const originalOnlineTotal = purchase?.amount ?? null;
+            const resaleCap =
+              category?.max_resale_price == null ? originalOnlineTotal : Math.min(originalOnlineTotal ?? category.max_resale_price, category.max_resale_price);
             const canList =
               ticket.status === "sold" &&
               event.status === "published" &&
-              event.resale_enabled &&
               category?.resale_enabled === true &&
               eventFuture;
+            const canExport =
+              (eventPast || ticket.status === "used") &&
+              !!ticket.nft_contract_address &&
+              ticket.nft_token_id !== null &&
+              !ticket.transferred_off_platform_at &&
+              (ticket.status === "sold" || ticket.status === "used");
             return (
               <TicketCard
                 key={ticket.id}
@@ -77,6 +98,9 @@ export default async function TicketsPage() {
                 category={category}
                 listing={listing}
                 canList={canList}
+                canExport={canExport}
+                originalOnlineTotal={originalOnlineTotal}
+                maxListPrice={resaleCap}
               />
             );
           })}

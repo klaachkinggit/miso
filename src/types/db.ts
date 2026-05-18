@@ -470,11 +470,13 @@ export type Database = {
       }
       resale_listings: {
         Row: {
+          buyer_total_amount: number | null
           buyer_user_id: string | null
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
           id: string
           payment_provider: string | null
+          platform_fee_amount: number
           price: number
           provider_session_id: string | null
           seller_user_id: string
@@ -483,11 +485,13 @@ export type Database = {
           ticket_id: string
         }
         Insert: {
+          buyer_total_amount?: number | null
           buyer_user_id?: string | null
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
           id?: string
           payment_provider?: string | null
+          platform_fee_amount?: number
           price: number
           provider_session_id?: string | null
           seller_user_id: string
@@ -496,11 +500,13 @@ export type Database = {
           ticket_id: string
         }
         Update: {
+          buyer_total_amount?: number | null
           buyer_user_id?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
           id?: string
           payment_provider?: string | null
+          platform_fee_amount?: number
           price?: number
           provider_session_id?: string | null
           seller_user_id?: string
@@ -528,6 +534,54 @@ export type Database = {
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resale_seller_settlements: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: Database["public"]["Enums"]["currency"]
+          id: string
+          listing_id: string
+          provider_transfer_id: string | null
+          seller_user_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: Database["public"]["Enums"]["currency"]
+          id?: string
+          listing_id: string
+          provider_transfer_id?: string | null
+          seller_user_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency"]
+          id?: string
+          listing_id?: string
+          provider_transfer_id?: string | null
+          seller_user_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resale_seller_settlements_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "resale_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resale_seller_settlements_seller_user_id_fkey"
+            columns: ["seller_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

@@ -35,6 +35,10 @@ const PASSTHROUGH_PATTERNS: RegExp[] = [
   /^Event (canceled|already passed|has been canceled)/i,
   /^Resale not enabled/i,
   /^Resale price exceeds max /,
+  /^Resale price cannot exceed /,
+  /^Personal wallet transfer /,
+  /^Ticket already transferred /,
+  /^Wallet export reverted:/,
   /^Cannot refund/i,
   /^Already refunded/i,
 ];

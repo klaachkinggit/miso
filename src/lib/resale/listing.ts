@@ -41,6 +41,13 @@ const INVALID_FOR_RESALE = new Set([
   "repair_needed",
 ]);
 
+export function resalePlatformFee(amount: number): number {
+  const percent = Number(process.env.MISO_RESALE_PLATFORM_FEE_PERCENT ?? "5");
+  const fixed = Number(process.env.MISO_RESALE_PLATFORM_FEE_FIXED ?? "0");
+  const fee = amount * (Number.isFinite(percent) ? percent : 0) / 100 + (Number.isFinite(fixed) ? fixed : 0);
+  return Math.round(fee * 100) / 100;
+}
+
 export async function createResaleListing(params: {
   ticketId: string;
   sellerUserId: string;
@@ -89,6 +96,7 @@ export async function createResaleListing(params: {
       `Resale price cannot exceed the original online total of ${originalOnlineTotal}.`,
     );
   }
+  if (params.price < 0) throw new Error("Resale price must be positive");
   if (category.max_resale_price !== null && params.price > category.max_resale_price) {
     throw new Error(`Resale price exceeds max ${category.max_resale_price}`);
   }
@@ -227,6 +235,9 @@ export async function checkoutResaleListing(params: {
 }): Promise<{ listing: ResaleListing; checkoutUrl: string }> {
   const sb = createServiceClient();
   const listing = await getResaleCheckoutListing(params);
+  const sellerAmount = Number(listing.price);
+  const platformFeeAmount = resalePlatformFee(sellerAmount);
+  const buyerTotalAmount = sellerAmount + platformFeeAmount;
 
   // Atomically claim listing before creating Stripe session so no concurrent
   // buyer can claim the same listing during payment.
@@ -257,7 +268,8 @@ export async function checkoutResaleListing(params: {
     session = await createResaleStripeCheckoutSession({
       listingId: listing.id,
       buyerUserId: params.buyerUserId,
-      amount: Number(listing.price),
+      amount: sellerAmount,
+      platformFeeAmount,
       currency: listing.currency,
       eventName: event?.name ?? "Event",
       categoryName: category?.name ?? "Ticket",
@@ -276,7 +288,12 @@ export async function checkoutResaleListing(params: {
 
   const { error: providerUpdateError } = await sb
     .from("resale_listings")
-    .update({ provider_session_id: session.id, payment_provider: "stripe" })
+    .update({
+      provider_session_id: session.id,
+      payment_provider: "stripe",
+      platform_fee_amount: platformFeeAmount,
+      buyer_total_amount: buyerTotalAmount,
+    })
     .eq("id", listing.id);
   if (providerUpdateError) {
     await sb
@@ -587,6 +604,14 @@ export async function fulfillResale(params: {
       })
       .eq("id", listing.id)
       .in("status", ["transferring", "active"]);
+
+    await sb.from("resale_seller_settlements").upsert({
+      listing_id: listing.id,
+      seller_user_id: listing.seller_user_id,
+      amount: listing.price,
+      currency: listing.currency,
+      status: "pending_payout",
+    }, { onConflict: "listing_id" });
 
     await markChainOpMined(op.id, transferTxHash);
 
