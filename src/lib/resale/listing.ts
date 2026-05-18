@@ -229,6 +229,7 @@ export async function checkoutResaleListing(params: {
   buyerUserId: string;
   successUrl: string;
   cancelUrl: string;
+  idempotencyKey?: string;
 }): Promise<{ listing: ResaleListing; checkoutUrl: string }> {
   const sb = createServiceClient();
   const listing = await getResaleCheckoutListing(params);
@@ -272,6 +273,7 @@ export async function checkoutResaleListing(params: {
       categoryName: category?.name ?? "Ticket",
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
+      idempotencyKey: params.idempotencyKey,
     });
   } catch (err) {
     // Release claim if Stripe session creation fails.

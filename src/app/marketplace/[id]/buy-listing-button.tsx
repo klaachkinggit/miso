@@ -19,9 +19,13 @@ export function BuyListingButton({
   async function startCheckout() {
     setLoading(true);
     try {
+      const idempotencyKey = crypto.randomUUID();
       const res = await fetch("/api/marketplace/checkout", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { 
+          "content-type": "application/json",
+          "idempotency-key": idempotencyKey
+        },
         body: JSON.stringify({ listing_id: listingId }),
       });
 

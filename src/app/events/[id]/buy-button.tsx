@@ -63,9 +63,13 @@ export function BuyButton({
     }
     setLoading(true);
     try {
+      const idempotencyKey = crypto.randomUUID();
       const res = await fetch("/api/checkout", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { 
+          "content-type": "application/json",
+          "idempotency-key": idempotencyKey
+        },
         body: JSON.stringify({
           category_id: category.id,
           extra_guests_count: extras,

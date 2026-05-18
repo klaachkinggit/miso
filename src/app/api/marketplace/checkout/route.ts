@@ -23,12 +23,14 @@ export async function POST(request: NextRequest) {
     );
     const body = await parseJsonBody(request, Body, "Invalid checkout request.");
 
+    const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 128);
     const appUrl = getRequestOrigin(request);
     const { listing, checkoutUrl } = await checkoutResaleListing({
       listingId: body.listing_id,
       buyerUserId: profile.id,
       successUrl: `${appUrl}/marketplace/success?session_id={CHECKOUT_SESSION_ID}&listing_id=${body.listing_id}`,
       cancelUrl: `${appUrl}/marketplace/${body.listing_id}`,
+      idempotencyKey,
     });
     void listing;
 
