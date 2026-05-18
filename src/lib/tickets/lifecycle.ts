@@ -30,6 +30,18 @@ async function buyerWalletAddress(userId: string): Promise<string> {
   return smartAccountAddress;
 }
 
+// Resolves the wallet address for the user who actually receives the NFT.
+// For a gift purchase this is the friend (validated at checkout). For a
+// normal purchase it falls back to the paying buyer.
+export async function recipientWalletAddress(params: {
+  buyerUserId: string;
+  giftRecipientUserId?: string | null;
+}): Promise<{ recipientUserId: string; walletAddress: string }> {
+  const recipientUserId = params.giftRecipientUserId ?? params.buyerUserId;
+  const walletAddress = await buyerWalletAddress(recipientUserId);
+  return { recipientUserId, walletAddress };
+}
+
 export const RESERVATION_TTL_SECONDS = 30 * 60;
 const RESERVATION_TTL_MS = RESERVATION_TTL_SECONDS * 1000;
 
@@ -60,13 +72,12 @@ export async function reserveTicket(params: {
 
   const { data: category, error: categoryError } = await sb
     .from("ticket_categories")
-    .select("*, events(sales_enabled, status)")
+    .select("*, events(status)")
     .eq("id", params.categoryId)
-    .single<TicketCategory & { events: { sales_enabled: boolean; status: string } }>();
+    .single<TicketCategory & { events: { status: string } }>();
   if (categoryError || !category) throw new Error("Category not found");
-  if (!category.events.sales_enabled || category.events.status !== "published") {
-    throw new Error("Sales not open");
-  }
+  if (category.events.status !== "published") throw new Error("Sales not open");
+  if (!category.sales_enabled) throw new Error("Sales not open for this category");
   if (category.sold_count >= category.supply) throw new Error("Sold out");
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -159,6 +170,30 @@ export async function fulfillReservedTicket(params: {
     .single<Ticket>();
   if (!ticket) throw new Error("Ticket missing");
 
+  // Read purchase to resolve gift recipient + extras + advance/min-spending
+  // snapshot. The recipient becomes the on-chain holder and the row owner.
+  const { data: purchase } = await sb
+    .from("purchases")
+    .select(
+      "id, gift_recipient_user_id, extra_guests_count, online_advance_amount, min_spending_total",
+    )
+    .eq("id", params.purchaseId)
+    .single<{
+      id: string;
+      gift_recipient_user_id: string | null;
+      extra_guests_count: number;
+      online_advance_amount: number | null;
+      min_spending_total: number | null;
+    }>();
+  if (!purchase) throw new Error("Purchase missing");
+
+  const recipientUserId = purchase.gift_recipient_user_id ?? params.buyerUserId;
+  const extrasCount = purchase.extra_guests_count ?? 0;
+  const advancePaid = Number(purchase.online_advance_amount ?? 0);
+  const minSpendingTotal = purchase.min_spending_total != null ? Number(purchase.min_spending_total) : null;
+  const minSpendingRemaining =
+    minSpendingTotal != null ? Math.max(0, minSpendingTotal - advancePaid) : null;
+
   // Fast-path: a prior attempt already minted + flipped to sold for this
   // exact purchase. Treat as success — settlement can record paid.
   if (ticket.status === "sold" && ticket.original_purchase_id === params.purchaseId) {
@@ -215,8 +250,12 @@ export async function fulfillReservedTicket(params: {
     .single<TicketCategory>();
   if (!category) throw new Error("Category missing");
 
+  const baseCapacity = category.base_capacity ?? 1;
+  const totalHeadcount = category.kind === "club_table" ? baseCapacity + extrasCount : 1;
+  const colorSnapshot = category.color_hex ?? null;
+
   if (mockChainEnabled()) {
-    const buyerWallet = mockAddress(`wallet:${params.buyerUserId}`);
+    const recipientWallet = mockAddress(`wallet:${recipientUserId}`);
     const metadataUri = `ipfs://miso-e2e/${ticket.id}`;
     const mintTxHash = mockTxHash(`mint:${params.purchaseId}:${ticket.id}`);
     const tierImageUrl = category.image_url ?? event.image_url;
@@ -237,8 +276,8 @@ export async function fulfillReservedTicket(params: {
       .from("tickets")
       .update({
         status: "sold",
-        owner_user_id: params.buyerUserId,
-        owner_evm_address: buyerWallet,
+        owner_user_id: recipientUserId,
+        owner_evm_address: recipientWallet,
         nft_contract_address: contractAddress,
         nft_token_id: ticket.serial_number,
         mint_tx_hash: mintTxHash,
@@ -247,10 +286,14 @@ export async function fulfillReservedTicket(params: {
         reserved_until: null,
         minted_at: new Date().toISOString(),
         original_purchase_id: params.purchaseId,
+        extra_guests_count: extrasCount,
+        total_headcount: totalHeadcount,
+        min_spending_total: minSpendingTotal,
+        min_spending_remaining: minSpendingRemaining,
+        color_hex_snapshot: colorSnapshot,
       })
       .eq("id", ticket.id)
       .in("status", ["minting", "sold"])
-      .eq("owner_user_id", params.buyerUserId)
       .select("id")
       .maybeSingle();
 
@@ -276,8 +319,11 @@ export async function fulfillReservedTicket(params: {
         token_id: ticket.serial_number,
         tx_hash: mintTxHash,
         metadata_uri: metadataUri,
-        owner: buyerWallet,
+        owner: recipientWallet,
+        recipient_user_id: recipientUserId,
         purchase: params.purchaseId,
+        extra_guests: extrasCount,
+        headcount: totalHeadcount,
       },
     });
 
@@ -286,12 +332,12 @@ export async function fulfillReservedTicket(params: {
       tokenId: ticket.serial_number,
       mintTxHash,
       metadataUri,
-      ownerEvmAddress: buyerWallet,
+      ownerEvmAddress: recipientWallet,
     };
   }
 
-  const buyerWallet = await buyerWalletAddress(params.buyerUserId);
-  const buyerAddress = buyerWallet as Address;
+  const recipientWallet = await buyerWalletAddress(recipientUserId);
+  const recipientAddress = recipientWallet as Address;
 
   // Atomically claim reserved → minting if we're not already in minting.
   if (isReserved) {
@@ -314,15 +360,31 @@ export async function fulfillReservedTicket(params: {
     event.image_ipfs_uri ??
     event.image_url ??
     "";
+  const clubAttributes =
+    category.kind === "club_table"
+      ? [
+          { trait_type: "Color", value: colorSnapshot ?? "" },
+          { trait_type: "Base Guests", value: baseCapacity },
+          { trait_type: "Extra Guests", value: extrasCount },
+          { trait_type: "Total Headcount", value: totalHeadcount },
+          { trait_type: "Online Advance Paid", value: advancePaid },
+          {
+            trait_type: "Min Spending Remaining",
+            value: minSpendingRemaining ?? 0,
+          },
+        ]
+      : [];
   const metadata = {
-    name: `${event.name} — Ticket #${ticket.serial_number}`,
+    name: `${event.name} — ${category.kind === "club_table" ? "Table" : "Ticket"} #${ticket.serial_number}`,
     description: event.description ?? "",
     image: tierImage,
     attributes: [
       { trait_type: "Event", value: event.name },
       { trait_type: "Category", value: category.name },
+      { trait_type: "Tier", value: category.kind },
       { trait_type: "Serial", value: ticket.serial_number },
       { trait_type: "Redeemed", value: "false" },
+      ...clubAttributes,
     ],
   };
   // Only upload metadata for a fresh op (resumed ops already have one).
@@ -340,7 +402,7 @@ export async function fulfillReservedTicket(params: {
     ticketId: ticket.id,
     contractAddress,
     tokenId: ticket.serial_number,
-    toAddress: buyerWallet,
+    toAddress: recipientWallet,
     metadataUri,
   });
 
@@ -353,7 +415,7 @@ export async function fulfillReservedTicket(params: {
       call: {
         contractAddress,
         method: "function mintTo(address to, uint256 tokenId, string uri)",
-        params: [buyerAddress, tokenId, op.metadata_uri ?? metadataUri],
+        params: [recipientAddress, tokenId, op.metadata_uri ?? metadataUri],
       },
     });
     mintTxHash = txHash;
@@ -391,8 +453,8 @@ export async function fulfillReservedTicket(params: {
       .from("tickets")
       .update({
         status: "sold",
-        owner_user_id: params.buyerUserId,
-        owner_evm_address: buyerWallet,
+        owner_user_id: recipientUserId,
+        owner_evm_address: recipientWallet,
         nft_contract_address: contractAddress,
         nft_token_id: ticket.serial_number,
         mint_tx_hash: mintTxHash,
@@ -401,10 +463,14 @@ export async function fulfillReservedTicket(params: {
         reserved_until: null,
         minted_at: new Date().toISOString(),
         original_purchase_id: params.purchaseId,
+        extra_guests_count: extrasCount,
+        total_headcount: totalHeadcount,
+        min_spending_total: minSpendingTotal,
+        min_spending_remaining: minSpendingRemaining,
+        color_hex_snapshot: colorSnapshot,
       })
       .eq("id", ticket.id)
       .in("status", ["minting", "sold"])
-      .eq("owner_user_id", params.buyerUserId)
       .select("id")
       .maybeSingle();
 
@@ -432,9 +498,12 @@ export async function fulfillReservedTicket(params: {
         token_id: ticket.serial_number,
         tx_hash: mintTxHash,
         metadata_uri: op.metadata_uri ?? metadataUri,
-        owner: buyerWallet,
+        owner: recipientWallet,
+        recipient_user_id: recipientUserId,
         purchase: params.purchaseId,
         chain_op: op.id,
+        extra_guests: extrasCount,
+        headcount: totalHeadcount,
       },
     });
 
@@ -443,7 +512,7 @@ export async function fulfillReservedTicket(params: {
       tokenId: ticket.serial_number,
       mintTxHash,
       metadataUri: op.metadata_uri ?? metadataUri,
-      ownerEvmAddress: buyerWallet,
+      ownerEvmAddress: recipientWallet,
     };
   } catch (dbErr) {
     const message = dbErr instanceof Error ? dbErr.message : "db update failed";

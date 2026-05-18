@@ -65,9 +65,7 @@ export async function createEvent(formData: FormData) {
     image_url: formData.get("image_url") || null,
     description: formData.get("description") || null,
     conditions: formData.get("conditions") || null,
-    sales_enabled: checkbox(formData, "sales_enabled"),
-    resale_enabled: checkbox(formData, "resale_enabled"),
-    public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
+    floor_plan_url: formData.get("floor_plan_url") || null,
   });
 
   if (!parsed.success) fail("/admin/events/new", parsed.error.issues[0]?.message ?? "Invalid event.");
@@ -100,9 +98,7 @@ export async function updateEvent(formData: FormData) {
     image_url: formData.get("image_url") || null,
     description: formData.get("description") || null,
     conditions: formData.get("conditions") || null,
-    sales_enabled: checkbox(formData, "sales_enabled"),
-    resale_enabled: checkbox(formData, "resale_enabled"),
-    public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
+    floor_plan_url: formData.get("floor_plan_url") || null,
   });
   if (!parsed.success) fail(`/admin/events/${eventId}`, parsed.error.issues[0]?.message ?? "Invalid event.");
 
@@ -205,15 +201,25 @@ export async function createCategory(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
   const parsed = CreateCategorySchema.safeParse({
     event_id: formData.get("event_id"),
+    kind: (formData.get("kind") as string) || "standard",
     name: formData.get("name"),
     description: formData.get("description") || null,
     price: formData.get("price"),
     currency: formData.get("currency"),
     supply: formData.get("supply"),
     max_resale_price: formData.get("max_resale_price") || null,
+    sales_enabled: checkbox(formData, "sales_enabled"),
     resale_enabled: checkbox(formData, "resale_enabled"),
+    public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
     benefits: formData.get("benefits") || null,
     image_url: formData.get("image_url") || null,
+    min_spending: formData.get("min_spending") || null,
+    online_advance: formData.get("online_advance") || null,
+    base_capacity: formData.get("base_capacity") || null,
+    extra_guests_enabled: checkbox(formData, "extra_guests_enabled"),
+    price_per_extra_guest: formData.get("price_per_extra_guest") || null,
+    max_extra_guests: formData.get("max_extra_guests") || null,
+    color_hex: formData.get("color_hex") || null,
   });
   if (!parsed.success) fail("/admin", parsed.error.issues[0]?.message ?? "Invalid category.");
   await assertCanManageEvent(admin, parsed.data.event_id, `/admin/events/${parsed.data.event_id}`);

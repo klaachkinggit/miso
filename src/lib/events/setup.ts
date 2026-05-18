@@ -17,7 +17,7 @@ import {
   TransactionTimeoutError,
   waitForTransaction,
 } from "@/lib/thirdweb/transactions";
-import type { Currency, EventRow, Ticket } from "@/types/db";
+import type { Currency, EventRow, Ticket, TicketCategoryKind } from "@/types/db";
 
 export interface EventDetailsInput {
   name: string;
@@ -28,22 +28,31 @@ export interface EventDetailsInput {
   image_url?: string | null;
   description?: string | null;
   conditions?: string | null;
-  sales_enabled: boolean;
-  resale_enabled: boolean;
-  public_sales_counter_enabled: boolean;
+  floor_plan_url?: string | null;
 }
 
 export interface CategoryInput {
   event_id: string;
+  kind: TicketCategoryKind;
   name: string;
   description?: string | null;
   price: number;
   currency: Currency;
   supply: number;
   max_resale_price?: number | null;
+  sales_enabled: boolean;
   resale_enabled: boolean;
+  public_sales_counter_enabled: boolean;
   benefits?: string | null;
   image_url?: string | null;
+  // Club Table fields (required when kind === 'club_table')
+  min_spending?: number | null;
+  online_advance?: number | null;
+  base_capacity?: number | null;
+  extra_guests_enabled?: boolean;
+  price_per_extra_guest?: number | null;
+  max_extra_guests?: number | null;
+  color_hex?: string | null;
 }
 
 

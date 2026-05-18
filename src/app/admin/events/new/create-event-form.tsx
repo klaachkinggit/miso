@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ImagePlus, Loader2 } from "lucide-react";
+import { ImagePlus, Loader2, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,9 @@ import { createEvent } from "../../actions";
 
 export function CreateEventForm({ error }: { error?: string }) {
   const [imageUrl, setImageUrl] = useState("");
+  const [floorPlanUrl, setFloorPlanUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadingFloor, setUploadingFloor] = useState(false);
 
   async function uploadImage(file: File) {
     setUploading(true);
@@ -30,6 +32,23 @@ export function CreateEventForm({ error }: { error?: string }) {
     }
   }
 
+  async function uploadFloorPlan(file: File) {
+    setUploadingFloor(true);
+    try {
+      const sb = createClient();
+      const path = `floor-plans/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "-")}`;
+      const { error: uploadError } = await sb.storage.from("event-images").upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+      });
+      if (uploadError) throw uploadError;
+      const { data } = sb.storage.from("event-images").getPublicUrl(path);
+      setFloorPlanUrl(data.publicUrl);
+    } finally {
+      setUploadingFloor(false);
+    }
+  }
+
   return (
     <form action={createEvent} className="glass grid gap-5 rounded-lg p-6">
       {error ? (
@@ -38,6 +57,7 @@ export function CreateEventForm({ error }: { error?: string }) {
         </div>
       ) : null}
       <input type="hidden" name="image_url" value={imageUrl} />
+      <input type="hidden" name="floor_plan_url" value={floorPlanUrl} />
       <div className="grid gap-2">
         <Label htmlFor="name">Name</Label>
         <Input id="name" name="name" required />
@@ -94,21 +114,39 @@ export function CreateEventForm({ error }: { error?: string }) {
           </div>
         </div>
       </div>
-      <div className="grid gap-3 rounded-md border border-border/70 p-4 text-sm">
-        <label className="flex items-center gap-3">
-          <input name="sales_enabled" type="checkbox" className="h-4 w-4" />
-          Sales enabled
-        </label>
-        <label className="flex items-center gap-3">
-          <input name="resale_enabled" type="checkbox" className="h-4 w-4" defaultChecked />
-          Resale enabled
-        </label>
-        <label className="flex items-center gap-3">
-          <input name="public_sales_counter_enabled" type="checkbox" className="h-4 w-4" />
-          Public sales counter
-        </label>
+      <div className="grid gap-2">
+        <Label htmlFor="floor_plan">Floor plan / club map</Label>
+        <p className="text-xs text-muted-foreground">
+          One image per event. Buyers see this under the ticket listings to cross-reference the
+          color of each Club Table tier with its location.
+        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Input
+            id="floor_plan"
+            type="file"
+            accept="image/*"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadFloorPlan(file);
+            }}
+          />
+          <div className="min-w-40 text-sm text-muted-foreground">
+            {uploadingFloor ? (
+              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Uploading</span>
+            ) : floorPlanUrl ? (
+              <span className="flex items-center gap-2 text-emerald-300"><Map className="h-4 w-4" /> Map ready</span>
+            ) : (
+              "Optional"
+            )}
+          </div>
+        </div>
       </div>
-      <Button type="submit" disabled={uploading}>Create event and mint collection</Button>
+      <p className="text-xs text-muted-foreground">
+        Sales, resale, and public counter visibility are configured per category.
+      </p>
+      <Button type="submit" disabled={uploading || uploadingFloor}>
+        Create event and mint collection
+      </Button>
     </form>
   );
 }

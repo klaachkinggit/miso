@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
-import { Calendar, MapPin, ShieldCheck, Ticket } from "lucide-react";
+import { Calendar, MapPin, ShieldCheck, Ticket, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -38,7 +38,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       ...category,
       remaining: Math.max(0, category.supply - category.sold_count),
     })) ?? [];
-  const cheapest = enriched.filter((c) => c.remaining > 0).sort((a, b) => Number(a.price) - Number(b.price))[0];
+  const cheapest = enriched.filter((c) => c.remaining > 0 && c.sales_enabled).sort((a, b) => Number(a.price) - Number(b.price))[0];
 
   return (
     <div className="pb-24 md:pb-12">
@@ -108,28 +108,63 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <aside id="tickets" className="space-y-4">
-          <h2 className="text-xl font-medium">Tickets</h2>
+          <h2 className="text-xl font-medium">Tickets &amp; tables</h2>
           {enriched.length ? (
             enriched.map((category) => {
-              const disabled = !event.sales_enabled || category.remaining <= 0;
-              const reason = !event.sales_enabled
+              const isClub = category.kind === "club_table";
+              const soldOut = category.remaining <= 0;
+              const disabled = !category.sales_enabled || soldOut;
+              const reason = !category.sales_enabled
                 ? "Sales closed"
-                : category.remaining <= 0
+                : soldOut
                   ? "Sold out"
                   : null;
+
+              const remainingBadge = soldOut ? (
+                <Badge variant="destructive">Not available</Badge>
+              ) : category.public_sales_counter_enabled ? (
+                <Badge variant="success">{category.remaining} left</Badge>
+              ) : (
+                <Badge variant="success">Available</Badge>
+              );
+
               return (
                 <Card key={category.id} className="glass rounded-lg">
                   <CardContent className="space-y-4 p-5">
                     <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="font-semibold">{category.name}</h3>
-                        {category.description ? (
-                          <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
+                      <div className="flex items-start gap-3">
+                        {isClub && category.color_hex ? (
+                          <span
+                            aria-hidden
+                            className="mt-1 inline-block h-4 w-4 shrink-0 rounded-full ring-2 ring-background"
+                            style={{ backgroundColor: category.color_hex }}
+                          />
                         ) : null}
+                        <div>
+                          <h3 className="font-semibold">{category.name}</h3>
+                          {category.description ? (
+                            <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
+                          ) : null}
+                          {isClub ? (
+                            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                              {category.min_spending != null ? (
+                                <p>
+                                  Minimum spending:{" "}
+                                  <span className="font-medium text-foreground">
+                                    {formatPrice(category.min_spending, category.currency)}
+                                  </span>
+                                </p>
+                              ) : null}
+                              {category.base_capacity != null ? (
+                                <p className="flex items-center gap-1">
+                                  <Users className="h-3.5 w-3.5" /> Includes {category.base_capacity} guests
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                      <Badge variant={category.remaining > 0 ? "success" : "destructive"}>
-                        {category.remaining > 0 ? `${category.remaining} left` : "Sold out"}
-                      </Badge>
+                      {remainingBadge}
                     </div>
                     {category.benefits ? (
                       <p className="rounded-md bg-secondary/50 p-3 text-sm text-muted-foreground">
@@ -137,10 +172,32 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
                       </p>
                     ) : null}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="text-2xl font-semibold">
-                        {formatPrice(category.price, category.currency)}
+                      <div>
+                        <div className="text-2xl font-semibold">
+                          {isClub && category.online_advance != null
+                            ? formatPrice(category.online_advance, category.currency)
+                            : formatPrice(category.price, category.currency)}
+                        </div>
+                        {isClub ? (
+                          <p className="text-xs text-muted-foreground">Online advance</p>
+                        ) : null}
                       </div>
-                      <BuyButton categoryId={category.id} disabled={disabled} reason={reason} />
+                      <BuyButton
+                        category={{
+                          id: category.id,
+                          kind: category.kind,
+                          currency: category.currency,
+                          price: category.price,
+                          online_advance: category.online_advance,
+                          extra_guests_enabled: category.extra_guests_enabled,
+                          price_per_extra_guest: category.price_per_extra_guest,
+                          max_extra_guests: category.max_extra_guests,
+                          base_capacity: category.base_capacity,
+                          min_spending: category.min_spending,
+                        }}
+                        disabled={disabled}
+                        reason={reason}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -151,6 +208,25 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
               <CardContent className="p-5 text-sm text-muted-foreground">No ticket tiers are available.</CardContent>
             </Card>
           )}
+
+          {event.floor_plan_url ? (
+            <Card className="glass rounded-lg">
+              <CardHeader>
+                <CardTitle className="text-base">Floor plan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={event.floor_plan_url}
+                  alt="Venue floor plan"
+                  className="w-full rounded-md border border-border/60 object-contain"
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Colors on the map match the color vignette of each Club Table tier above.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
         </aside>
       </div>
 

@@ -57,7 +57,7 @@ export async function createResaleListing(params: {
   if (ticket.status !== "sold") throw new Error(`Ticket not listable (status: ${ticket.status})`);
 
   const { data: event } = await sb.from("events").select("*").eq("id", ticket.event_id).single<EventRow>();
-  if (!event?.resale_enabled) throw new Error("Resale not enabled for this event");
+  if (!event) throw new Error("Event not found");
   if (event.status === "canceled") throw new Error("Event canceled");
   if (new Date(event.date).getTime() < Date.now()) throw new Error("Event already passed");
 
@@ -67,6 +67,28 @@ export async function createResaleListing(params: {
     .eq("id", ticket.category_id)
     .single<TicketCategory>();
   if (!category?.resale_enabled) throw new Error("Resale not enabled for this category");
+
+  // Anti-scalping cap: resale price must NOT exceed the original online
+  // total paid by the first buyer (advance + paid extras for club tables,
+  // or the standard ticket price). Seller breaks perfectly even; any
+  // platform fee is added on top at checkout, paid by the secondary buyer.
+  const originalPurchaseId = ticket.original_purchase_id;
+  let originalOnlineTotal: number;
+  if (originalPurchaseId) {
+    const { data: origPurchase } = await sb
+      .from("purchases")
+      .select("amount")
+      .eq("id", originalPurchaseId)
+      .maybeSingle<{ amount: number }>();
+    originalOnlineTotal = origPurchase ? Number(origPurchase.amount) : Number(category.price);
+  } else {
+    originalOnlineTotal = Number(category.price);
+  }
+  if (params.price > originalOnlineTotal) {
+    throw new Error(
+      `Resale price cannot exceed the original online total of ${originalOnlineTotal}.`,
+    );
+  }
   if (category.max_resale_price !== null && params.price > category.max_resale_price) {
     throw new Error(`Resale price exceeds max ${category.max_resale_price}`);
   }

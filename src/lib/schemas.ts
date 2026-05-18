@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 const CurrencySchema = z.literal("EUR");
+const HexColor = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #AABBCC");
+
+export const CategoryKindSchema = z.enum(["standard", "club_table"]);
 
 export const CreateEventSchema = z.object({
   name: z.string().min(2).max(120),
@@ -11,26 +16,68 @@ export const CreateEventSchema = z.object({
   image_url: z.string().url().optional().nullable(),
   description: z.string().max(4000).optional().nullable(),
   conditions: z.string().max(2000).optional().nullable(),
-  sales_enabled: z.coerce.boolean().default(false),
-  resale_enabled: z.coerce.boolean().default(false),
-  public_sales_counter_enabled: z.coerce.boolean().default(false),
+  floor_plan_url: z.string().url().optional().nullable(),
 });
 
-export const CreateCategorySchema = z.object({
-  event_id: z.string().uuid(),
-  name: z.string().min(2).max(80),
-  description: z.string().max(500).optional().nullable(),
-  price: z.coerce.number().min(0),
-  currency: CurrencySchema,
-  supply: z.coerce.number().int().positive(),
-  max_resale_price: z.coerce.number().min(0).optional().nullable(),
-  resale_enabled: z.coerce.boolean().default(true),
-  benefits: z.string().max(1000).optional().nullable(),
-  image_url: z.string().url().optional().nullable(),
+const ClubTableFields = z.object({
+  min_spending: z.coerce.number().min(0).optional().nullable(),
+  online_advance: z.coerce.number().min(0).optional().nullable(),
+  base_capacity: z.coerce.number().int().positive().optional().nullable(),
+  extra_guests_enabled: z.coerce.boolean().default(false),
+  price_per_extra_guest: z.coerce.number().min(0).optional().nullable(),
+  max_extra_guests: z.coerce.number().int().min(0).optional().nullable(),
+  color_hex: HexColor.optional().nullable(),
 });
+
+export const CreateCategorySchema = z
+  .object({
+    event_id: z.string().uuid(),
+    kind: CategoryKindSchema.default("standard"),
+    name: z.string().min(2).max(80),
+    description: z.string().max(500).optional().nullable(),
+    price: z.coerce.number().min(0),
+    currency: CurrencySchema,
+    supply: z.coerce.number().int().positive(),
+    max_resale_price: z.coerce.number().min(0).optional().nullable(),
+    sales_enabled: z.coerce.boolean().default(true),
+    resale_enabled: z.coerce.boolean().default(true),
+    public_sales_counter_enabled: z.coerce.boolean().default(true),
+    benefits: z.string().max(1000).optional().nullable(),
+    image_url: z.string().url().optional().nullable(),
+  })
+  .merge(ClubTableFields)
+  .refine(
+    (v) =>
+      v.kind === "standard" ||
+      (v.min_spending != null &&
+        v.online_advance != null &&
+        v.base_capacity != null &&
+        v.color_hex != null),
+    {
+      message:
+        "Club Table requires minimum spending, online advance, base capacity, and a color.",
+    },
+  )
+  .refine(
+    (v) =>
+      v.kind !== "club_table" ||
+      !v.extra_guests_enabled ||
+      (v.price_per_extra_guest != null && v.max_extra_guests != null && v.max_extra_guests > 0),
+    {
+      message:
+        "Extra guests require a price per extra guest and a positive max extra guests.",
+    },
+  );
 
 export const PurchaseInitSchema = z.object({
   category_id: z.string().uuid(),
+  extra_guests_count: z.coerce.number().int().min(0).default(0),
+  gift_recipient_email: z
+    .string()
+    .email()
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v.toLowerCase() : null)),
 });
 
 export const ResellInitSchema = z.object({
@@ -62,4 +109,14 @@ export const RedeemConfirmSchema = z.object({
 export const RedeemPrepareSchema = z.object({
   gate_short_code: z.string().min(4).max(16).trim().toUpperCase(),
   ticket_id: z.string().uuid(),
+});
+
+// EVM 0x address. Used for off-platform NFT exports.
+export const EvmAddressSchema = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{40}$/, "Address must be a valid 0x EVM address");
+
+export const TransferToWalletSchema = z.object({
+  ticket_id: z.string().uuid(),
+  destination_address: EvmAddressSchema,
 });

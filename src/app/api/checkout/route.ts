@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
     const checkout = await createPurchaseCheckout({
       buyerUserId: profile.id,
       categoryId: body.category_id,
+      extraGuestsCount: body.extra_guests_count,
+      giftRecipientEmail: body.gift_recipient_email,
       idempotencyKey,
       successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${appUrl}/checkout/cancel`,
