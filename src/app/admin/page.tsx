@@ -4,6 +4,7 @@ import {
   CalendarPlus,
   CheckCircle2,
   Settings,
+  Images,
   TicketCheck,
   TrendingUp,
   Wallet,
@@ -42,6 +43,11 @@ export default async function OrganizerDashboardPage({
           <Button asChild variant="outline">
             <Link href="/admin/events">
               <Settings className="h-4 w-4" /> Manage events
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/site">
+              <Images className="h-4 w-4" /> Landing media
             </Link>
           </Button>
           <Button asChild>

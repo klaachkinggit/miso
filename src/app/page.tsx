@@ -19,22 +19,15 @@ import { HeroSearch } from "@/components/site/hero-search";
 import { getCurrentProfile } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatDateShort } from "@/lib/format";
+import { eventImage } from "@/lib/events/images";
+import { loadSiteSettings } from "@/lib/site/settings";
 import type { EventRow } from "@/types/db";
 
 const FALLBACK_CITIES = ["Paris", "Berlin", "London", "Amsterdam", "Lisbon", "Barcelona", "Brussels", "Milan"];
 
-const ORGANIZER_TRUST = [
-  "Rex Club",
-  "Nuits Sonores",
-  "We Love Green",
-  "Concrete",
-  "Golden Coast",
-  "Phantom",
-];
-
 export default async function HomePage() {
   const sb = createServiceClient();
-  const profile = await getCurrentProfile();
+  const [profile, siteSettings] = await Promise.all([getCurrentProfile(), loadSiteSettings()]);
   if (profile?.role === "controller") redirect("/controller");
 
   const { data: events } = await sb
@@ -54,10 +47,20 @@ export default async function HomePage() {
   return (
     <div className="pb-20 md:pb-0">
       {/* HERO ------------------------------------------------------------ */}
-      <section className="relative overflow-hidden border-b border-border">
+      <section className="relative isolate overflow-hidden border-b border-border">
+        {siteSettings?.landing_hero_bg_url ? (
+          <Image
+            src={siteSettings.landing_hero_bg_url}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="-z-20 object-cover opacity-55 saturate-[0.85]"
+          />
+        ) : null}
         <div
           aria-hidden="true"
-          className="absolute inset-0 -z-10 opacity-90"
+          className="absolute inset-0 -z-10 opacity-95"
           style={{
             background:
               "radial-gradient(circle at 20% 0%, rgba(184,155,94,0.32), transparent 38rem)," +
@@ -103,33 +106,40 @@ export default async function HomePage() {
                 href={`/events/${featured.id}`}
                 className="group relative block aspect-[4/5] w-full max-w-md overflow-hidden rounded-3xl border border-[#E6D8C9]/15 shadow-[0_30px_120px_-40px_rgba(0,0,0,0.9)]"
               >
-                {featured.image_url ? (
-                  <Image
-                    src={featured.image_url}
-                    alt={featured.name}
-                    fill
-                    priority
-                    sizes="(min-width: 768px) 40vw, 100vw"
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212,#2b2620_55%,#E6D8C9)]" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-                <div className="absolute inset-x-6 top-6 flex items-center justify-between">
+                {(() => {
+                  const hero = eventImage(featured, "hero") ?? eventImage(featured, "thumbnail");
+                  return hero ? (
+                    <Image
+                      src={hero}
+                      alt={featured.name}
+                      fill
+                      priority
+                      sizes="(min-width: 768px) 40vw, 100vw"
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212,#2b2620_55%,#E6D8C9)]" />
+                  );
+                })()}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                <div className="absolute inset-x-5 top-5 flex flex-wrap items-center justify-between gap-2">
                   <span className="mono-stub rounded-full bg-[#E6D8C9] px-3 py-1 text-[#121212]">
                     Featured · {formatDateShort(featured.date)}
                   </span>
-                  <span className="mono-stub rounded-full bg-black/55 px-3 py-1 text-[#E6D8C9] backdrop-blur">
+                  <span className="mono-stub rounded-full bg-black/60 px-3 py-1 text-[#E6D8C9] backdrop-blur">
                     Live
                   </span>
                 </div>
-                <div className="absolute inset-x-6 bottom-6 space-y-2">
-                  <h2 className="display text-2xl text-[#F5F3EE] md:text-3xl">{featured.name}</h2>
-                  <p className="mono-stub text-[#E6D8C9]/80">
-                    {featured.venue_name} · {featured.city}
-                  </p>
-                  <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#F5F3EE] px-4 py-1.5 text-sm font-medium text-[#121212] transition-colors group-hover:bg-accent">
+                <div className="absolute inset-x-5 bottom-5 flex flex-col gap-3">
+                  <div className="space-y-1.5">
+                    <h2 className="display line-clamp-2 text-2xl leading-tight text-[#F5F3EE] lg:text-3xl">
+                      {featured.name}
+                    </h2>
+                    <p className="mono-stub line-clamp-1 text-[#E6D8C9]/80">
+                      {featured.venue_name} · {featured.city}
+                    </p>
+                  </div>
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#F5F3EE] px-4 py-1.5 text-sm font-medium text-[#121212] transition-colors group-hover:bg-accent">
                     Get ticket <ArrowUpRight className="h-4 w-4" />
                   </span>
                 </div>
@@ -276,60 +286,84 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <ul className="grid gap-3">
-              {[
-                {
-                  icon: Megaphone,
-                  title: "Reach the right crowd",
-                  body: "Segment by city, scene and past attendance — direct push to the wallet.",
-                },
-                {
-                  icon: Gem,
-                  title: "Smart pricing tiers",
-                  body: "Dynamic categories, VIP drops and waitlist sales without scripts.",
-                },
-                {
-                  icon: ShieldCheck,
-                  title: "Bouncer-grade entry",
-                  body: "Controller mode scans QR codes offline. No more screenshots at the door.",
-                },
-              ].map(({ icon: Icon, title, body }) => (
-                <li
-                  key={title}
-                  className="flex items-start gap-4 rounded-2xl border border-[#E6D8C9]/10 bg-black/30 p-5"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h3 className="font-semibold text-[#F5F3EE]">{title}</h3>
-                    <p className="mt-1 text-sm text-[#E6D8C9]/70">{body}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="grid gap-4">
+              <LandingMediaStack settings={siteSettings} />
+              <ul className="grid gap-3">
+                {[
+                  {
+                    icon: Megaphone,
+                    title: "Reach the right crowd",
+                    body: "Segment by city, scene and past attendance - direct push to the wallet.",
+                  },
+                  {
+                    icon: Gem,
+                    title: "Smart pricing tiers",
+                    body: "Dynamic categories, VIP drops and waitlist sales without scripts.",
+                  },
+                  {
+                    icon: ShieldCheck,
+                    title: "Bouncer-grade entry",
+                    body: "Controller mode scans QR codes offline. No more screenshots at the door.",
+                  },
+                ].map(({ icon: Icon, title, body }) => (
+                  <li
+                    key={title}
+                    className="flex items-start gap-4 rounded-2xl border border-[#E6D8C9]/10 bg-black/30 p-5"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h3 className="font-semibold text-[#F5F3EE]">{title}</h3>
+                      <p className="mt-1 text-sm text-[#E6D8C9]/70">{body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* TRUST STRIP ---------------------------------------------------- */}
-      <section className="border-y border-border bg-[#0a0a0a]">
-        <div className="container py-12">
-          <p className="mono-stub text-center text-[#E6D8C9]/55">
-            Thousands of organizers trust MISO
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-            {ORGANIZER_TRUST.map((name) => (
-              <span
-                key={name}
-                className="font-mono text-sm uppercase tracking-[0.28em] text-[#E6D8C9]/55 transition-colors hover:text-[#F5F3EE]"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
+    </div>
+  );
+}
+
+function LandingMediaStack({
+  settings,
+}: {
+  settings: Awaited<ReturnType<typeof loadSiteSettings>>;
+}) {
+  const audience = settings?.landing_audience_url;
+  const dashboard = settings?.landing_dashboard_url;
+
+  if (!audience && !dashboard) return null;
+
+  return (
+    <div className="relative min-h-72 overflow-hidden rounded-2xl border border-[#E6D8C9]/10 bg-black/30">
+      {audience ? (
+        <Image
+          src={audience}
+          alt=""
+          fill
+          sizes="(min-width: 768px) 45vw, 100vw"
+          className="object-cover opacity-85"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212,#2b2620_55%,#E6D8C9)]" />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      {dashboard ? (
+        <div className="absolute bottom-4 right-4 h-32 w-[58%] overflow-hidden rounded-xl border border-[#E6D8C9]/20 bg-black shadow-2xl md:h-40">
+          <Image
+            src={dashboard}
+            alt=""
+            fill
+            sizes="(min-width: 768px) 25vw, 60vw"
+            className="object-cover"
+          />
         </div>
-      </section>
+      ) : null}
     </div>
   );
 }

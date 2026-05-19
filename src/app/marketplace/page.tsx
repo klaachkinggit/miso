@@ -3,12 +3,12 @@ import Link from "next/link";
 import { Calendar, MapPin, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { PageHeader } from "@/components/site/page-header";
 import { formatDate, formatPrice } from "@/lib/format";
 import { resalePlatformFee } from "@/lib/resale/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
+import { eventImage } from "@/lib/events/images";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +63,7 @@ export default async function MarketplacePage() {
         className="mb-8"
       />
       {sellable.length ? (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
           {sellable.map((listing) => {
             const ticket = ticketById.get(listing.ticket_id)!;
             const event = eventById.get(ticket.event_id)!;
@@ -71,74 +71,83 @@ export default async function MarketplacePage() {
             const platformFee = resalePlatformFee(Number(listing.price));
             const buyerTotal = Number(listing.price) + platformFee;
             return (
-              <Card key={listing.id} className="glass overflow-hidden rounded-lg">
-                <Link href={`/marketplace/${listing.id}`} className="block">
-                  <div className="relative aspect-[16/9] overflow-hidden bg-secondary">
-                    {event.image_url ? (
+              <li
+                key={listing.id}
+                className="group flex flex-col gap-4 bg-[#0d0d0d] p-4 transition-colors hover:bg-[#121212] sm:flex-row sm:items-center sm:gap-5"
+              >
+                <Link
+                  href={`/marketplace/${listing.id}`}
+                  className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md bg-secondary sm:h-24 sm:w-32"
+                >
+                  {(() => {
+                    const mp = eventImage(event, "marketplace");
+                    return mp ? (
                       <Image
-                        src={event.image_url}
+                        src={mp}
                         alt={event.name}
                         fill
-                        sizes="(min-width: 1024px) 33vw, 100vw"
+                        sizes="(min-width: 640px) 8rem, 100vw"
                         className="object-cover"
                       />
                     ) : (
                       <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212_0%,#2b2620_52%,#E6D8C9_130%)]" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/10 to-transparent" />
-                    <Badge className="absolute left-4 top-4" variant="secondary">
-                      Resale
-                    </Badge>
-                  </div>
+                    );
+                  })()}
+                  <Badge className="absolute left-2 top-2" variant="secondary">
+                    Resale
+                  </Badge>
                 </Link>
-                <CardContent className="space-y-4 p-5">
-                  <div>
-                    <Link href={`/marketplace/${listing.id}`} className="text-lg font-semibold hover:text-primary">
-                      {event.name}
-                    </Link>
-                    <div className="mt-2 grid gap-1.5 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {formatDate(event.date)}
+
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Link
+                    href={`/marketplace/${listing.id}`}
+                    className="line-clamp-1 text-base font-semibold transition-colors group-hover:text-primary"
+                  >
+                    {event.name}
+                  </Link>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {event.venue_name}, {event.city}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {formatDate(event.date)}
+                    </span>
+                    {category ? (
+                      <span className="flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5" />
+                        {category.name}
                       </span>
-                      <span className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        {event.venue_name}, {event.city}
-                      </span>
-                      {category ? (
-                        <span className="flex items-center gap-2">
-                          <Tag className="h-4 w-4" />
-                          {category.name}
-                        </span>
-                      ) : null}
-                      {ticket.total_headcount ? (
-                        <span>As-is group pass: {ticket.total_headcount} guests</span>
-                      ) : null}
-                      {ticket.min_spending_remaining != null && category ? (
-                        <span>Venue balance due: {formatPrice(ticket.min_spending_remaining, category.currency)}</span>
-                      ) : null}
-                    </div>
+                    ) : null}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xl font-semibold">
-                        {formatPrice(buyerTotal, listing.currency)}
-                      </div>
-                      {platformFee > 0 ? (
-                        <p className="text-xs text-muted-foreground">
-                          Includes {formatPrice(platformFee, listing.currency)} MISO fee
-                        </p>
-                      ) : null}
-                    </div>
-                    <Button asChild>
-                      <Link href={`/marketplace/${listing.id}`}>View</Link>
-                    </Button>
+                  {ticket.total_headcount ? (
+                    <p className="text-xs text-muted-foreground">As-is group pass: {ticket.total_headcount} guests</p>
+                  ) : null}
+                  {ticket.min_spending_remaining != null && category ? (
+                    <p className="text-xs text-muted-foreground">
+                      Venue balance due: {formatPrice(ticket.min_spending_remaining, category.currency)}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center">
+                  <div className="text-right">
+                    <div className="text-lg font-semibold">{formatPrice(buyerTotal, listing.currency)}</div>
+                    {platformFee > 0 ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        incl. {formatPrice(platformFee, listing.currency)} fee
+                      </p>
+                    ) : null}
                   </div>
-                </CardContent>
-              </Card>
+                  <Button asChild size="sm">
+                    <Link href={`/marketplace/${listing.id}`}>Buy</Link>
+                  </Button>
+                </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       ) : (
         <EmptyState
           title="No tickets listed right now"

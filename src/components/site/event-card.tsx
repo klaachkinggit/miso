@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Ticket } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
+import { eventImage } from "@/lib/events/images";
 import type { EventRow } from "@/types/db";
 
 export function EventCard({
@@ -11,14 +12,15 @@ export function EventCard({
   event: EventRow;
   categoryCount?: number;
 }) {
+  const thumb = eventImage(event, "thumbnail");
   return (
     <Link
       href={`/events/${event.id}`}
       className="group relative block aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_10px_40px_-20px_rgba(0,0,0,0.8)] transition-all hover:-translate-y-1 hover:border-accent/40 hover:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)]"
     >
-      {event.image_url ? (
+      {thumb ? (
         <Image
-          src={event.image_url}
+          src={thumb}
           alt={event.name}
           fill
           sizes="(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw"

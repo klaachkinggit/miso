@@ -247,7 +247,8 @@ export async function fulfillReservedTicket(params: {
     const recipientWallet = mockAddress(`wallet:${recipientUserId}`);
     const metadataUri = `ipfs://miso-e2e/${ticket.id}`;
     const mintTxHash = mockTxHash(`mint:${params.purchaseId}:${ticket.id}`);
-    const tierImageUrl = category.image_url ?? event.image_url;
+    const tierImageUrl =
+      category.image_url ?? event.ticket_visual_url ?? event.image_url;
 
     if (isReserved) {
       const { data: claimed } = await sb
@@ -347,6 +348,7 @@ export async function fulfillReservedTicket(params: {
     category.image_ipfs_uri ??
     category.image_url ??
     event.image_ipfs_uri ??
+    event.ticket_visual_url ??
     event.image_url ??
     "";
   const clubAttributes =

@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatDate, formatDateShort, formatPrice } from "@/lib/format";
 import { getCurrentProfile } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { eventImage } from "@/lib/events/images";
 import type { EventRow, TicketCategory } from "@/types/db";
 import { BuyButton } from "./buy-button";
 
@@ -43,9 +44,12 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     <div className="pb-24 md:pb-12">
       <section className="relative min-h-[520px] overflow-hidden md:min-h-[640px]">
         <div className="absolute inset-0 bg-black">
-          {event.image_url ? (
-            <Image src={event.image_url} alt={event.name} fill priority sizes="100vw" className="object-cover" />
-          ) : null}
+          {(() => {
+            const hero = eventImage(event, "hero");
+            return hero ? (
+              <Image src={hero} alt={event.name} fill priority sizes="100vw" className="object-cover" />
+            ) : null;
+          })()}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/20" />
         </div>
         <div className="container relative flex min-h-[520px] items-end pb-12 pt-28 md:min-h-[640px] md:pb-16">

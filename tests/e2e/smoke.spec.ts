@@ -13,7 +13,7 @@ test.describe("Public smoke", () => {
     await expect(page.getByRole("heading", { name: "Events" })).toBeVisible();
     // Empty state OR at least one event card is acceptable when un-seeded.
     const eventCards = page.getByRole("link", { name: /open/i });
-    const emptyState = page.getByText("No events yet");
+    const emptyState = page.getByText("No events match your filters");
     await expect(eventCards.first().or(emptyState)).toBeVisible();
   });
 
@@ -35,7 +35,7 @@ test.describe("Public smoke", () => {
   test("marketplace page renders, shows listings or empty state", async ({ page }) => {
     await page.goto("/marketplace");
     await expect(page.getByRole("heading", { name: "Resale exchange" })).toBeVisible();
-    const listingCards = page.getByRole("link", { name: /^view$/i });
+    const listingCards = page.getByRole("link", { name: /^buy$/i });
     const emptyState = page.getByText("No tickets listed right now");
     await expect(listingCards.first().or(emptyState)).toBeVisible();
   });
