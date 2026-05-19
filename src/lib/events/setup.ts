@@ -314,6 +314,10 @@ export async function createTicketCategory(params: {
     max_resale_price: params.input.max_resale_price ?? null,
     image_url: params.input.image_url ?? null,
     image_ipfs_uri: imageIpfsUri,
+    // DB constraint requires min_spending NOT NULL for club_table rows.
+    // App contract: table `price` doubles as the minimum spending floor.
+    min_spending:
+      params.input.kind === "club_table" ? params.input.price : null,
   };
   const { data: category, error: categoryError } = await sb
     .from("ticket_categories")
