@@ -85,4 +85,30 @@ describe("API error response safety", () => {
     expect(errorMessage({ message: "bad input" }, "fallback")).toBe("bad input");
     expect(errorMessage(null, "fallback")).toBe("fallback");
   });
+
+  it("logs Postgres error code/details server-side for DB failures", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const supabaseErr = {
+      code: "23514",
+      message: 'new row for relation "ticket_categories" violates check constraint "club_table_fields_required"',
+      details: "Failing row contains (...)",
+      hint: null,
+    };
+
+    const result = errorMessage(supabaseErr, "Category could not be created.");
+
+    expect(result).toBe(supabaseErr.message);
+    expect(consoleError).toHaveBeenCalledWith(
+      "[errorMessage] db error:",
+      expect.objectContaining({ code: "23514", details: supabaseErr.details }),
+    );
+    consoleError.mockRestore();
+  });
+
+  it("does not log generic Error objects as DB errors", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    errorMessage(new Error("plain"), "fallback");
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
 });

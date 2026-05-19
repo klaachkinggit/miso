@@ -29,6 +29,21 @@ export class DomainError extends Error {
 }
 
 export function errorMessage(err: unknown, fallback: string): string {
+  // Supabase returns plain `{ message, code, details, hint }` objects from
+  // `.insert()/.update()` failures. Log the full payload server-side so
+  // Postgres codes like 23514 (CHECK) / 23502 (NOT NULL) / 23505 (unique)
+  // are recoverable from logs even when the user only sees `fallback`.
+  if (err && typeof err === "object") {
+    const e = err as { code?: unknown; details?: unknown; hint?: unknown };
+    if (e.code || e.details || e.hint) {
+      console.error("[errorMessage] db error:", {
+        code: e.code,
+        details: e.details,
+        hint: e.hint,
+        message: (err as { message?: unknown }).message,
+      });
+    }
+  }
   if (err instanceof Error) return err.message;
   if (err && typeof err === "object" && "message" in err) {
     return String((err as { message?: unknown }).message ?? fallback);
