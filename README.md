@@ -20,7 +20,7 @@ NFT minting and transfers are triggered by the Stripe webhook.
 
 ```bash
 npm install
-cp .env.example .env.local
+cp .env.example .env
 supabase start
 supabase migration up
 npm run demo:seed
@@ -48,7 +48,7 @@ STRIPE_WEBHOOK_SECRET=
 Use a restricted API key (`rk_` prefix) for `STRIPE_SECRET_KEY`.
 For local webhook testing run `stripe listen --forward-to localhost:3002/api/stripe/webhook`.
 
-Do not commit `.env.local` or provider secrets.
+Do not commit `.env` or provider secrets.
 
 ## Checks
 
