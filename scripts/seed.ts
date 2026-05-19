@@ -78,6 +78,14 @@ interface SeedEvent {
     benefits: string;
     price: number;
     supply: number;
+    kind?: "standard" | "club_table";
+    min_spending?: number;
+    online_advance?: number;
+    base_capacity?: number;
+    extra_guests_enabled?: boolean;
+    price_per_extra_guest?: number;
+    max_extra_guests?: number;
+    color_hex?: string;
   }>;
 }
 
@@ -253,6 +261,21 @@ function buildSeedEvents(): SeedEvent[] {
           benefits: "Reserved seating, fast lane, drink credit, member-only after-hours.",
           price: 75,
           supply: 10,
+        },
+        {
+          name: "Skyline Club Table",
+          description: "Private rooftop club table with bottle minimum and host service.",
+          benefits: "Reserved table, dedicated host, fast lane entry, premium view.",
+          price: 0,
+          supply: 6,
+          kind: "club_table",
+          min_spending: 600,
+          online_advance: 150,
+          base_capacity: 6,
+          extra_guests_enabled: true,
+          price_per_extra_guest: 40,
+          max_extra_guests: 4,
+          color_hex: "#FF6B35",
         },
       ],
     },
@@ -593,7 +616,25 @@ async function ensureCategoryWithTickets(args: {
   price: number;
   supply: number;
   currency: "EUR";
+  kind?: "standard" | "club_table";
+  min_spending?: number;
+  online_advance?: number;
+  base_capacity?: number;
+  extra_guests_enabled?: boolean;
+  price_per_extra_guest?: number;
+  max_extra_guests?: number;
+  color_hex?: string;
 }) {
+  const v2Fields = {
+    kind: args.kind ?? "standard",
+    min_spending: args.min_spending ?? null,
+    online_advance: args.online_advance ?? null,
+    base_capacity: args.base_capacity ?? null,
+    extra_guests_enabled: args.extra_guests_enabled ?? false,
+    price_per_extra_guest: args.price_per_extra_guest ?? null,
+    max_extra_guests: args.max_extra_guests ?? null,
+    color_hex: args.color_hex ?? null,
+  };
   const { data: existing } = await sb
     .from("ticket_categories")
     .select("id, supply, sold_count")
@@ -614,6 +655,7 @@ async function ensureCategoryWithTickets(args: {
         resale_enabled: true,
         public_sales_counter_enabled: true,
         supply: existing.supply + ticketsToAdd,
+        ...v2Fields,
       })
       .eq("id", existing.id);
     if (ticketsToAdd > 0) {
@@ -639,6 +681,7 @@ async function ensureCategoryWithTickets(args: {
       sales_enabled: true,
       resale_enabled: true,
       public_sales_counter_enabled: true,
+      ...v2Fields,
     })
     .select("id")
     .single();
@@ -798,6 +841,14 @@ async function main() {
         price: category.price,
         supply: category.supply,
         currency: "EUR",
+        kind: category.kind,
+        min_spending: category.min_spending,
+        online_advance: category.online_advance,
+        base_capacity: category.base_capacity,
+        extra_guests_enabled: category.extra_guests_enabled,
+        price_per_extra_guest: category.price_per_extra_guest,
+        max_extra_guests: category.max_extra_guests,
+        color_hex: category.color_hex,
       });
     }
     await ensureController(eventId, userIds["controller@miso.local"]);
