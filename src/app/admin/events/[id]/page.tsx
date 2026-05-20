@@ -78,7 +78,7 @@ export default async function AdminEventPage({
           <TabsTrigger value="refunds">Refunds</TabsTrigger>
         </TabsList>
         <TabsContent value="details">
-          <DetailsForm event={event} userRole={profile?.role} />
+          <DetailsForm event={event} />
         </TabsContent>
         <TabsContent value="categories">
           <CategoriesPanel eventId={event.id} categories={categories ?? []} />

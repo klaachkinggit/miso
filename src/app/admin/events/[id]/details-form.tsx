@@ -16,11 +16,10 @@ import { DiscoveryFields } from "@/app/admin/events/discovery-fields";
 import type { EventRow } from "@/types/db";
 import { cancelEvent, publishEvent, unpublishEvent, updateEvent } from "../../actions";
 
-export function DetailsForm({ event, userRole }: { event: EventRow; userRole?: string }) {
+export function DetailsForm({ event }: { event: EventRow }) {
   const [floorPlanUrl, setFloorPlanUrl] = useState(event.floor_plan_url ?? "");
   const [uploadingFloor, setUploadingFloor] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const isAdmin = userRole === "admin";
 
   async function uploadFloorPlan(file: File) {
     setUploadingFloor(true);

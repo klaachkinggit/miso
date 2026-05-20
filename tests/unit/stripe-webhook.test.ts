@@ -8,6 +8,10 @@ const webhookMocks = vi.hoisted(() => ({
   update: vi.fn(),
 }));
 
+const webhookDb = vi.hoisted(() => ({
+  purchasesForSession: [] as Array<{ id: string; ticket_id: string | null }>,
+}));
+
 vi.mock("@/lib/payments/settlement", () => ({
   FulfillmentPendingError: class FulfillmentPendingError extends Error {
     name = "FulfillmentPendingError";
@@ -38,9 +42,14 @@ vi.mock("@/lib/supabase/service", () => ({
       if (table === "purchases") {
         return {
           select: () => ({
-            eq: () => ({
-              maybeSingle: () => Promise.resolve({ data: { ticket_id: "ticket-1" } }),
-            }),
+            eq: (column: string) => {
+              if (column === "provider_session_id") {
+                return Promise.resolve({ data: webhookDb.purchasesForSession, error: null });
+              }
+              return {
+                maybeSingle: () => Promise.resolve({ data: { ticket_id: "ticket-1" } }),
+              };
+            },
           }),
         };
       }
@@ -80,6 +89,7 @@ describe("Stripe webhook settlement router", () => {
     webhookMocks.settleFailedPurchase.mockReset();
     webhookMocks.fulfillResale.mockReset();
     webhookMocks.update.mockReset();
+    webhookDb.purchasesForSession = [];
     webhookMocks.update.mockReturnValue({
       eq: vi.fn().mockReturnThis(),
     });
@@ -97,6 +107,26 @@ describe("Stripe webhook settlement router", () => {
 
     expect(webhookMocks.settlePaidPurchase).toHaveBeenCalledWith({ purchaseId: "purchase-1" });
     expect(webhookMocks.fulfillResale).not.toHaveBeenCalled();
+  });
+
+  it("settles every purchase attached to a shared checkout session", async () => {
+    webhookDb.purchasesForSession = [
+      { id: "purchase-1", ticket_id: "ticket-1" },
+      { id: "purchase-2", ticket_id: "ticket-2" },
+    ];
+    const { handleStripeCheckoutEvent } = await import("@/lib/payments/webhook");
+
+    await handleStripeCheckoutEvent(
+      event("checkout.session.completed", {
+        id: "cs_batch",
+        payment_status: "paid",
+        metadata: { type: "purchase", purchase_id: "purchase-1" },
+      }),
+    );
+
+    expect(webhookMocks.settlePaidPurchase).toHaveBeenCalledTimes(2);
+    expect(webhookMocks.settlePaidPurchase).toHaveBeenCalledWith({ purchaseId: "purchase-1" });
+    expect(webhookMocks.settlePaidPurchase).toHaveBeenCalledWith({ purchaseId: "purchase-2" });
   });
 
   it("routes paid resale sessions to resale fulfillment", async () => {

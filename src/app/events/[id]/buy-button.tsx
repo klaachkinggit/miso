@@ -51,11 +51,12 @@ export function BuyButton({
   const extraPrice = Number(category.price_per_extra_guest ?? 0);
   const maxExtras = category.max_extra_guests ?? 0;
   const allowExtras = isClub && category.extra_guests_enabled && maxExtras > 0;
+  const basePrice = Number(category.price ?? 0);
 
   const onlineTotal = useMemo(() => {
     if (isClub) return (advance + extras * extraPrice) * quantity;
-    return Number(category.price ?? 0) * quantity;
-  }, [advance, extras, extraPrice, isClub, category.price, quantity]);
+    return basePrice * quantity;
+  }, [advance, basePrice, extras, extraPrice, isClub, quantity]);
 
   async function submit() {
     if (isGift && !giftEmail) {
@@ -104,7 +105,9 @@ export function BuyButton({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Quantity</p>
-                <p className="text-xs text-muted-foreground">Number of tickets</p>
+                <p className="text-xs text-muted-foreground">
+                  {isClub ? "Number of tables" : "Number of tickets"}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -206,7 +209,7 @@ export function BuyButton({
                 <span>Remaining minimum spending due at the venue</span>
                 <span>
                   {formatPrice(
-                    Math.max(0, Number(category.price ?? 0) - onlineTotal),
+                    Math.max(0, basePrice * quantity - onlineTotal),
                     category.currency,
                   )}
                 </span>
