@@ -32,6 +32,7 @@ function stripeCurrency(currency: Currency): string {
 export interface StripeCheckoutInput {
   purchaseId: string;
   amount: number;
+  quantity?: number;
   currency: Currency;
   eventName: string;
   categoryName: string;
@@ -55,7 +56,7 @@ export async function createStripeCheckoutSession(
               name: `${input.eventName} — ${input.categoryName}`,
             },
           },
-          quantity: 1,
+          quantity: input.quantity ?? 1,
         },
       ],
       success_url: input.successUrl,

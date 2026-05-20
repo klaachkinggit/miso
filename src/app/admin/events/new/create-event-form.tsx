@@ -11,11 +11,16 @@ import { DiscoveryFields } from "@/app/admin/events/discovery-fields";
 import { uploadPublicEventImage } from "@/lib/supabase/uploads";
 import { createEvent } from "../../actions";
 
-export function CreateEventForm({ error }: { error?: string }) {
+export function CreateEventForm({ error, userRole }: { error?: string; userRole?: string }) {
   const [imageUrl, setImageUrl] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [heroUrl, setHeroUrl] = useState("");
+  const [ticketVisualUrl, setTicketVisualUrl] = useState("");
+  const [marketplaceUrl, setMarketplaceUrl] = useState("");
   const [floorPlanUrl, setFloorPlanUrl] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingFloor, setUploadingFloor] = useState(false);
+  const isAdmin = userRole === "admin";
 
   async function uploadFloorPlan(file: File) {
     setUploadingFloor(true);

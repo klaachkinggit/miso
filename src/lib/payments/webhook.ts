@@ -49,7 +49,17 @@ async function settlePaidCheckoutSession(
 
   const metadata = checkoutMetadata(session);
   if (metadata.type === "purchase") {
-    await settlePaidPurchase({ purchaseId: metadata.purchaseId });
+    const sb = createServiceClient();
+    const { data: purchases } = await sb
+      .from("purchases")
+      .select("id")
+      .eq("provider_session_id", session.id);
+    
+    if (purchases) {
+      await Promise.all(purchases.map(p => settlePaidPurchase({ purchaseId: p.id })));
+    } else if (metadata.purchaseId) {
+      await settlePaidPurchase({ purchaseId: metadata.purchaseId });
+    }
     return;
   }
 
@@ -67,15 +77,27 @@ async function settleFailedCheckoutSession(
   const metadata = checkoutMetadata(session);
   if (metadata.type === "purchase") {
     const sb = createServiceClient();
-    const { data: purchase } = await sb
+    const { data: purchases } = await sb
       .from("purchases")
-      .select("ticket_id")
-      .eq("id", metadata.purchaseId)
-      .maybeSingle<{ ticket_id: string }>();
-    await settleFailedPurchase({
-      purchaseId: metadata.purchaseId,
-      ticketId: purchase?.ticket_id,
-    });
+      .select("id, ticket_id")
+      .eq("provider_session_id", session.id);
+      
+    if (purchases && purchases.length > 0) {
+      await Promise.all(purchases.map(p => settleFailedPurchase({
+        purchaseId: p.id,
+        ticketId: p.ticket_id,
+      })));
+    } else if (metadata.purchaseId) {
+      const { data: purchase } = await sb
+        .from("purchases")
+        .select("ticket_id")
+        .eq("id", metadata.purchaseId)
+        .maybeSingle<{ ticket_id: string }>();
+      await settleFailedPurchase({
+        purchaseId: metadata.purchaseId,
+        ticketId: purchase?.ticket_id,
+      });
+    }
     return;
   }
 

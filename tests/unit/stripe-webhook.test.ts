@@ -45,8 +45,14 @@ vi.mock("@/lib/supabase/service", () => ({
         };
       }
       if (table === "resale_listings") {
+        const updateMock = {
+          eq: () => updateMock,
+        };
         return {
-          update: webhookMocks.update,
+          update: (...args: any[]) => {
+            webhookMocks.update(...args);
+            return updateMock;
+          },
         };
       }
       throw new Error(`Unexpected table ${table}`);

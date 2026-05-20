@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     const checkout = await createPurchaseCheckout({
       buyerUserId: profile.id,
       categoryId: body.category_id,
+      quantity: body.quantity,
       extraGuestsCount: body.extra_guests_count,
       giftRecipientEmail: body.gift_recipient_email,
       idempotencyKey,

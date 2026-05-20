@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/site/page-header";
-import { requireOrganizerWorkspace } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { loadSiteSettings } from "@/lib/site/settings";
 import { SiteSettingsForm } from "./site-settings-form";
 
@@ -10,7 +10,7 @@ export default async function SiteSettingsPage({
 }) {
   const [params, settings] = await Promise.all([
     searchParams,
-    requireOrganizerWorkspace().then(() => loadSiteSettings()),
+    requireRole("admin").then(() => loadSiteSettings()),
   ]);
 
   return (

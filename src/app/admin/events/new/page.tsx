@@ -1,3 +1,4 @@
+import { requireOrganizerWorkspace } from "@/lib/auth";
 import { CreateEventForm } from "./create-event-form";
 
 export default async function NewEventPage({
@@ -5,6 +6,7 @@ export default async function NewEventPage({
 }: {
   searchParams?: Promise<{ error?: string }>;
 }) {
+  const admin = await requireOrganizerWorkspace();
   const params = await searchParams;
   return (
     <div className="container max-w-3xl py-10">
@@ -12,7 +14,7 @@ export default async function NewEventPage({
         <h1 className="text-3xl font-semibold">New event</h1>
         <p className="mt-2 text-muted-foreground">Create the draft event and deploy its on-chain ticket contract.</p>
       </div>
-      <CreateEventForm error={params?.error} />
+      <CreateEventForm error={params?.error} userRole={admin.role} />
     </div>
   );
 }

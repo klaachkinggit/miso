@@ -41,6 +41,7 @@ export function BuyButton({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const [extras, setExtras] = useState(0);
   const [isGift, setIsGift] = useState(false);
   const [giftEmail, setGiftEmail] = useState("");
@@ -52,9 +53,9 @@ export function BuyButton({
   const allowExtras = isClub && category.extra_guests_enabled && maxExtras > 0;
 
   const onlineTotal = useMemo(() => {
-    if (isClub) return advance + extras * extraPrice;
-    return Number(category.price ?? 0);
-  }, [advance, extras, extraPrice, isClub, category.price]);
+    if (isClub) return (advance + extras * extraPrice) * quantity;
+    return Number(category.price ?? 0) * quantity;
+  }, [advance, extras, extraPrice, isClub, category.price, quantity]);
 
   async function submit() {
     if (isGift && !giftEmail) {
@@ -66,6 +67,7 @@ export function BuyButton({
       endpoint: "/api/checkout",
       body: {
         category_id: category.id,
+        quantity,
         extra_guests_count: extras,
         gift_recipient_email: isGift ? giftEmail : null,
       },
@@ -97,6 +99,36 @@ export function BuyButton({
                 : "You will be redirected to Stripe to complete payment."}
             </DialogDescription>
           </DialogHeader>
+
+          <div className="grid gap-2 rounded-md border border-border/70 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Quantity</p>
+                <p className="text-xs text-muted-foreground">Number of tickets</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setQuantity((v) => Math.max(1, v - 1))}
+                  disabled={quantity <= 1}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="w-6 text-center font-mono">{quantity}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setQuantity((v) => Math.min(10, v + 1))}
+                  disabled={quantity >= 10}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
 
           {allowExtras ? (
             <div className="grid gap-2 rounded-md border border-border/70 p-3">

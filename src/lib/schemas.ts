@@ -83,6 +83,7 @@ export const CreateCategorySchema = z
 
 export const PurchaseInitSchema = z.object({
   category_id: z.string().uuid(),
+  quantity: z.coerce.number().int().min(1).max(10).default(1),
   extra_guests_count: z.coerce.number().int().min(0).default(0),
   gift_recipient_email: z
     .string()

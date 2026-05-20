@@ -280,9 +280,6 @@ export default async function HomePage() {
                 <Button asChild size="lg">
                   <Link href="/signup/organizer">Publish my event</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline">
-                  <Link href="/admin">Organizer dashboard</Link>
-                </Button>
               </div>
             </div>
 
