@@ -19,16 +19,17 @@ async function createDraftEvent(
   name: string,
 ): Promise<string> {
   await page.goto("/admin/events/new");
-  await page.getByLabel("Name").fill(name);
+  await page.getByLabel("Name", { exact: true }).fill(name);
   // datetime-local; a fixed future time is enough.
-  await page.getByLabel("Date").fill("2030-06-01T22:00");
-  await page.getByLabel("Capacity").fill("200");
-  await page.getByLabel("Venue").fill("Test Venue");
-  await page.getByLabel("City").fill("Paris");
+  await page.getByLabel("Date", { exact: true }).fill("2030-06-01T22:00");
+  await page.getByLabel("Capacity", { exact: true }).fill("200");
+  await page.getByLabel("Venue", { exact: true }).fill("Test Venue");
+  await page.getByLabel("City", { exact: true }).fill("Paris");
   await page.getByRole("button", { name: /create event/i }).click();
   await page.waitForURL(/\/admin\/events\/[0-9a-f-]+/, { timeout: 20_000 });
   const match = page.url().match(/\/admin\/events\/([0-9a-f-]+)/);
   if (!match) throw new Error("Event creation did not redirect to admin event page");
+  await page.getByRole("tab", { name: "Categories" }).click();
   return match[1]!;
 }
 
@@ -90,7 +91,7 @@ test.describe("Organizer category creation", () => {
     await expect(page.getByText("Skyline Table")).toBeVisible();
   });
 
-  test("rejects club_table missing required fields with a friendly error", async ({ page }) => {
+  test("rejects club_table missing required fields before submission", async ({ page }) => {
     const eventName = uniqueName("E2E Club Invalid");
     await createDraftEvent(page, eventName);
 
@@ -103,7 +104,13 @@ test.describe("Organizer category creation", () => {
     await page.getByLabel("Base guests included").fill("");
     await page.getByRole("button", { name: /create and seed tickets/i }).click();
 
-    // Server action surfaces validation via ?error= query param on redirect.
-    await page.waitForURL(/error=/, { timeout: 10_000 });
+    await expect(page.getByLabel("Online advance")).toBeFocused();
+    await expect
+      .poll(() =>
+        page
+          .getByLabel("Online advance")
+          .evaluate((input) => (input as HTMLInputElement).validationMessage),
+      )
+      .not.toBe("");
   });
 });
