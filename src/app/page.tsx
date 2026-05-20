@@ -55,7 +55,7 @@ export default async function HomePage() {
             fill
             priority
             sizes="100vw"
-            className="-z-20 object-cover opacity-55 saturate-[0.85]"
+            className="-z-20 object-cover opacity-80 saturate-[0.95]"
           />
         ) : null}
         <div
@@ -63,9 +63,10 @@ export default async function HomePage() {
           className="absolute inset-0 -z-10 opacity-95"
           style={{
             background:
-              "radial-gradient(circle at 20% 0%, rgba(184,155,94,0.32), transparent 38rem)," +
-              "radial-gradient(circle at 85% 30%, rgba(230,216,201,0.18), transparent 32rem)," +
-              "linear-gradient(180deg,#101010 0%, #0a0a0a 60%, #111111 100%)",
+              "radial-gradient(circle at 18% 8%, rgba(184,155,94,0.28), transparent 34rem)," +
+              "radial-gradient(circle at 86% 28%, rgba(230,216,201,0.14), transparent 30rem)," +
+              "linear-gradient(90deg, rgba(7,7,7,0.92) 0%, rgba(7,7,7,0.72) 45%, rgba(7,7,7,0.48) 100%)," +
+              "linear-gradient(180deg, rgba(10,10,10,0.38) 0%, rgba(10,10,10,0.58) 55%, #111111 100%)",
           }}
         />
         <div className="container grid items-center gap-12 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-28">
@@ -284,7 +285,7 @@ export default async function HomePage() {
             </div>
 
             <div className="grid gap-4">
-              <LandingMediaStack settings={siteSettings} />
+              <OrganizerAudienceVisual settings={siteSettings} />
               <ul className="grid gap-3">
                 {[
                   {
@@ -319,6 +320,7 @@ export default async function HomePage() {
               </ul>
             </div>
           </div>
+          <OrganizerDashboardShowcase settings={siteSettings} />
         </div>
       </section>
 
@@ -326,41 +328,64 @@ export default async function HomePage() {
   );
 }
 
-function LandingMediaStack({
+function OrganizerAudienceVisual({
   settings,
 }: {
   settings: Awaited<ReturnType<typeof loadSiteSettings>>;
 }) {
   const audience = settings?.landing_audience_url;
-  const dashboard = settings?.landing_dashboard_url;
 
-  if (!audience && !dashboard) return null;
+  if (!audience) return null;
 
   return (
     <div className="relative min-h-72 overflow-hidden rounded-2xl border border-[#E6D8C9]/10 bg-black/30">
-      {audience ? (
-        <Image
-          src={audience}
-          alt=""
-          fill
-          sizes="(min-width: 768px) 45vw, 100vw"
-          className="object-cover opacity-85"
-        />
-      ) : (
-        <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212,#2b2620_55%,#E6D8C9)]" />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-      {dashboard ? (
-        <div className="absolute bottom-4 right-4 h-32 w-[58%] overflow-hidden rounded-xl border border-[#E6D8C9]/20 bg-black shadow-2xl md:h-40">
+      <Image
+        src={audience}
+        alt=""
+        fill
+        sizes="(min-width: 768px) 45vw, 100vw"
+        className="object-cover opacity-90"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/14 to-transparent" />
+      <div className="absolute bottom-4 left-4 right-4">
+        <p className="mono-stub text-[#E6D8C9]/75">Organizer audience</p>
+      </div>
+    </div>
+  );
+}
+
+function OrganizerDashboardShowcase({
+  settings,
+}: {
+  settings: Awaited<ReturnType<typeof loadSiteSettings>>;
+}) {
+  const dashboard = settings?.landing_dashboard_url;
+
+  if (!dashboard) return null;
+
+  return (
+    <div className="relative mt-12 overflow-hidden rounded-2xl border border-[#E6D8C9]/12 bg-[#080808]/72 p-4 shadow-[0_26px_90px_-58px_rgba(0,0,0,0.95)] md:mt-14 md:p-6">
+      <div className="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-center">
+        <div className="space-y-3 px-1 md:px-2">
+          <span className="mono-stub text-accent">Promoter dashboard</span>
+          <h3 className="display text-3xl leading-tight text-[#F5F3EE] md:text-4xl">
+            Watch demand move in real time.
+          </h3>
+          <p className="max-w-md text-sm leading-6 text-[#E6D8C9]/72 md:text-base">
+            Keep sales, tiers, resale pressure, and gate activity visible from one operational surface.
+          </p>
+        </div>
+        <div className="relative aspect-[16/10] min-h-56 overflow-hidden rounded-xl border border-[#E6D8C9]/16 bg-black md:min-h-80">
           <Image
             src={dashboard}
-            alt=""
+            alt="Organizer dashboard preview"
             fill
-            sizes="(min-width: 768px) 25vw, 60vw"
-            className="object-cover"
+            sizes="(min-width: 1024px) 55vw, 100vw"
+            className="object-cover object-top"
           />
+          <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/8" />
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
