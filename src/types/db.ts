@@ -192,6 +192,7 @@ export type Database = {
       }
       events: {
         Row: {
+          artists: string[]
           capacity: number
           city: string
           conditions: string | null
@@ -199,9 +200,13 @@ export type Database = {
           date: string
           description: string | null
           floor_plan_url: string | null
+          genre: Database["public"]["Enums"]["event_genre"] | null
+          hero_url: string | null
           id: string
           image_ipfs_uri: string | null
           image_url: string | null
+          is_festival: boolean
+          marketplace_url: string | null
           name: string
           nft_contract_address: string | null
           organizer_user_id: string | null
@@ -209,11 +214,16 @@ export type Database = {
           resale_enabled: boolean
           role_admin_address: string | null
           sales_enabled: boolean
+          search_tsv: unknown | null
           status: Database["public"]["Enums"]["event_status"]
+          thumbnail_url: string | null
+          ticket_visual_url: string | null
           updated_at: string
           venue_name: string
+          vibe: Database["public"]["Enums"]["event_vibe"] | null
         }
         Insert: {
+          artists?: string[]
           capacity: number
           city: string
           conditions?: string | null
@@ -221,9 +231,13 @@ export type Database = {
           date: string
           description?: string | null
           floor_plan_url?: string | null
+          genre?: Database["public"]["Enums"]["event_genre"] | null
+          hero_url?: string | null
           id?: string
           image_ipfs_uri?: string | null
           image_url?: string | null
+          is_festival?: boolean
+          marketplace_url?: string | null
           name: string
           nft_contract_address?: string | null
           organizer_user_id?: string | null
@@ -231,11 +245,16 @@ export type Database = {
           resale_enabled?: boolean
           role_admin_address?: string | null
           sales_enabled?: boolean
+          search_tsv?: unknown | null
           status?: Database["public"]["Enums"]["event_status"]
+          thumbnail_url?: string | null
+          ticket_visual_url?: string | null
           updated_at?: string
           venue_name: string
+          vibe?: Database["public"]["Enums"]["event_vibe"] | null
         }
         Update: {
+          artists?: string[]
           capacity?: number
           city?: string
           conditions?: string | null
@@ -243,9 +262,13 @@ export type Database = {
           date?: string
           description?: string | null
           floor_plan_url?: string | null
+          genre?: Database["public"]["Enums"]["event_genre"] | null
+          hero_url?: string | null
           id?: string
           image_ipfs_uri?: string | null
           image_url?: string | null
+          is_festival?: boolean
+          marketplace_url?: string | null
           name?: string
           nft_contract_address?: string | null
           organizer_user_id?: string | null
@@ -253,9 +276,13 @@ export type Database = {
           resale_enabled?: boolean
           role_admin_address?: string | null
           sales_enabled?: boolean
+          search_tsv?: unknown | null
           status?: Database["public"]["Enums"]["event_status"]
+          thumbnail_url?: string | null
+          ticket_visual_url?: string | null
           updated_at?: string
           venue_name?: string
+          vibe?: Database["public"]["Enums"]["event_vibe"] | null
         }
         Relationships: [
           {
@@ -592,6 +619,30 @@ export type Database = {
           },
         ]
       }
+      site_settings: {
+        Row: {
+          id: string
+          landing_audience_url: string | null
+          landing_dashboard_url: string | null
+          landing_hero_bg_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          landing_audience_url?: string | null
+          landing_dashboard_url?: string | null
+          landing_hero_bg_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          landing_audience_url?: string | null
+          landing_dashboard_url?: string | null
+          landing_hero_bg_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ticket_categories: {
         Row: {
           base_capacity: number | null
@@ -914,7 +965,15 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      event_popularity: {
+        Row: {
+          event_id: string | null
+          tickets_sold: number | null
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Functions: {
       current_user_role: {
@@ -934,7 +993,14 @@ export type Database = {
     }
     Enums: {
       currency: "EUR"
+      event_genre: "techno" | "afro_house" | "rap" | "commercial" | "live"
       event_status: "draft" | "published" | "canceled" | "completed"
+      event_vibe:
+        | "club"
+        | "festival"
+        | "rooftop"
+        | "student_party"
+        | "private_event"
       listing_status:
         | "active"
         | "sold"

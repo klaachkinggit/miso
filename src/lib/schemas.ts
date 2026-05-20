@@ -6,6 +6,8 @@ const HexColor = z
   .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #AABBCC");
 
 const CategoryKindSchema = z.enum(["standard", "club_table"]);
+const EventGenreSchema = z.enum(["techno", "afro_house", "rap", "commercial", "live"]);
+const EventVibeSchema = z.enum(["club", "festival", "rooftop", "student_party", "private_event"]);
 
 export const CreateEventSchema = z.object({
   name: z.string().min(2).max(120),
@@ -14,9 +16,23 @@ export const CreateEventSchema = z.object({
   city: z.string().min(2).max(80),
   capacity: z.coerce.number().int().positive(),
   image_url: z.string().url().optional().nullable(),
+  thumbnail_url: z.string().url().optional().nullable(),
+  hero_url: z.string().url().optional().nullable(),
+  ticket_visual_url: z.string().url().optional().nullable(),
+  marketplace_url: z.string().url().optional().nullable(),
   description: z.string().max(4000).optional().nullable(),
   conditions: z.string().max(2000).optional().nullable(),
   floor_plan_url: z.string().url().optional().nullable(),
+  genre: EventGenreSchema.optional().nullable(),
+  vibe: EventVibeSchema.optional().nullable(),
+  is_festival: z.boolean().default(false),
+  artists: z.array(z.string().min(1).max(80)).max(20).default([]),
+});
+
+export const SiteSettingsSchema = z.object({
+  landing_hero_bg_url: z.string().url().optional().nullable(),
+  landing_audience_url: z.string().url().optional().nullable(),
+  landing_dashboard_url: z.string().url().optional().nullable(),
 });
 
 const ClubTableFields = z.object({
@@ -67,6 +83,7 @@ export const CreateCategorySchema = z
 
 export const PurchaseInitSchema = z.object({
   category_id: z.string().uuid(),
+  quantity: z.coerce.number().int().min(1).max(10).default(1),
   extra_guests_count: z.coerce.number().int().min(0).default(0),
   gift_recipient_email: z
     .string()

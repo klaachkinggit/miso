@@ -72,6 +72,10 @@ interface SeedEvent {
   city: string;
   capacity: number;
   description: string;
+  genre?: "techno" | "afro_house" | "rap" | "commercial" | "live";
+  vibe?: "club" | "festival" | "rooftop" | "student_party" | "private_event";
+  is_festival?: boolean;
+  artists?: string[];
   categories: Array<{
     name: string;
     description: string;
@@ -127,6 +131,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Paris",
       capacity: 900,
       description: "A members-only electronic night with cinematic lighting, token-gated access, and collectible NFT tickets.",
+      genre: "techno",
+      vibe: "club",
+      artists: ["Mila Stern", "DVS1"],
       categories: [
         {
           name: "General NFT",
@@ -151,6 +158,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Berlin",
       capacity: 650,
       description: "A raw warehouse performance with premium access control and anti-scalping resale limits.",
+      genre: "techno",
+      vibe: "club",
+      artists: ["Bambounou", "Helena Hauff"],
       categories: [
         {
           name: "Floor Token",
@@ -175,6 +185,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "London",
       capacity: 420,
       description: "A curated rooftop concert blending fashion, music, and clean digital ownership.",
+      genre: "live",
+      vibe: "rooftop",
+      artists: ["Jorja Smith", "SAULT Soundsystem"],
       categories: [
         {
           name: "Skyline Entry",
@@ -199,6 +212,10 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Amsterdam",
       capacity: 2500,
       description: "A weekend festival afterparty with collectible tickets, VIP access, and secure member resale.",
+      genre: "commercial",
+      vibe: "festival",
+      is_festival: true,
+      artists: ["Peggy Gou", "Honey Dijon"],
       categories: [
         {
           name: "Festival Pass",
@@ -223,6 +240,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Lisbon",
       capacity: 300,
       description: "A private culture and technology evening for promoters, artists, collectors, and nightlife members.",
+      genre: "live",
+      vibe: "private_event",
+      artists: ["MISO Talks", "NTS Residents"],
       categories: [
         {
           name: "Member Access",
@@ -247,6 +267,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Madrid",
       capacity: 540,
       description: "A skyline rooftop set with curated house DJs and gated member entry.",
+      genre: "afro_house",
+      vibe: "rooftop",
+      artists: ["Shimza", "Desiree"],
       categories: [
         {
           name: "Rooftop Entry",
@@ -286,6 +309,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "New York",
       capacity: 1800,
       description: "An all-night industrial techno marathon with on-chain ticket protection.",
+      genre: "techno",
+      vibe: "club",
+      artists: ["Amelie Lens", "SPFDJ"],
       categories: [
         {
           name: "Warehouse Pass",
@@ -310,6 +336,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Tokyo",
       capacity: 700,
       description: "A bass-driven night with collectible sticker drops and identity-bound tickets.",
+      genre: "rap",
+      vibe: "club",
+      artists: ["Awich", "¥ØU$UK€ ¥UK1MAT$U"],
       categories: [
         {
           name: "Floor Wristband",
@@ -334,6 +363,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Marrakech",
       capacity: 280,
       description: "An intimate riad night with live percussion and members-only entry list.",
+      genre: "afro_house",
+      vibe: "private_event",
+      artists: ["Amine K", "Polyswitch"],
       categories: [
         {
           name: "Courtyard Entry",
@@ -358,6 +390,10 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Ibiza",
       capacity: 1400,
       description: "A sunrise open-air session with token-gated lounges and resale price caps.",
+      genre: "afro_house",
+      vibe: "festival",
+      is_festival: true,
+      artists: ["Black Coffee", "Keinemusik"],
       categories: [
         {
           name: "Open Air Pass",
@@ -382,6 +418,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Mexico City",
       capacity: 320,
       description: "A vinyl-only listening room with rotating selectors and limited member badges.",
+      genre: "commercial",
+      vibe: "private_event",
+      artists: ["Yu Su", "Gilles Peterson"],
       categories: [
         {
           name: "Listening Room",
@@ -406,6 +445,9 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Seoul",
       capacity: 480,
       description: "A garage and breaks marathon with member-only after-hours and digital collectibles.",
+      genre: "rap",
+      vibe: "club",
+      artists: ["Yaeji", "Park Hye Jin"],
       categories: [
         {
           name: "Garage Pass",
@@ -430,6 +472,10 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Reykjavik",
       capacity: 600,
       description: "An ambient and techno hybrid show under aurora projections.",
+      genre: "techno",
+      vibe: "festival",
+      is_festival: true,
+      artists: ["Kiasmos", "Bjarki"],
       categories: [
         {
           name: "Aurora Floor",
@@ -454,6 +500,10 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Cape Town",
       capacity: 1100,
       description: "A coastal afterparty with sunset DJs, capped resale, and identity-bound NFTs.",
+      genre: "afro_house",
+      vibe: "festival",
+      is_festival: true,
+      artists: ["Culoe De Song", "Desiree"],
       categories: [
         {
           name: "Coastal Pass",
@@ -478,6 +528,10 @@ function buildSeedEvents(): SeedEvent[] {
       city: "Canggu",
       capacity: 900,
       description: "A daytime jungle session with breathwork add-ons and on-chain ticket history.",
+      genre: "live",
+      vibe: "festival",
+      is_festival: true,
+      artists: ["Rampa", "Satori"],
       categories: [
         {
           name: "Jungle Pass",
@@ -577,6 +631,10 @@ async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<s
         city: event.city,
         capacity: event.capacity,
         description: event.description,
+        genre: event.genre ?? null,
+        vibe: event.vibe ?? null,
+        is_festival: event.is_festival ?? false,
+        artists: event.artists ?? [],
         sales_enabled: true,
         resale_enabled: true,
         public_sales_counter_enabled: true,
@@ -596,6 +654,10 @@ async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<s
       city: event.city,
       capacity: event.capacity,
       description: event.description,
+      genre: event.genre ?? null,
+      vibe: event.vibe ?? null,
+      is_festival: event.is_festival ?? false,
+      artists: event.artists ?? [],
       sales_enabled: true,
       resale_enabled: true,
       public_sales_counter_enabled: true,

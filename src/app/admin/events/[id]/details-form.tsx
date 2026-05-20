@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ImagePlus, Loader2, Map } from "lucide-react";
+import { Loader2, Map } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,23 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { casablancaInputValue } from "@/lib/format";
 import { shortAddress } from "@/lib/chain/utils";
 import { uploadPublicEventImage } from "@/lib/supabase/uploads";
+import { ImageUploadField } from "@/app/admin/events/image-upload-field";
+import { DiscoveryFields } from "@/app/admin/events/discovery-fields";
 import type { EventRow } from "@/types/db";
 import { cancelEvent, publishEvent, unpublishEvent, updateEvent } from "../../actions";
 
 export function DetailsForm({ event }: { event: EventRow }) {
-  const [imageUrl, setImageUrl] = useState(event.image_url ?? "");
   const [floorPlanUrl, setFloorPlanUrl] = useState(event.floor_plan_url ?? "");
-  const [uploading, setUploading] = useState(false);
   const [uploadingFloor, setUploadingFloor] = useState(false);
-
-  async function uploadImage(file: File) {
-    setUploading(true);
-    try {
-      setImageUrl(await uploadPublicEventImage(file, `events/${event.id}`));
-    } finally {
-      setUploading(false);
-    }
-  }
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   async function uploadFloorPlan(file: File) {
     setUploadingFloor(true);
@@ -50,7 +42,6 @@ export function DetailsForm({ event }: { event: EventRow }) {
         <CardContent>
           <form action={updateEvent} className="grid gap-5">
             <input type="hidden" name="event_id" value={event.id} />
-            <input type="hidden" name="image_url" value={imageUrl} />
             <input type="hidden" name="floor_plan_url" value={floorPlanUrl} />
             <div className="grid gap-2">
               <Label htmlFor="name">Name</Label>
@@ -77,32 +68,57 @@ export function DetailsForm({ event }: { event: EventRow }) {
                 <Input id="city" name="city" defaultValue={event.city} required />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="event-image">Event image</Label>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Input
-                  id="event-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(uploadEvent) => {
-                    const file = uploadEvent.target.files?.[0];
-                    if (file) void uploadImage(file);
-                  }}
-                />
-                <div className="min-w-40 text-sm text-muted-foreground">
-                  {uploading ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Uploading
-                    </span>
-                  ) : imageUrl ? (
-                    <span className="flex items-center gap-2 text-emerald-300">
-                      <ImagePlus className="h-4 w-4" /> Image ready
-                    </span>
-                  ) : (
-                    "Optional"
-                  )}
-                </div>
-              </div>
+            <DiscoveryFields event={event} />
+            <div className="grid gap-5 rounded-md border border-border/60 bg-background/30 p-4">
+              <p className="text-sm font-medium text-foreground/90">Event artwork</p>
+              <p className="-mt-3 text-xs text-muted-foreground">
+                Upload distinct images for each surface. Any slot left empty falls back to the legacy event image.
+              </p>
+              <ImageUploadField
+                id="event-image"
+                name="image_url"
+                label="Default / legacy"
+                help="Used as a fallback when a specialized variant is missing."
+                initialUrl={event.image_url}
+                uploadPath={`events/${event.id}`}
+                onUploadingChange={setUploadingImage}
+              />
+              <ImageUploadField
+                id="event-thumbnail"
+                name="thumbnail_url"
+                label="Card thumbnail"
+                help="Shown on event listings, the home grid, and search results."
+                initialUrl={event.thumbnail_url}
+                uploadPath={`events/${event.id}/thumbnail`}
+                onUploadingChange={setUploadingImage}
+              />
+              <ImageUploadField
+                id="event-hero"
+                name="hero_url"
+                label="Detail hero"
+                help="Full-bleed banner on the event page and the homepage featured card."
+                initialUrl={event.hero_url}
+                uploadPath={`events/${event.id}/hero`}
+                onUploadingChange={setUploadingImage}
+              />
+              <ImageUploadField
+                id="event-ticket-visual"
+                name="ticket_visual_url"
+                label="Ticket / NFT visual"
+                help="Used on the ticket card in the user's wallet and the on-chain metadata."
+                initialUrl={event.ticket_visual_url}
+                uploadPath={`events/${event.id}/ticket`}
+                onUploadingChange={setUploadingImage}
+              />
+              <ImageUploadField
+                id="event-marketplace"
+                name="marketplace_url"
+                label="Resale marketplace"
+                help="Appears next to each resale listing on the official exchange."
+                initialUrl={event.marketplace_url}
+                uploadPath={`events/${event.id}/marketplace`}
+                onUploadingChange={setUploadingImage}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
@@ -167,7 +183,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
               Sales, resale, and the public counter are configured per category in the panel
               below.
             </p>
-            <Button type="submit" disabled={uploading || uploadingFloor}>Save changes</Button>
+            <Button type="submit" disabled={uploadingImage || uploadingFloor}>Save changes</Button>
           </form>
         </CardContent>
       </Card>

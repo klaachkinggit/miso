@@ -17,7 +17,7 @@ import {
   TransactionTimeoutError,
   waitForTransaction,
 } from "@/lib/thirdweb/transactions";
-import type { Currency, EventRow, Ticket, TicketCategoryKind } from "@/types/db";
+import type { Currency, Database, EventRow, Ticket, TicketCategoryKind } from "@/types/db";
 
 export interface EventDetailsInput {
   name: string;
@@ -26,9 +26,17 @@ export interface EventDetailsInput {
   city: string;
   capacity: number;
   image_url?: string | null;
+  thumbnail_url?: string | null;
+  hero_url?: string | null;
+  ticket_visual_url?: string | null;
+  marketplace_url?: string | null;
   description?: string | null;
   conditions?: string | null;
   floor_plan_url?: string | null;
+  genre?: Database["public"]["Enums"]["event_genre"] | null;
+  vibe?: Database["public"]["Enums"]["event_vibe"] | null;
+  is_festival: boolean;
+  artists: string[];
 }
 
 export interface CategoryInput {

@@ -57,6 +57,11 @@ class QueryMock {
     return this;
   }
 
+  in(column: string, values: unknown[]) {
+    this.filters[column] = values;
+    return this;
+  }
+
   maybeSingle() {
     if (this.table === "profiles") {
       return Promise.resolve({ data: dbState.friend, error: null });

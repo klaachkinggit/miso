@@ -10,6 +10,7 @@ import {
 } from "@/components/tickets/list-for-resale-button";
 import { formatDate, formatPrice } from "@/lib/format";
 import { explorerUrl, shortAddress } from "@/lib/chain/utils";
+import { eventImage } from "@/lib/events/images";
 import { cn } from "@/lib/utils";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
@@ -65,9 +66,12 @@ export function TicketCard({
   return (
     <Card className={cn("glass group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.01]", inactive && "opacity-60 grayscale")}>
       <div className="relative aspect-[5/2] overflow-hidden bg-secondary">
-        {event.image_url ? (
-          <Image src={event.image_url} alt={event.name} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover" />
-        ) : null}
+        {(() => {
+          const tv = ticket.image_url ?? eventImage(event, "ticket");
+          return tv ? (
+            <Image src={tv} alt={event.name} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover" />
+          ) : null;
+        })()}
         <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
         <div className="ticket-foil pointer-events-none absolute inset-0 animate-shimmer opacity-60 mix-blend-screen" />
         <Badge className="absolute right-4 top-4" variant={badgeVariant}>

@@ -20,7 +20,9 @@ import {
   CreateEventSchema,
   InviteControllerSchema,
   RefundSchema,
+  SiteSettingsSchema,
 } from "@/lib/schemas";
+import { updateSiteSettings as saveSiteSettings } from "@/lib/site/settings";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, Profile, Ticket } from "@/types/db";
 
@@ -34,6 +36,45 @@ function fail(path: string, message: string): never {
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function artistsFromForm(formData: FormData): string[] {
+  const raw = String(formData.get("artists") ?? "");
+  return Array.from(
+    new Set(
+      raw
+        .split(/[\n,]/)
+        .map((artist) => artist.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function optionalString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function eventFormPayload(formData: FormData) {
+  return {
+    name: formData.get("name"),
+    date: formData.get("date"),
+    venue_name: formData.get("venue_name"),
+    city: formData.get("city"),
+    capacity: formData.get("capacity"),
+    image_url: optionalString(formData, "image_url"),
+    thumbnail_url: optionalString(formData, "thumbnail_url"),
+    hero_url: optionalString(formData, "hero_url"),
+    ticket_visual_url: optionalString(formData, "ticket_visual_url"),
+    marketplace_url: optionalString(formData, "marketplace_url"),
+    description: optionalString(formData, "description"),
+    conditions: optionalString(formData, "conditions"),
+    floor_plan_url: optionalString(formData, "floor_plan_url"),
+    genre: optionalString(formData, "genre"),
+    vibe: optionalString(formData, "vibe"),
+    is_festival: checkbox(formData, "is_festival"),
+    artists: artistsFromForm(formData),
+  };
 }
 
 async function assertCanManageEvent(
@@ -56,17 +97,7 @@ async function assertCanManageEvent(
 
 export async function createEvent(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
-  const parsed = CreateEventSchema.safeParse({
-    name: formData.get("name"),
-    date: formData.get("date"),
-    venue_name: formData.get("venue_name"),
-    city: formData.get("city"),
-    capacity: formData.get("capacity"),
-    image_url: formData.get("image_url") || null,
-    description: formData.get("description") || null,
-    conditions: formData.get("conditions") || null,
-    floor_plan_url: formData.get("floor_plan_url") || null,
-  });
+  const parsed = CreateEventSchema.safeParse(eventFormPayload(formData));
 
   if (!parsed.success) fail("/admin/events/new", parsed.error.issues[0]?.message ?? "Invalid event.");
 
@@ -89,17 +120,7 @@ export async function updateEvent(formData: FormData) {
   if (!eventId) fail("/admin", "Missing event id.");
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
-  const parsed = CreateEventSchema.safeParse({
-    name: formData.get("name"),
-    date: formData.get("date"),
-    venue_name: formData.get("venue_name"),
-    city: formData.get("city"),
-    capacity: formData.get("capacity"),
-    image_url: formData.get("image_url") || null,
-    description: formData.get("description") || null,
-    conditions: formData.get("conditions") || null,
-    floor_plan_url: formData.get("floor_plan_url") || null,
-  });
+  const parsed = CreateEventSchema.safeParse(eventFormPayload(formData));
   if (!parsed.success) fail(`/admin/events/${eventId}`, parsed.error.issues[0]?.message ?? "Invalid event.");
 
   try {
@@ -116,6 +137,28 @@ export async function updateEvent(formData: FormData) {
   revalidatePath("/admin/events");
   revalidatePath("/events");
   redirect("/admin/events");
+}
+
+export async function updateSiteSettings(formData: FormData) {
+  await requireOrganizerWorkspace();
+  const parsed = SiteSettingsSchema.safeParse({
+    landing_hero_bg_url: optionalString(formData, "landing_hero_bg_url"),
+    landing_audience_url: optionalString(formData, "landing_audience_url"),
+    landing_dashboard_url: optionalString(formData, "landing_dashboard_url"),
+  });
+  if (!parsed.success) {
+    fail("/admin/site", parsed.error.issues[0]?.message ?? "Invalid landing media.");
+  }
+
+  try {
+    await saveSiteSettings(parsed.data);
+  } catch (error) {
+    fail("/admin/site", errorMessage(error, "Landing media could not be saved."));
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin/site?success=Landing%20media%20saved.");
 }
 
 export async function cancelEvent(formData: FormData) {

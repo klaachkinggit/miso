@@ -19,6 +19,9 @@ type CheckoutMetadata =
   | { type: "resale"; listingId: string; buyerUserId: string }
   | { type: "unknown" };
 
+type ServiceClient = ReturnType<typeof createServiceClient>;
+type CheckoutPurchaseRow = { id: string; ticket_id: string | null };
+
 export async function handleStripeCheckoutEvent(
   event: Stripe.Event,
 ): Promise<void> {
@@ -49,7 +52,16 @@ async function settlePaidCheckoutSession(
 
   const metadata = checkoutMetadata(session);
   if (metadata.type === "purchase") {
-    await settlePaidPurchase({ purchaseId: metadata.purchaseId });
+    const sb = createServiceClient();
+
+    const purchases = await purchasesForCheckoutSession(sb, session.id);
+    if (purchases.length > 0) {
+      await Promise.all(
+        purchases.map((purchase) => settlePaidPurchase({ purchaseId: purchase.id })),
+      );
+    } else {
+      await settlePaidPurchase({ purchaseId: metadata.purchaseId });
+    }
     return;
   }
 
@@ -67,15 +79,24 @@ async function settleFailedCheckoutSession(
   const metadata = checkoutMetadata(session);
   if (metadata.type === "purchase") {
     const sb = createServiceClient();
-    const { data: purchase } = await sb
-      .from("purchases")
-      .select("ticket_id")
-      .eq("id", metadata.purchaseId)
-      .maybeSingle<{ ticket_id: string }>();
-    await settleFailedPurchase({
-      purchaseId: metadata.purchaseId,
-      ticketId: purchase?.ticket_id,
-    });
+
+    const purchases = await purchasesForCheckoutSession(sb, session.id);
+    if (purchases.length > 0) {
+      await Promise.all(
+        purchases.map((purchase) =>
+          settleFailedPurchase({
+            purchaseId: purchase.id,
+            ticketId: purchase.ticket_id ?? undefined,
+          }),
+        ),
+      );
+    } else {
+      const purchase = await purchaseForMetadataId(sb, metadata.purchaseId);
+      await settleFailedPurchase({
+        purchaseId: metadata.purchaseId,
+        ticketId: purchase?.ticket_id ?? undefined,
+      });
+    }
     return;
   }
 
@@ -104,6 +125,33 @@ export function isKnownCheckoutSettlementDelay(error: unknown): boolean {
         "ChainOpRepairError",
       ].includes(error.name))
   );
+}
+
+async function purchasesForCheckoutSession(
+  sb: ServiceClient,
+  sessionId: string | null,
+): Promise<CheckoutPurchaseRow[]> {
+  if (!sessionId) return [];
+
+  const { data: purchases } = await sb
+    .from("purchases")
+    .select("id, ticket_id")
+    .eq("provider_session_id", sessionId);
+
+  return purchases ?? [];
+}
+
+async function purchaseForMetadataId(
+  sb: ServiceClient,
+  purchaseId: string,
+): Promise<Pick<CheckoutPurchaseRow, "ticket_id"> | null> {
+  const { data: purchase } = await sb
+    .from("purchases")
+    .select("ticket_id")
+    .eq("id", purchaseId)
+    .maybeSingle<{ ticket_id: string }>();
+
+  return purchase;
 }
 
 function checkoutMetadata(session: Stripe.Checkout.Session): CheckoutMetadata {

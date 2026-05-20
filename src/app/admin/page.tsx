@@ -4,6 +4,7 @@ import {
   CalendarPlus,
   CheckCircle2,
   Settings,
+  Images,
   TicketCheck,
   TrendingUp,
   Wallet,
@@ -44,6 +45,13 @@ export default async function OrganizerDashboardPage({
               <Settings className="h-4 w-4" /> Manage events
             </Link>
           </Button>
+          {profile.role === "admin" ? (
+            <Button asChild variant="outline">
+              <Link href="/admin/site">
+                <Images className="h-4 w-4" /> Landing media
+              </Link>
+            </Button>
+          ) : null}
           <Button asChild>
             <Link href="/admin/events/new">
               <CalendarPlus className="h-4 w-4" /> New event

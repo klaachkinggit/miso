@@ -9,6 +9,7 @@ import { formatDate, formatPrice } from "@/lib/format";
 import { shortAddress } from "@/lib/chain/utils";
 import { resalePlatformFee } from "@/lib/resale/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
+import { eventImage } from "@/lib/events/images";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 import { BuyListingButton } from "./buy-listing-button";
 
@@ -64,9 +65,12 @@ export default async function MarketplaceListingPage({
     <div className="container grid gap-8 py-10 lg:grid-cols-[1fr_380px]">
       <div className="space-y-6">
         <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-secondary">
-          {event.image_url ? (
-            <Image src={event.image_url} alt={event.name} fill priority sizes="100vw" className="object-cover" />
-          ) : null}
+          {(() => {
+            const mp = eventImage(event, "marketplace");
+            return mp ? (
+              <Image src={mp} alt={event.name} fill priority sizes="100vw" className="object-cover" />
+            ) : null;
+          })()}
           <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212_0%,#2b2620_52%,#E6D8C9_130%)]" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
           <Badge className="absolute left-4 top-4" variant="secondary">

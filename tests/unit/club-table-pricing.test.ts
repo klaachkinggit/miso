@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeClubTablePricing } from "@/lib/payments/pricing";
-import { CreateCategorySchema, CreateEventSchema } from "@/lib/schemas";
+import { CreateCategorySchema, CreateEventSchema, SiteSettingsSchema } from "@/lib/schemas";
 
 const eventId = "11111111-1111-4111-8111-111111111111";
 
@@ -161,5 +161,52 @@ describe("event creation: floor plan map field", () => {
       floor_plan_url: "not a url",
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("accepts discovery metadata used by public filters", () => {
+    const parsed = CreateEventSchema.parse({
+      ...baseEvent,
+      genre: "techno",
+      vibe: "club",
+      is_festival: true,
+      artists: ["DJ A", "DJ B"],
+    });
+    expect(parsed.genre).toBe("techno");
+    expect(parsed.vibe).toBe("club");
+    expect(parsed.is_festival).toBe(true);
+    expect(parsed.artists).toEqual(["DJ A", "DJ B"]);
+  });
+
+  it("defaults optional discovery metadata", () => {
+    const parsed = CreateEventSchema.parse(baseEvent);
+    expect(parsed.is_festival).toBe(false);
+    expect(parsed.artists).toEqual([]);
+  });
+
+  it("rejects unknown discovery enum values", () => {
+    const parsed = CreateEventSchema.safeParse({
+      ...baseEvent,
+      genre: "noise",
+    });
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe("site settings schema", () => {
+  it("accepts landing media URLs", () => {
+    const parsed = SiteSettingsSchema.parse({
+      landing_hero_bg_url: "https://cdn.example.com/hero.jpg",
+      landing_audience_url: "https://cdn.example.com/audience.jpg",
+      landing_dashboard_url: "https://cdn.example.com/dashboard.jpg",
+    });
+    expect(parsed.landing_hero_bg_url).toBe("https://cdn.example.com/hero.jpg");
+  });
+
+  it("rejects invalid landing media URLs", () => {
+    expect(
+      SiteSettingsSchema.safeParse({
+        landing_hero_bg_url: "not-a-url",
+      }).success,
+    ).toBe(false);
   });
 });
