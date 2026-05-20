@@ -1,9 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireApiNonControllerProfile } from "@/lib/api/auth";
-import {
-  ApiRouteError,
-  apiErrorResponse,
-} from "@/lib/api/errors";
+import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
 import { createPurchaseCheckout } from "@/lib/payments/checkout";
 import { PurchaseInitSchema } from "@/lib/schemas";
@@ -32,7 +29,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: checkout.checkoutUrl }, { status: 200 });
   } catch (error) {
-    if (error instanceof ApiRouteError) return apiErrorResponse(error);
     return apiErrorResponse(error, { fallback: "Checkout failed." });
   }
 }

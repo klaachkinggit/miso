@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { stripe } from "@/lib/payments/stripe";
 import {
   handleStripeCheckoutEvent,
@@ -10,7 +11,9 @@ export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!sig || !webhookSecret) {
-    return NextResponse.json({ error: "Missing stripe-signature or webhook secret" }, { status: 400 });
+    return apiErrorResponse(
+      new ApiRouteError("Missing stripe-signature or webhook secret", 400),
+    );
   }
 
   let event: import("stripe").Stripe.Event;
@@ -19,7 +22,7 @@ export async function POST(request: NextRequest) {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Webhook signature verification failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return apiErrorResponse(new ApiRouteError(message, 400));
   }
 
   try {
@@ -27,7 +30,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (!isKnownCheckoutSettlementDelay(error)) {
       console.error("[stripe-webhook] processing failed:", error);
-      return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+      return apiErrorResponse(error, { fallback: "Webhook processing failed", status: 500 });
     }
   }
 

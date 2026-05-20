@@ -3,7 +3,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { requireApiControllerProfile } from "@/lib/api/auth";
-import { ApiRouteError, apiErrorResponse, errorMessage } from "@/lib/api/errors";
+import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
 import { OpenGateSchema } from "@/lib/schemas";
 import { listGatesForController, openGateForController } from "@/lib/gates/operations";
@@ -21,12 +21,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(session);
   } catch (error) {
-    if (error instanceof ApiRouteError) return apiErrorResponse(error);
-    const message = errorMessage(error, "Could not open gate.");
-    return NextResponse.json(
-      { error: message },
-      { status: message === "Not assigned to this event." ? 403 : 400 }
-    );
+    return apiErrorResponse(error, { fallback: "Could not open gate." });
   }
 }
 
@@ -34,15 +29,11 @@ export async function GET(request: NextRequest) {
   try {
     const profile = await requireApiControllerProfile();
     const eventId = request.nextUrl.searchParams.get("event_id");
-    if (!eventId) return NextResponse.json({ error: "event_id required." }, { status: 400 });
+    if (!eventId) throw new ApiRouteError("event_id required.", 400);
 
     const sessions = await listGatesForController({ eventId, profile });
     return NextResponse.json({ sessions });
   } catch (error) {
-    if (error instanceof ApiRouteError) return apiErrorResponse(error);
-    return NextResponse.json(
-      { error: errorMessage(error, "Could not list gates.") },
-      { status: 403 }
-    );
+    return apiErrorResponse(error, { fallback: "Could not list gates." });
   }
 }

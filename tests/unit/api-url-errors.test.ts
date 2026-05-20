@@ -4,7 +4,6 @@ import {
   ApiRouteError,
   DomainError,
   apiErrorResponse,
-  errorMessage,
 } from "@/lib/api/errors";
 import { getRequestOrigin } from "@/lib/url";
 
@@ -81,34 +80,19 @@ describe("API error response safety", () => {
     consoleError.mockRestore();
   });
 
-  it("extracts messages from error-like values with fallback", () => {
-    expect(errorMessage({ message: "bad input" }, "fallback")).toBe("bad input");
-    expect(errorMessage(null, "fallback")).toBe("fallback");
-  });
-
-  it("logs Postgres error code/details server-side for DB failures", () => {
+  it("suppresses generic error internals when no domain marker is present", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const supabaseErr = {
       code: "23514",
-      message: 'new row for relation "ticket_categories" violates check constraint "club_table_fields_required"',
+      message: 'new row for relation "ticket_categories" violates check constraint',
       details: "Failing row contains (...)",
       hint: null,
     };
+    const response = apiErrorResponse(supabaseErr, { fallback: "Category could not be created." });
 
-    const result = errorMessage(supabaseErr, "Category could not be created.");
-
-    expect(result).toBe(supabaseErr.message);
-    expect(consoleError).toHaveBeenCalledWith(
-      "[errorMessage] db error:",
-      expect.objectContaining({ code: "23514", details: supabaseErr.details }),
-    );
-    consoleError.mockRestore();
-  });
-
-  it("does not log generic Error objects as DB errors", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    errorMessage(new Error("plain"), "fallback");
-    expect(consoleError).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "Category could not be created." });
+    expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
   });
 });

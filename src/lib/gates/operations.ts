@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { ApiRouteError } from "@/lib/api/errors";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { GateSession, Profile, Ticket, TicketRedemption } from "@/types/db";
 
@@ -53,7 +54,7 @@ async function requireEventGateOperator(params: {
   profile: Pick<Profile, "id" | "role">;
 }): Promise<void> {
   const allowed = await canOperateEventGate(params);
-  if (!allowed) throw new Error("Not assigned to this event.");
+  if (!allowed) throw new ApiRouteError("Not assigned to this event.", 403);
 }
 
 function normalizeAllowedCategoryIds(categoryIds?: string[] | null): string[] {
@@ -74,10 +75,10 @@ async function requireEventCategories(params: {
     .eq("event_id", params.eventId)
     .in("id", categoryIds)
     .returns<Array<{ id: string }>>();
-  if (error) throw new Error(error.message);
+  if (error) throw new ApiRouteError(error.message, 400);
 
   if ((data ?? []).length !== categoryIds.length) {
-    throw new Error("One or more ticket categories are not part of this event.");
+    throw new ApiRouteError("One or more ticket categories are not part of this event.", 400);
   }
 
   return categoryIds;
@@ -170,7 +171,7 @@ export async function getGatePollForController(params: {
 
   if (!session) return null;
   if (params.profile.role !== "admin" && session.controller_user_id !== params.profile.id) {
-    throw new Error("Not your gate.");
+    throw new ApiRouteError("Not your gate.", 403);
   }
 
   let last_redemption: TicketRedemption | null = null;

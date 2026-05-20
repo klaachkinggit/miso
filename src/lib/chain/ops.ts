@@ -58,12 +58,12 @@ export async function openOrResumeChainOp(
   }
 
   const findLive = async (): Promise<ChainOp | null> => {
-    const liveStatuses = ["queued", "sent", "mined", "repair_needed"] as const;
+    const liveStatuses: string[] = ["queued", "sent", "mined", "repair_needed"];
     let query = sb
       .from("chain_ops")
       .select("*")
       .eq("op_type", input.opType)
-      .in("status", liveStatuses as unknown as string[]);
+      .in("status", liveStatuses);
     if (input.opType === "mint") {
       query = query.eq("purchase_id", input.purchaseId!);
     } else if (input.opType === "transfer") {

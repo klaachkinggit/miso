@@ -15,10 +15,9 @@ export async function GET(
     const profile = await requireApiControllerProfile();
     const { id } = await params;
     const poll = await getGatePollForController({ gateSessionId: id, profile });
-    if (!poll) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
+    if (!poll) throw new ApiRouteError("Gate not found.", 404);
     return NextResponse.json(poll);
   } catch (error) {
-    if (error instanceof ApiRouteError) return apiErrorResponse(error);
-    return NextResponse.json({ error: "Not your gate." }, { status: 403 });
+    return apiErrorResponse(error, { fallback: "Could not load gate." });
   }
 }
