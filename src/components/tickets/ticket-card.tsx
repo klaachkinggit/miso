@@ -62,6 +62,7 @@ export function TicketCard({
       : displayStatus === "listed"
       ? "secondary"
       : "destructive";
+  const displayLabel = displayStatus === "used" ? "consumed" : displayStatus.replace("_", " ");
 
   return (
     <Card className={cn("glass group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.01]", inactive && "opacity-60 grayscale")}>
@@ -75,7 +76,7 @@ export function TicketCard({
         <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
         <div className="ticket-foil pointer-events-none absolute inset-0 animate-shimmer opacity-60 mix-blend-screen" />
         <Badge className="absolute right-4 top-4" variant={badgeVariant}>
-          {displayStatus}
+          {displayLabel}
         </Badge>
       </div>
 

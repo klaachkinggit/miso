@@ -1,12 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { EmptyState } from "@/components/site/empty-state";
 import { getCurrentUser } from "@/lib/auth";
 import { getGateSessionByShortCode, isGateSessionUsable } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatDate } from "@/lib/format";
-import type { EventRow, Ticket, TicketCategory, Wallet } from "@/types/db";
+import type { EventRow, Ticket, TicketCategory } from "@/types/db";
 import { RedeemPanel } from "./redeem-panel";
 
 export default async function RedeemPage({ params }: { params: Promise<{ shortCode: string }> }) {
@@ -19,11 +17,7 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
   const sb = createServiceClient();
   const usable = isGateSessionUsable(gate);
 
-  const [
-    { data: event },
-    { data: tickets },
-    { data: wallet },
-  ] = await Promise.all([
+  const [{ data: event }, { data: tickets }] = await Promise.all([
     sb.from("events").select("*").eq("id", gate.event_id).single<EventRow>(),
     sb
       .from("tickets")
@@ -32,12 +26,6 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
       .eq("owner_user_id", user.id)
       .order("serial_number", { ascending: true })
       .returns<Ticket[]>(),
-    sb
-      .from("wallets")
-      .select("evm_address, smart_account_address")
-      .eq("user_id", user.id)
-      .eq("is_primary", true)
-      .maybeSingle<Pick<Wallet, "evm_address" | "smart_account_address">>(),
   ]);
 
   if (!event) notFound();
@@ -51,31 +39,33 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
   const gateAcceptsCategory = (categoryId: string) =>
     scopedCategoryIds.size === 0 || scopedCategoryIds.has(categoryId);
 
-  const eligible = (tickets ?? []).filter(
+  const acceptedTickets = (tickets ?? []).filter((ticket) => gateAcceptsCategory(ticket.category_id));
+  const eligible = acceptedTickets.filter(
     (t) =>
       t.status === "sold" &&
       t.nft_contract_address !== null &&
       t.nft_token_id !== null &&
       gateAcceptsCategory(t.category_id),
   );
-  const ownsAcceptedCategory = (tickets ?? []).some((ticket) =>
-    gateAcceptsCategory(ticket.category_id),
-  );
+  const consumedTicket = acceptedTickets.find((ticket) => ticket.status === "used");
+  const ownsAcceptedCategory = acceptedTickets.length > 0;
   const noEligibleDescription = !(tickets ?? []).length
     ? scopedCategoryIds.size > 0
       ? "You don't own a ticket category accepted by this gate."
       : "You don't own a ticket for this event."
     : scopedCategoryIds.size > 0 && !ownsAcceptedCategory
       ? "Your tickets are not in a category accepted by this gate."
-      : "You hold tickets for this event but none are currently eligible (already used, refunded, or not yet minted).";
+      : consumedTicket
+        ? `Ticket #${consumedTicket.serial_number} is already consumed.`
+        : "You hold tickets for this event but none are currently eligible.";
 
   return (
-    <div className="container max-w-3xl py-10">
-      <header className="mb-8">
+    <div className="container grid min-h-[calc(100vh-8rem)] content-center py-8">
+      <header className="mx-auto mb-6 max-w-sm text-center">
         <Badge variant={usable ? "success" : "destructive"}>
           {usable ? "Gate open" : `Gate ${gate.status}`}
         </Badge>
-        <h1 className="mt-3 text-3xl font-semibold">Redeem entry</h1>
+        <h1 className="mt-3 text-3xl font-semibold">Entry scan</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {event.name} · {formatDate(event.date)} · {event.venue_name}, {event.city}
           {gate.gate_name ? ` · ${gate.gate_name}` : ""}
@@ -83,25 +73,28 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
       </header>
 
       {!usable ? (
-        <Card className="glass rounded-lg">
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            This gate is no longer accepting redemptions. Ask the controller to open a new one.
-          </CardContent>
-        </Card>
+        <StaticRedeemState
+          label="not accepted"
+          title="Gate closed"
+          description="Ask the controller to open a new gate."
+        />
       ) : eligible.length === 0 ? (
-        <EmptyState
-          title="No eligible tickets"
-          description={noEligibleDescription}
-        />
-      ) : !wallet?.smart_account_address ? (
-        <EmptyState
-          title="No wallet"
-          description="You must complete a purchase before you can redeem — that pregenerates the smart account that holds the ticket."
-        />
+        consumedTicket ? (
+          <StaticRedeemState
+            label="consumed"
+            title="Ticket already consumed"
+            description={`Ticket #${consumedTicket.serial_number} has already entered.`}
+          />
+        ) : (
+          <StaticRedeemState
+            label="not accepted"
+            title="No eligible tickets"
+            description={noEligibleDescription}
+          />
+        )
       ) : (
         <RedeemPanel
           gateShortCode={gate.short_code}
-          expectedSmartAccount={wallet.smart_account_address}
           tickets={eligible.map((ticket) => ({
             id: ticket.id,
             serial_number: ticket.serial_number,
@@ -112,5 +105,30 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
         />
       )}
     </div>
+  );
+}
+
+function StaticRedeemState({
+  label,
+  title,
+  description,
+}: {
+  label: "consumed" | "not accepted";
+  title: string;
+  description: string;
+}) {
+  const accepted = label === "consumed";
+  return (
+    <section
+      className={`mx-auto grid min-h-[320px] max-w-sm content-center justify-items-center gap-4 rounded-lg border p-6 text-center ${
+        accepted
+          ? "border-emerald-300/30 bg-emerald-300/10"
+          : "border-red-300/30 bg-red-400/10"
+      }`}
+    >
+      <Badge variant={accepted ? "success" : "destructive"}>{label}</Badge>
+      <h2 className="text-2xl font-semibold">{title}</h2>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </section>
   );
 }
