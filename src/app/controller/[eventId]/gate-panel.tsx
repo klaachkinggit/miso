@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { CheckCircle2, Copy, Loader2, Link as LinkIcon, ScanLine, Tags, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, ScanLine, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,10 +52,8 @@ export function GatePanel({
   const [last, setLast] = useState<PollResponse["last_redemption"]>(null);
   const [lastTicket, setLastTicket] = useState<PollResponse["last_ticket"]>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const sessionId = session?.id;
   const sessionStatus = session?.status;
-  const categoryById = new Map(categories.map((category) => [category.id, category]));
   const needsCategorySelection = scope === "selected" && selectedCategoryIds.length === 0;
 
   function toggleCategory(categoryId: string) {
@@ -84,7 +82,6 @@ export function GatePanel({
       setSession(payload);
       setLast(null);
       setLastTicket(null);
-      setCopied(false);
     } catch (error) {
       toast({
         title: "Gate failed to open",
@@ -158,11 +155,78 @@ export function GatePanel({
     };
   }, [url]);
 
-  async function copyUrl() {
-    if (!url) return;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+  const gateClosed = session?.status !== "open";
+  const activeTone = gateClosed
+    ? "border-red-300/30 bg-red-800"
+    : !last
+    ? "border-white/10 bg-[#101010]"
+    : valid
+      ? "border-emerald-300/30 bg-emerald-700"
+      : "border-red-300/30 bg-red-800";
+  const activeMessage = gateClosed
+    ? "Gate closed"
+    : !last
+    ? "Waiting for scan"
+    : valid
+      ? lastTicket
+        ? `Ticket #${lastTicket.serial_number} consumed`
+        : "Ticket consumed"
+      : gateResultMessage(last.result);
+
+  if (session) {
+    return (
+      <section
+        className={`grid min-h-[520px] content-center justify-items-center gap-5 rounded-lg border p-5 text-center transition-colors duration-300 ${activeTone}`}
+        aria-live="polite"
+      >
+        <div className="grid justify-items-center gap-4">
+          <div className="grid h-[min(72vw,340px)] w-[min(72vw,340px)] place-items-center rounded-lg bg-white p-4 shadow-[0_24px_80px_-44px_rgba(0,0,0,0.9)]">
+            {qrDataUrl ? (
+              <Image
+                src={qrDataUrl}
+                alt="Gate redemption QR code"
+                width={304}
+                height={304}
+                unoptimized
+                className="h-full w-full"
+              />
+            ) : (
+              <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+            )}
+          </div>
+
+          <div className="grid justify-items-center gap-2">
+            {last ? (
+              valid ? (
+                <CheckCircle2 className="h-7 w-7 text-emerald-100" />
+              ) : (
+                <XCircle className="h-7 w-7 text-red-100" />
+              )
+            ) : (
+              <Loader2 className="h-6 w-6 animate-spin text-white/60" />
+            )}
+            <p className="text-sm font-medium text-white">{activeMessage}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={closeGate} disabled={session.status !== "open"}>
+            Close
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              setSession(null);
+              setLast(null);
+              setLastTicket(null);
+            }}
+            variant="ghost"
+          >
+            New
+          </Button>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -242,109 +306,33 @@ export function GatePanel({
               Open gate
             </Button>
           </>
-        ) : (
-          <div className="grid gap-4">
-            <div className="flex items-center justify-between">
-              <Badge variant={session.status === "open" ? "success" : "secondary"}>{session.status}</Badge>
-              {session.gate_name ? <span className="text-sm text-muted-foreground">{session.gate_name}</span> : null}
-            </div>
-            <div className="rounded-md border border-border/70 p-3 text-sm">
-              <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-                <Tags className="h-4 w-4" />
-                Accepted categories
-              </div>
-              {session.allowed_category_ids?.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {session.allowed_category_ids.map((categoryId) => (
-                    <Badge key={categoryId} variant="secondary">
-                      {categoryById.get(categoryId)?.name ?? "Category"}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <Badge variant="secondary">All categories</Badge>
-              )}
-            </div>
-            <div className="grid gap-2 text-sm">
-              <div className="grid justify-items-center gap-3 rounded-md border border-border/70 bg-white p-4">
-                {qrDataUrl ? (
-                  <Image
-                    src={qrDataUrl}
-                    alt="Gate redemption QR code"
-                    width={256}
-                    height={256}
-                    unoptimized
-                    className="h-64 w-64"
-                  />
-                ) : (
-                  <div className="flex h-64 w-64 items-center justify-center text-slate-500">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="text-muted-foreground">Redeem address</p>
-                <div className="mt-2 flex items-start gap-2 rounded-md bg-muted p-3">
-                  <LinkIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <p className="break-all font-mono text-xs">{url}</p>
-                </div>
-              </div>
-              <Button type="button" variant="outline" onClick={copyUrl}>
-                <Copy className="h-4 w-4" />
-                {copied ? "Copied" : "Copy address"}
-              </Button>
-              <p className="text-muted-foreground">Short code</p>
-              <p className="rounded-md bg-secondary p-4 text-center font-mono text-3xl tracking-[0.35em]">
-                {session.short_code}
-              </p>
-            </div>
-
-            <div
-              className="rounded-md border border-border/70 p-4"
-              aria-live="polite"
-            >
-              <div className="flex items-center gap-2">
-                {last ? (
-                  valid ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-destructive" />
-                  )
-                ) : (
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                )}
-                <Badge variant={!last ? "secondary" : valid ? "success" : "destructive"}>
-                  {last ? last.result : "waiting"}
-                </Badge>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {last
-                  ? lastTicket
-                    ? `Ticket #${lastTicket.serial_number} · ${last.evm_address?.slice(0, 6)}…`
-                    : "Awaiting backend write"
-                  : "Waiting for customer to redeem."}
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={closeGate} disabled={session.status !== "open"}>
-                Close gate
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  setSession(null);
-                  setLast(null);
-                  setLastTicket(null);
-                }}
-                variant="ghost"
-              >
-                Open another
-              </Button>
-            </div>
-          </div>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
+}
+
+function gateResultMessage(result: string): string {
+  switch (result) {
+    case "already_used":
+      return "Ticket already consumed";
+    case "wrong_event":
+      return "Wrong event";
+    case "wrong_category":
+      return "Wrong ticket category";
+    case "owner_mismatch":
+      return "Ticket owner mismatch";
+    case "no_ticket":
+      return "Ticket not found";
+    case "refunded":
+      return "Ticket refunded";
+    case "canceled":
+      return "Ticket canceled";
+    case "expired":
+      return "Ticket expired";
+    case "no_session":
+      return "Gate closed";
+    default:
+      return "Entry failed";
+  }
 }

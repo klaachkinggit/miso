@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, FileCheck2, Loader2, Wallet2, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
 
-type Step = "idle" | "preparing" | "confirming" | "done" | "error";
+type Step = "redeeming" | "done" | "error";
 
 interface TicketOption {
   id: string;
@@ -15,27 +13,6 @@ interface TicketOption {
   category_name: string;
   contract_address: string;
   token_id: number;
-}
-
-interface PreparedPayload {
-  type: "miso.redeem";
-  ticket: string;
-  event: string;
-  gate: string;
-  nonce: string;
-  contract: string;
-  token_id: number;
-  version: 2;
-}
-
-interface PrepareResponse {
-  prepared: {
-    payload: PreparedPayload;
-    signer_wallet: string;
-  };
-  gate: { id: string; short_code: string; gate_name: string | null; event_id: string };
-  ticket: { id: string; serial_number: number };
-  error?: string;
 }
 
 interface ConfirmResponse {
@@ -49,210 +26,127 @@ interface ConfirmResponse {
 export interface RedeemPanelProps {
   gateShortCode: string;
   tickets: TicketOption[];
-  expectedSmartAccount: string;
 }
 
-export function RedeemPanel({ gateShortCode, tickets, expectedSmartAccount }: RedeemPanelProps) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [step, setStep] = useState<Step>("idle");
-  const [prepared, setPrepared] = useState<PrepareResponse | null>(null);
+export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
+  const hasChoice = tickets.length > 1;
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(
+    hasChoice ? null : (tickets[0]?.id ?? null),
+  );
+  const ticket = tickets.find((option) => option.id === selectedTicketId) ?? null;
+  const [step, setStep] = useState<Step>(hasChoice ? "done" : "redeeming");
   const [outcome, setOutcome] = useState<ConfirmResponse | null>(null);
-  const busy = step === "preparing" || step === "confirming";
 
-  async function start() {
-    if (!selected) return;
-    setStep("preparing");
-    setOutcome(null);
-    try {
-      const prepRes = await fetch("/api/redeem/prepare", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ gate_short_code: gateShortCode, ticket_id: selected }),
-      });
-      const prep = (await prepRes.json()) as PrepareResponse;
-      if (!prepRes.ok) throw new Error(prep.error ?? "Prepare failed");
-      setPrepared(prep);
-
-      setStep("confirming");
+  useEffect(() => {
+    if (!ticket) return;
+    const controller = new AbortController();
+    const redeem = async () => {
       const confRes = await fetch("/api/redeem/confirm", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ gate_short_code: gateShortCode, ticket_id: prep.ticket.id }),
+        body: JSON.stringify({ gate_short_code: gateShortCode, ticket_id: ticket.id }),
+        signal: controller.signal,
       });
-      const conf = (await confRes.json()) as ConfirmResponse;
+      const conf = (await confRes.json()) as ConfirmResponse & { error?: string };
+      if (!conf.result) throw new Error(conf.error ?? "Could not redeem ticket");
       setOutcome(conf);
-      setStep("done");
-    } catch (error) {
-      setStep("error");
-      toast({
-        title: "Redemption failed",
-        description: error instanceof Error ? error.message : "Try again.",
-        variant: "destructive",
+      setStep(conf.result === "valid" ? "done" : "error");
+    };
+
+    void redeem().catch((error) => {
+      if (controller.signal.aborted) return;
+      setOutcome({
+        result: "failed",
+        reason: error instanceof Error ? error.message : "Could not redeem ticket",
       });
-    }
-  }
+      setStep("error");
+    });
+
+    return () => controller.abort();
+  }, [gateShortCode, ticket]);
+
+  const accepted = outcome?.result === "valid";
+  const choosing = hasChoice && !ticket;
+  const statusTone =
+    choosing
+      ? "border-white/15 bg-white/[0.04]"
+      : step === "redeeming"
+      ? "border-white/15 bg-white/[0.04]"
+      : accepted
+        ? "border-emerald-300/30 bg-emerald-300/10"
+        : "border-red-300/30 bg-red-400/10";
 
   return (
-    <div className="grid gap-6">
-      <TicketPicker tickets={tickets} selected={selected} onSelect={setSelected} disabled={busy} />
-      <ProofRequest
-        gateShortCode={gateShortCode}
-        tickets={tickets}
-        selected={selected}
-        expectedSmartAccount={expectedSmartAccount}
-        prepared={prepared}
-      />
-      <Card className="glass rounded-lg">
-        <CardContent className="grid gap-4 p-5">
-          <Button onClick={start} disabled={!selected || busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet2 className="h-4 w-4" />}
-            {step === "preparing"
-              ? "Preparing…"
-              : step === "confirming"
-                ? "Redeeming on chain…"
-                : "Redeem ticket"}
-          </Button>
-          <OutcomeBlock outcome={outcome} />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+    <section
+      className={cn(
+        "mx-auto grid min-h-[420px] max-w-sm content-center justify-items-center gap-5 rounded-lg border p-6 text-center",
+        statusTone,
+      )}
+      aria-live="polite"
+    >
+      {choosing ? (
+        <Badge variant="secondary">choose ticket</Badge>
+      ) : step === "redeeming" ? (
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      ) : accepted ? (
+        <CheckCircle2 className="h-14 w-14 text-emerald-200" />
+      ) : (
+        <XCircle className="h-14 w-14 text-red-200" />
+      )}
 
-function TicketPicker({
-  tickets,
-  selected,
-  onSelect,
-  disabled,
-}: {
-  tickets: TicketOption[];
-  selected: string | null;
-  onSelect: (id: string) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Card className="glass rounded-lg">
-      <CardHeader>
-        <CardTitle>Choose a ticket</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        {tickets.map((ticket) => (
-          <button
-            key={ticket.id}
-            type="button"
-            onClick={() => onSelect(ticket.id)}
-            disabled={disabled}
-            className={`flex items-center justify-between rounded-md border p-4 text-left transition disabled:opacity-50 ${
-              selected === ticket.id
-                ? "border-primary bg-primary/10"
-                : "border-border/60 hover:border-border"
-            }`}
-            aria-pressed={selected === ticket.id}
-          >
-            <div>
-              <p className="text-sm text-muted-foreground">Ticket #{ticket.serial_number}</p>
-              <p className="font-medium">{ticket.category_name}</p>
-              <p className="mt-1 max-w-[18rem] truncate font-mono text-xs text-muted-foreground">
-                {ticket.contract_address}#{ticket.token_id}
-              </p>
-            </div>
-            <Badge variant={selected === ticket.id ? "success" : "secondary"}>
-              {selected === ticket.id ? "Selected" : "Select"}
-            </Badge>
-          </button>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-function short(value: string) {
-  if (value.length <= 18) return value;
-  return `${value.slice(0, 8)}…${value.slice(-6)}`;
-}
-
-function ProofRequest({
-  gateShortCode,
-  tickets,
-  selected,
-  expectedSmartAccount,
-  prepared,
-}: {
-  gateShortCode: string;
-  tickets: TicketOption[];
-  selected: string | null;
-  expectedSmartAccount: string;
-  prepared: PrepareResponse | null;
-}) {
-  const ticket = tickets.find((option) => option.id === selected);
-  const contract = prepared?.prepared.payload.contract ?? ticket?.contract_address ?? "Select a ticket";
-  const tokenId = prepared?.prepared.payload.token_id ?? ticket?.token_id;
-  const gate = prepared?.gate.short_code ?? gateShortCode;
-  const nonce = prepared?.prepared.payload.nonce;
-
-  return (
-    <Card className="glass rounded-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileCheck2 className="h-5 w-5 text-primary" />
-          Redemption intent
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-3 text-sm">
-        <div className="grid grid-cols-[136px_1fr] gap-3">
-          <span className="text-muted-foreground">Gate</span>
-          <span className="font-mono">{gate}</span>
-          <span className="text-muted-foreground">Smart account</span>
-          <span className="truncate font-mono" title={expectedSmartAccount}>
-            {short(expectedSmartAccount)}
-          </span>
-          <span className="text-muted-foreground">Contract</span>
-          <span className="truncate font-mono" title={contract}>
-            {short(contract)}
-          </span>
-          {tokenId !== undefined ? (
-            <>
-              <span className="text-muted-foreground">Token id</span>
-              <span className="font-mono">{tokenId}</span>
-            </>
-          ) : null}
-          {nonce ? (
-            <>
-              <span className="text-muted-foreground">Nonce</span>
-              <span className="truncate font-mono" title={nonce}>
-                {short(nonce)}
-              </span>
-            </>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function OutcomeBlock({ outcome }: { outcome: ConfirmResponse | null }) {
-  if (!outcome) return null;
-  const valid = outcome.result === "valid";
-  return (
-    <div className="rounded-md border border-border/70 p-4">
-      <div className="flex items-center gap-2">
-        {valid ? (
-          <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-        ) : (
-          <XCircle className="h-5 w-5 text-destructive" />
-        )}
-        <Badge variant={valid ? "success" : "destructive"}>{outcome.result}</Badge>
-      </div>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {valid
-          ? "Ticket redeemed. Show this screen to the controller."
-          : (outcome.reason ?? "Redemption did not complete.")}
-      </p>
-      {outcome.redeem_tx_signature ? (
-        <p className="mt-2 break-all text-xs text-muted-foreground">
-          tx: {outcome.redeem_tx_signature}
+      <div className="grid gap-2">
+        {!choosing ? (
+          <Badge variant={accepted ? "success" : step === "redeeming" ? "secondary" : "destructive"}>
+            {accepted ? "consumed" : step === "redeeming" ? "scanning" : "not accepted"}
+          </Badge>
+        ) : null}
+        <h1 className="text-2xl font-semibold">
+          {choosing
+            ? "Choose ticket"
+            : accepted
+              ? "Ticket consumed"
+              : step === "redeeming"
+                ? "Checking ticket"
+                : "Entry failed"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {choosing
+            ? "Select the ticket to consume for this gate."
+            : accepted
+            ? "Your entry is confirmed."
+            : step === "redeeming"
+              ? "Keep this screen open."
+              : (outcome?.reason ?? "This ticket cannot enter through this gate.")}
         </p>
+      </div>
+
+      {choosing ? (
+        <div className="grid w-full gap-2">
+          {tickets.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => {
+                setSelectedTicketId(option.id);
+                setStep("redeeming");
+                setOutcome(null);
+              }}
+              className="min-h-16 rounded-md border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="block text-sm text-muted-foreground">Ticket #{option.serial_number}</span>
+              <span className="block font-medium">{option.category_name}</span>
+            </button>
+          ))}
+        </div>
+      ) : ticket ? (
+        <div className="w-full rounded-md border border-white/10 bg-black/20 p-4">
+          <p className="text-sm text-muted-foreground">Ticket #{ticket.serial_number}</p>
+          <p className="mt-1 text-lg font-medium">{ticket.category_name}</p>
+          <p className="mt-2 font-mono text-xs text-muted-foreground">
+            {ticket.contract_address.slice(0, 10)}...#{ticket.token_id}
+          </p>
+        </div>
       ) : null}
-    </div>
+    </section>
   );
 }
