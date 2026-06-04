@@ -29,8 +29,12 @@ export interface RedeemPanelProps {
 }
 
 export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
-  const ticket = tickets[0];
-  const [step, setStep] = useState<Step>("redeeming");
+  const hasChoice = tickets.length > 1;
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(
+    hasChoice ? null : (tickets[0]?.id ?? null),
+  );
+  const ticket = tickets.find((option) => option.id === selectedTicketId) ?? null;
+  const [step, setStep] = useState<Step>(hasChoice ? "done" : "redeeming");
   const [outcome, setOutcome] = useState<ConfirmResponse | null>(null);
 
   useEffect(() => {
@@ -62,8 +66,11 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
   }, [gateShortCode, ticket]);
 
   const accepted = outcome?.result === "valid";
+  const choosing = hasChoice && !ticket;
   const statusTone =
-    step === "redeeming"
+    choosing
+      ? "border-white/15 bg-white/[0.04]"
+      : step === "redeeming"
       ? "border-white/15 bg-white/[0.04]"
       : accepted
         ? "border-emerald-300/30 bg-emerald-300/10"
@@ -77,7 +84,9 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
       )}
       aria-live="polite"
     >
-      {step === "redeeming" ? (
+      {choosing ? (
+        <Badge variant="secondary">choose ticket</Badge>
+      ) : step === "redeeming" ? (
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       ) : accepted ? (
         <CheckCircle2 className="h-14 w-14 text-emerald-200" />
@@ -86,14 +95,24 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
       )}
 
       <div className="grid gap-2">
-        <Badge variant={accepted ? "success" : step === "redeeming" ? "secondary" : "destructive"}>
-          {accepted ? "consumed" : step === "redeeming" ? "scanning" : "not accepted"}
-        </Badge>
+        {!choosing ? (
+          <Badge variant={accepted ? "success" : step === "redeeming" ? "secondary" : "destructive"}>
+            {accepted ? "consumed" : step === "redeeming" ? "scanning" : "not accepted"}
+          </Badge>
+        ) : null}
         <h1 className="text-2xl font-semibold">
-          {accepted ? "Ticket consumed" : step === "redeeming" ? "Checking ticket" : "Entry failed"}
+          {choosing
+            ? "Choose ticket"
+            : accepted
+              ? "Ticket consumed"
+              : step === "redeeming"
+                ? "Checking ticket"
+                : "Entry failed"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {accepted
+          {choosing
+            ? "Select the ticket to consume for this gate."
+            : accepted
             ? "Your entry is confirmed."
             : step === "redeeming"
               ? "Keep this screen open."
@@ -101,7 +120,25 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
         </p>
       </div>
 
-      {ticket ? (
+      {choosing ? (
+        <div className="grid w-full gap-2">
+          {tickets.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => {
+                setSelectedTicketId(option.id);
+                setStep("redeeming");
+                setOutcome(null);
+              }}
+              className="min-h-16 rounded-md border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="block text-sm text-muted-foreground">Ticket #{option.serial_number}</span>
+              <span className="block font-medium">{option.category_name}</span>
+            </button>
+          ))}
+        </div>
+      ) : ticket ? (
         <div className="w-full rounded-md border border-white/10 bg-black/20 p-4">
           <p className="text-sm text-muted-foreground">Ticket #{ticket.serial_number}</p>
           <p className="mt-1 text-lg font-medium">{ticket.category_name}</p>
