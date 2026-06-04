@@ -31,7 +31,7 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_SKIP_SERVER
     ? undefined
     : {
-        command: `npm run dev -- --port ${PORT}`,
+        command: `env -u FORCE_COLOR -u NO_COLOR npm run dev -- --port ${PORT}`,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

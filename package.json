@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "demo:seed": "tsx scripts/seed.ts",
@@ -16,9 +16,9 @@
     "supabase:types": "supabase gen types typescript --local > src/types/db.ts",
     "test:unit": "vitest run",
     "test:all": "npm run typecheck && npm run lint && npm run test:unit && npm run test:e2e",
-    "test:e2e:all-local": "MISO_MOCK_CHAIN=1 MISO_E2E_FULL=1 MISO_E2E_INVARIANTS=1 playwright test",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:all-local": "env -u FORCE_COLOR -u NO_COLOR MISO_MOCK_CHAIN=1 MISO_E2E_FULL=1 MISO_E2E_INVARIANTS=1 playwright test",
+    "test:e2e": "env -u FORCE_COLOR -u NO_COLOR playwright test",
+    "test:e2e:ui": "env -u FORCE_COLOR -u NO_COLOR playwright test --ui",
     "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
@@ -64,5 +64,13 @@
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
     "vitest": "^4.1.6"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.10"
+    },
+    "solc": {
+      "tmp": "0.2.6"
+    }
   }
 }

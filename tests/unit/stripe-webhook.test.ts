@@ -58,7 +58,7 @@ vi.mock("@/lib/supabase/service", () => ({
           eq: () => updateMock,
         };
         return {
-          update: (...args: any[]) => {
+          update: (...args: Parameters<typeof webhookMocks.update>) => {
             webhookMocks.update(...args);
             return updateMock;
           },

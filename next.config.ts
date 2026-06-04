@@ -3,9 +3,6 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   outputFileTracingRoot: process.cwd(),
   serverExternalPackages: ["viem", "isows", "ws"],
-  experimental: {
-    serverActions: { bodySizeLimit: "5mb" },
-  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**.supabase.co" },

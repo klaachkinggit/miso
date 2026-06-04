@@ -42,7 +42,6 @@ test.describe("Live Base Sepolia smoke", () => {
     const smart = wallet?.smartWalletAddress as Address | undefined;
     expect(eoa, "Server wallet EOA").toBeTruthy();
     expect(smart, "Server smart wallet").toBeTruthy();
-    // eslint-disable-next-line no-console
     console.log("[live] EOA:", eoa, "smart:", smart);
 
     const admin = smart as Address;
@@ -63,7 +62,6 @@ test.describe("Live Base Sepolia smoke", () => {
       timeoutMs: 4 * 60 * 1000,
     });
     expect(deployRecord.transactionHash, "deploy mined").toBeTruthy();
-    // eslint-disable-next-line no-console
     console.log(
       "[live] deployed:",
       contractAddress,
@@ -81,7 +79,6 @@ test.describe("Live Base Sepolia smoke", () => {
     );
     const buyer = pregen.result?.address as Address;
     expect(buyer, "buyer EOA pregenerated").toBeTruthy();
-    // eslint-disable-next-line no-console
     console.log("[live] buyer EOA:", buyer);
 
     const tokenId = BigInt(Date.now());
@@ -97,7 +94,6 @@ test.describe("Live Base Sepolia smoke", () => {
       timeoutMs: 4 * 60 * 1000,
     });
     expect(mintRecord.transactionHash, "mint mined").toBeTruthy();
-    // eslint-disable-next-line no-console
     console.log("[live] mint tx hash:", mintRecord.transactionHash);
 
     const rpc = createPublicClient({
