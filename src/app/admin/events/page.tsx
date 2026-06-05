@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { formatDateShort } from "@/lib/format";
+import { getAdminOrganizationIds } from "@/lib/organizations/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow } from "@/types/db";
 
@@ -21,7 +22,10 @@ export default async function AdminEventsListPage({
     .from("events")
     .select("*")
     .order("created_at", { ascending: false });
-  if (profile.role === "organizer") {
+  const organizationIds = await getAdminOrganizationIds(profile.id);
+  if (organizationIds.length) {
+    query = query.in("organization_id", organizationIds);
+  } else if (profile.role === "organizer") {
     query = query.eq("organizer_user_id", profile.id);
   }
   const { data: events } = await query.returns<EventRow[]>();

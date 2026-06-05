@@ -1,12 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { requireApiNonControllerProfile } from "@/lib/api/auth";
+import {
+  assertNotOrganizationController,
+  requireApiNonControllerProfile,
+} from "@/lib/api/auth";
 import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
 import {
   ChainOpInFlightError,
   ChainOpRepairError,
 } from "@/lib/chain/ops";
+import { getOrganizationIdForListing } from "@/lib/organizations/auth";
 import {
   checkoutResaleListing,
   ResaleCheckoutPreflightError,
@@ -22,6 +26,11 @@ export async function POST(request: NextRequest) {
       "Controllers cannot use the marketplace.",
     );
     const body = await parseJsonBody(request, Body, "Invalid checkout request.");
+    await assertNotOrganizationController({
+      profile,
+      organizationId: await getOrganizationIdForListing(body.listing_id),
+      deniedMessage: "Controllers cannot use this organization marketplace.",
+    });
 
     const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 128);
     const appUrl = getRequestOrigin(request);

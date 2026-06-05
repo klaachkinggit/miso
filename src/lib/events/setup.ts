@@ -1,4 +1,5 @@
 import { lookup as dnsLookup } from "node:dns/promises";
+import { randomUUID } from "node:crypto";
 import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
@@ -64,17 +65,29 @@ export interface CategoryInput {
   color_hex?: string | null;
 }
 
+function slugify(value: string) {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "event"
+  );
+}
 
 export async function createDraftEvent(params: {
   input: EventDetailsInput;
   adminUserId: string;
   organizerUserId: string;
+  organizationId?: string | null;
 }): Promise<EventRow> {
   const sb = createServiceClient();
   const eventPayload = {
     ...params.input,
     date: casablancaInputToIso(params.input.date),
+    organization_id: params.organizationId ?? null,
     organizer_user_id: params.organizerUserId,
+    slug: `${slugify(params.input.name)}-${randomUUID().slice(0, 8)}`,
     status: "draft" as const,
   };
 

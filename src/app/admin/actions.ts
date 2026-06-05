@@ -14,6 +14,10 @@ import {
   unpublishEventSetup,
   updateEventDetails,
 } from "@/lib/events/setup";
+import {
+  canManageEvent,
+  getDefaultAdminOrganizationId,
+} from "@/lib/organizations/auth";
 import { refundTicket } from "@/lib/refunds/refund";
 import {
   CreateCategorySchema,
@@ -89,14 +93,15 @@ async function assertCanManageEvent(
     .eq("id", eventId)
     .maybeSingle<EventRow>();
   if (!event) fail(path, "Event not found.");
-  if (profile.role === "organizer" && event.organizer_user_id !== profile.id) {
-    fail("/admin/events", "You can only manage your own events.");
+  if (!(await canManageEvent(profile, event))) {
+    fail("/admin/events", "You can only manage events for your organization.");
   }
   return event;
 }
 
 export async function createEvent(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
+  const organizationId = await getDefaultAdminOrganizationId(admin.id);
   const parsed = CreateEventSchema.safeParse(eventFormPayload(formData));
 
   if (!parsed.success) fail("/admin/events/new", parsed.error.issues[0]?.message ?? "Invalid event.");
@@ -107,6 +112,7 @@ export async function createEvent(formData: FormData) {
       input: parsed.data,
       adminUserId: admin.id,
       organizerUserId: admin.id,
+      organizationId,
     });
   } catch (error) {
     fail("/admin/events/new", errorMessage(error, "Event could not be created."));
@@ -288,6 +294,13 @@ export async function inviteController(formData: FormData) {
 
   const sb = createServiceClient();
   const email = parsed.data.email.toLowerCase();
+  const { data: event } = await sb
+    .from("events")
+    .select("organization_id")
+    .eq("id", parsed.data.event_id)
+    .single<{ organization_id: string | null }>();
+  if (!event) fail(`/admin/events/${parsed.data.event_id}`, "Event not found.");
+
   const { data: existingProfile } = await sb
     .from("profiles")
     .select("id, role")
@@ -305,10 +318,27 @@ export async function inviteController(formData: FormData) {
       id: userId,
       email,
       display_name: email.split("@")[0],
-      role: "controller",
+      role: event.organization_id ? "user" : "controller",
     });
-  } else if (existingProfile?.role !== "admin" && existingProfile?.role !== "organizer") {
+  } else if (!event.organization_id && existingProfile?.role !== "admin" && existingProfile?.role !== "organizer") {
     await sb.from("profiles").update({ role: "controller" }).eq("id", userId);
+  }
+
+  if (event.organization_id) {
+    const { data: existingMembership } = await sb
+      .from("organization_memberships")
+      .select("role")
+      .eq("organization_id", event.organization_id)
+      .eq("user_id", userId)
+      .maybeSingle<{ role: string }>();
+    if (!existingMembership) {
+      const { error: membershipError } = await sb.from("organization_memberships").insert({
+        organization_id: event.organization_id,
+        user_id: userId,
+        role: "controller",
+      });
+      if (membershipError) fail(`/admin/events/${parsed.data.event_id}`, membershipError.message);
+    }
   }
 
   const { error } = await sb.from("event_controllers").upsert({

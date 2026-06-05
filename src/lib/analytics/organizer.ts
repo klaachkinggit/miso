@@ -2,6 +2,7 @@
 // All queries run with the service-role client (no RLS) because the
 // dashboard is gated before calling this loader.
 import { createServiceClient } from "@/lib/supabase/service";
+import { getAdminOrganizationIds } from "@/lib/organizations/auth";
 import type { Currency, Profile } from "@/types/db";
 
 export interface OrganizerTotals {
@@ -41,14 +42,17 @@ export async function loadOrganizerOverview(params: {
   events: OrganizerEventStat[];
 }> {
   const sb = createServiceClient();
-  const scopedToOrganizer = params.profile.role === "organizer";
+  const organizationIds = await getAdminOrganizationIds(params.profile.id);
+  const scopedToOrganizer = !organizationIds.length && params.profile.role === "organizer";
 
   let eventsQuery = sb
     .from("events")
     .select("id, name, date, city, venue_name, status, capacity")
     .order("date", { ascending: false });
 
-  if (scopedToOrganizer) {
+  if (organizationIds.length) {
+    eventsQuery = eventsQuery.in("organization_id", organizationIds);
+  } else if (scopedToOrganizer) {
     eventsQuery = eventsQuery.eq("organizer_user_id", params.profile.id);
   }
 

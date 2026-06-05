@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireOrganizerWorkspace } from "@/lib/auth";
+import { canManageEvent } from "@/lib/organizations/auth";
 import { settlePaidPurchase } from "@/lib/payments/settlement";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, Purchase } from "@/types/db";
@@ -17,16 +18,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.redirect(target);
   }
 
-  if (admin.role === "organizer") {
-    const { data: event } = await sb
-      .from("events")
-      .select("*")
-      .eq("id", purchase.event_id)
-      .maybeSingle<EventRow>();
-    if (!event || event.organizer_user_id !== admin.id) {
-      target.searchParams.set("error", "You can only manage your own events.");
-      return NextResponse.redirect(new URL("/admin/events", request.url));
-    }
+  const { data: event } = await sb
+    .from("events")
+    .select("*")
+    .eq("id", purchase.event_id)
+    .maybeSingle<EventRow>();
+  if (!event || !(await canManageEvent(admin, event))) {
+    target.searchParams.set("error", "You can only manage events for your organization.");
+    return NextResponse.redirect(new URL("/admin/events", request.url));
   }
 
   try {

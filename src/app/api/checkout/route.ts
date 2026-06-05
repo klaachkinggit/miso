@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireApiNonControllerProfile } from "@/lib/api/auth";
+import {
+  assertNotOrganizationController,
+  requireApiNonControllerProfile,
+} from "@/lib/api/auth";
 import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
+import { getOrganizationIdForCategory } from "@/lib/organizations/auth";
 import { createPurchaseCheckout } from "@/lib/payments/checkout";
 import { PurchaseInitSchema } from "@/lib/schemas";
 import { getRequestOrigin } from "@/lib/url";
@@ -12,6 +16,11 @@ export async function POST(request: NextRequest) {
       "Controllers cannot purchase tickets.",
     );
     const body = await parseJsonBody(request, PurchaseInitSchema, "Invalid checkout request.");
+    await assertNotOrganizationController({
+      profile,
+      organizationId: await getOrganizationIdForCategory(body.category_id),
+      deniedMessage: "Controllers cannot purchase tickets for this organization.",
+    });
 
     const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 128);
     const appUrl = getRequestOrigin(request);

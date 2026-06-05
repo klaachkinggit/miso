@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { canOperateGateRole, canUseOrganizerWorkspace, getCurrentProfile } from "@/lib/auth";
+import { getAdminOrganizationIds, getMemberOrganizationIds } from "@/lib/organizations/auth";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/site/user-menu";
 import { Marquee } from "@/components/site/marquee";
@@ -7,7 +8,12 @@ import { HeroSearch } from "@/components/site/hero-search";
 
 export async function Header() {
   const profile = await getCurrentProfile();
+  const [adminOrganizationIds, memberOrganizationIds] = profile
+    ? await Promise.all([getAdminOrganizationIds(profile.id), getMemberOrganizationIds(profile.id)])
+    : [[], []];
   const controllerOnly = profile?.role === "controller";
+  const canUseWorkspace = !!profile && (canUseOrganizerWorkspace(profile) || adminOrganizationIds.length > 0);
+  const canUseGate = !!profile && (canOperateGateRole(profile) || memberOrganizationIds.length > 0);
 
   return (
     <>
@@ -32,14 +38,14 @@ export async function Header() {
                     Wallet
                   </Link>
                 ) : null}
-                {profile && canUseOrganizerWorkspace(profile) ? (
+                {canUseWorkspace ? (
                   <Link href="/admin" className="text-muted-foreground transition-colors hover:text-foreground">
                     Workspace
                   </Link>
                 ) : null}
               </>
             ) : null}
-            {profile && canOperateGateRole(profile) ? (
+            {canUseGate ? (
               <Link href="/controller" className="text-muted-foreground transition-colors hover:text-foreground">
                 Gate
               </Link>
