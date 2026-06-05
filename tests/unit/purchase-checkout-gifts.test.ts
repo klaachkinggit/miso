@@ -30,6 +30,12 @@ vi.mock("@/lib/payments/settlement", () => ({
 const dbState = vi.hoisted(() => ({
   friend: null as { id: string; email: string } | null,
   insertedPurchase: null as Record<string, unknown> | null,
+  event: { id: "event-1", name: "Miso Night", organization_id: null as string | null },
+  organization: null as {
+    stripe_account_id: string | null;
+    stripe_charges_enabled: boolean;
+    stripe_details_submitted: boolean;
+  } | null,
 }));
 
 class QueryMock {
@@ -69,13 +75,16 @@ class QueryMock {
     if (this.table === "purchases") {
       return Promise.resolve({ data: null, error: null });
     }
+    if (this.table === "organizations") {
+      return Promise.resolve({ data: dbState.organization, error: null });
+    }
     return Promise.resolve({ data: null, error: null });
   }
 
   single() {
     if (this.table === "events") {
       return Promise.resolve({
-        data: { id: "event-1", name: "Miso Night" },
+        data: dbState.event,
         error: null,
       });
     }
@@ -112,6 +121,8 @@ describe("createPurchaseCheckout gift recipient flow", () => {
     checkoutMocks.settleFailedPurchase.mockReset();
     dbState.friend = null;
     dbState.insertedPurchase = null;
+    dbState.event = { id: "event-1", name: "Miso Night", organization_id: null };
+    dbState.organization = null;
 
     checkoutMocks.reserveTicket.mockResolvedValue({
       ticket: {
@@ -200,5 +211,27 @@ describe("createPurchaseCheckout gift recipient flow", () => {
       sales_channel: "qr",
       tracking_origin: "host:boilerroom path:/events/drop",
     });
+  });
+
+  it("blocks paid organization checkout until Stripe onboarding is complete", async () => {
+    dbState.event = { id: "event-1", name: "Miso Night", organization_id: "org-1" };
+    dbState.organization = {
+      stripe_account_id: "acct_1",
+      stripe_charges_enabled: false,
+      stripe_details_submitted: true,
+    };
+    const { createPurchaseCheckout } = await import("@/lib/payments/checkout");
+
+    await expect(
+      createPurchaseCheckout({
+        buyerUserId: "buyer-1",
+        categoryId: "category-1",
+        successUrl: "https://miso.test/success",
+        cancelUrl: "https://miso.test/cancel",
+      }),
+    ).rejects.toThrow("Stripe onboarding is complete");
+
+    expect(dbState.insertedPurchase).toBeNull();
+    expect(checkoutMocks.createStripeCheckoutSession).not.toHaveBeenCalled();
   });
 });

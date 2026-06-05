@@ -5,6 +5,7 @@ import {
   expireStripeCheckoutSession,
 } from "@/lib/payments/stripe";
 import { DomainError } from "@/lib/api/errors";
+import { assertOrganizationCanAcceptPaidSales } from "@/lib/organizations/payments";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reserveTicket } from "@/lib/tickets/lifecycle";
 import type { EventRow, Purchase, SalesChannel, Ticket, TicketCategory } from "@/types/db";
@@ -106,6 +107,25 @@ async function loadEventForTicket(sb: ServiceClient, ticket: Ticket): Promise<Ev
     .single<EventRow>();
   if (!event) throw new Error("Event not found.");
   return event;
+}
+
+async function assertEventPaymentReadiness(
+  sb: ServiceClient,
+  event: EventRow,
+  amount: number,
+): Promise<void> {
+  if (amount <= 0 || !event.organization_id) return;
+  const { data: organization, error } = await sb
+    .from("organizations")
+    .select("stripe_account_id, stripe_charges_enabled, stripe_details_submitted")
+    .eq("id", event.organization_id)
+    .maybeSingle<{
+      stripe_account_id: string | null;
+      stripe_charges_enabled: boolean;
+      stripe_details_submitted: boolean;
+    }>();
+  if (error) throw error;
+  assertOrganizationCanAcceptPaidSales(organization);
 }
 
 async function createPendingPurchase(
@@ -222,6 +242,7 @@ export async function createPurchaseCheckout(params: {
     validateExtraGuests(category, extras);
     const event = await loadEventForTicket(sb, reservedTickets[0]);
     const pricing = checkoutPricing(category, extras);
+    await assertEventPaymentReadiness(sb, event, pricing.amount);
 
     for (const ticket of reservedTickets) {
       const purchase = await createPendingPurchase(sb, {

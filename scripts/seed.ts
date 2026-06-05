@@ -604,6 +604,10 @@ async function ensureMisoOrganization(): Promise<string> {
         slug: "miso",
         default_currency: "EUR",
         status: "active",
+        stripe_account_id: "acct_seed_miso",
+        stripe_charges_enabled: true,
+        stripe_details_submitted: true,
+        stripe_payouts_enabled: true,
       },
       { onConflict: "slug" },
     )

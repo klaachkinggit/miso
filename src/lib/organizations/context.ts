@@ -6,7 +6,16 @@ export const ACTIVE_ORGANIZATION_COOKIE = "miso_active_organization_id";
 
 export type OrganizationOption = Pick<
   Organization,
-  "id" | "name" | "slug" | "status" | "branding" | "resale_royalty_enabled" | "resale_royalty_bps"
+  | "id"
+  | "name"
+  | "slug"
+  | "status"
+  | "branding"
+  | "resale_royalty_enabled"
+  | "resale_royalty_bps"
+  | "stripe_account_id"
+  | "stripe_charges_enabled"
+  | "stripe_details_submitted"
 >;
 
 export function pickActiveOrganizationId(
@@ -35,7 +44,9 @@ export async function getAdminOrganizations(userId: string): Promise<Organizatio
 
   const { data: organizations, error: organizationsError } = await sb
     .from("organizations")
-    .select("id, name, slug, status, branding, resale_royalty_enabled, resale_royalty_bps")
+    .select(
+      "id, name, slug, status, branding, resale_royalty_enabled, resale_royalty_bps, stripe_account_id, stripe_charges_enabled, stripe_details_submitted",
+    )
     .in("id", organizationIds)
     .eq("status", "active")
     .returns<OrganizationOption[]>();

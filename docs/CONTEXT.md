@@ -41,6 +41,7 @@ Stripe Checkout Sessions directly.
 | Organization marketplace | Resale exchange scoped to one Organization's tickets and events. |
 | Legacy global discovery | Transitional global event and marketplace surface kept only during migration. It is not the MVP buyer path for the organization-first platform. |
 | Organization Stripe account | Stripe Connect account attached to an Organization, not to an individual Platform account. Paid sales are blocked until this account can accept charges. |
+| Payment readiness | Organization payment state requiring a Stripe account id, submitted onboarding details, and enabled charges before paid checkout can start. |
 | Sales channel | Source route for a purchase or listing checkout, such as mini-site, QR, marketplace, widget, ticket office, invitation, or import. |
 | Tracking origin | Bounded server-derived source hint stored on purchase or resale checkout rows for analytics, for example `host:boilerroom path:/events/drop`. |
 | Mini-site | Organization-hosted buyer surface for event discovery and primary ticket checkout. |
@@ -89,6 +90,7 @@ fees; the seller still receives the listing price.
 
 - Controllers can operate gates but cannot buy tickets, list tickets, or use marketplace checkout.
 - Reserved platform hostnames such as `app`, `admin`, `api`, `shop`, and `www` cannot be used as Organization storefront subdomains.
+- Paid checkout is blocked until the Organization has completed Stripe onboarding and can accept charges.
 - Checkout retries must be idempotent and must not duplicate mints, transfers, or Stripe sessions.
 - Backend wallet authority is issuer-controlled: compromise of that wallet means compromise of all event contracts it administers.
 - User smart accounts hold NFTs, but users do not sign on-chain transactions in the current product model.

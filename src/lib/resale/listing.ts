@@ -9,6 +9,7 @@ import type { Address } from "viem";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { DomainError } from "@/lib/api/errors";
+import { assertOrganizationCanAcceptPaidSales } from "@/lib/organizations/payments";
 import {
   createResaleStripeCheckoutSession,
   expireStripeCheckoutSession,
@@ -262,6 +263,48 @@ async function resaleRoyaltyForListing(
   });
 }
 
+async function organizationIdForListing(
+  sb: ReturnType<typeof createServiceClient>,
+  listing: ResaleListing,
+): Promise<string | null> {
+  if (listing.organization_id) return listing.organization_id;
+  const { data: ticket, error: ticketError } = await sb
+    .from("tickets")
+    .select("event_id")
+    .eq("id", listing.ticket_id)
+    .maybeSingle<Pick<Ticket, "event_id">>();
+  if (ticketError) throw ticketError;
+  if (!ticket?.event_id) return null;
+  const { data: event, error: eventError } = await sb
+    .from("events")
+    .select("organization_id")
+    .eq("id", ticket.event_id)
+    .maybeSingle<Pick<EventRow, "organization_id">>();
+  if (eventError) throw eventError;
+  return event?.organization_id ?? null;
+}
+
+async function assertListingPaymentReadiness(
+  sb: ReturnType<typeof createServiceClient>,
+  listing: ResaleListing,
+  buyerTotalAmount: number,
+): Promise<void> {
+  if (buyerTotalAmount <= 0) return;
+  const organizationId = await organizationIdForListing(sb, listing);
+  if (!organizationId) return;
+  const { data: organization, error } = await sb
+    .from("organizations")
+    .select("stripe_account_id, stripe_charges_enabled, stripe_details_submitted")
+    .eq("id", organizationId)
+    .maybeSingle<{
+      stripe_account_id: string | null;
+      stripe_charges_enabled: boolean;
+      stripe_details_submitted: boolean;
+    }>();
+  if (error) throw error;
+  assertOrganizationCanAcceptPaidSales(organization);
+}
+
 export async function checkoutResaleListing(params: {
   listingId: string;
   buyerUserId: string;
@@ -296,6 +339,7 @@ export async function checkoutResaleListing(params: {
   const platformFeeAmount = resalePlatformFee(sellerAmount);
   const royaltyAmount = await resaleRoyaltyForListing(sb, listing, sellerAmount);
   const buyerTotalAmount = sellerAmount + platformFeeAmount + royaltyAmount;
+  await assertListingPaymentReadiness(sb, listing, buyerTotalAmount);
 
   // Atomically claim listing before creating Stripe session so no concurrent
   // buyer can claim the same listing during payment.

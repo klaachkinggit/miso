@@ -1,11 +1,14 @@
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { PageHeader } from "@/components/site/page-header";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { normalizeOrganizationBranding } from "@/lib/organizations/branding";
 import { getActiveAdminOrganization } from "@/lib/organizations/context";
+import { organizationCanAcceptPaidSales } from "@/lib/organizations/payments";
 import { organizationStorefrontPath } from "@/lib/organizations/public";
 import {
   OrganizationBrandingForm,
@@ -29,6 +32,7 @@ export default async function OrganizationSettingsPage({
   }
 
   const branding = normalizeOrganizationBranding(activeOrganization.branding);
+  const paymentsReady = organizationCanAcceptPaidSales(activeOrganization);
 
   return (
     <div className="container py-10">
@@ -54,6 +58,30 @@ export default async function OrganizationSettingsPage({
           {params.success}
         </div>
       ) : null}
+      <Card className="glass mb-8 rounded-lg">
+        <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Payments</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Paid checkout opens only after this Organization has completed Stripe onboarding.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Badge variant={activeOrganization.stripe_account_id ? "success" : "secondary"}>
+              Account {activeOrganization.stripe_account_id ? "linked" : "missing"}
+            </Badge>
+            <Badge variant={activeOrganization.stripe_details_submitted ? "success" : "secondary"}>
+              Details {activeOrganization.stripe_details_submitted ? "submitted" : "pending"}
+            </Badge>
+            <Badge variant={activeOrganization.stripe_charges_enabled ? "success" : "secondary"}>
+              Charges {activeOrganization.stripe_charges_enabled ? "enabled" : "blocked"}
+            </Badge>
+            <Badge variant={paymentsReady ? "success" : "destructive"}>
+              {paymentsReady ? "Ready for paid sales" : "Paid sales blocked"}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
       <OrganizationBrandingForm
         branding={branding}
         organizationSlug={activeOrganization.slug}
