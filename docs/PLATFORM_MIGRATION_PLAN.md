@@ -56,3 +56,4 @@ Miso is becoming a Weezevent-style platform where organizers create their own bi
 - Slice 1: Organization schema and transition backfill added in `20260605004939_organization_foundation.sql`.
 - Slice 2: Organization-aware auth helpers now protect admin, controller, checkout, and marketplace boundaries.
 - Slice 3: Admin workspace selection uses the server-validated `miso_active_organization_id` cookie. Invalid or tampered selections fall back to an Organization the account administers. Event lists, analytics, and event creation use the active Organization, with legacy profile-owned events only as transition fallback when no Organization membership exists.
+- Slice 4: Public Organization storefront fallback routes exist at `/s/[organizationSlug]`, `/s/[organizationSlug]/events/[eventSlug]`, and `/s/[organizationSlug]/marketplace`. Event slugs are unique inside one Organization, and org-scoped pages do not fall back to global event or marketplace queries.

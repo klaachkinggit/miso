@@ -9,10 +9,12 @@ export function BuyListingButton({
   listingId,
   disabled,
   reason,
+  returnPath,
 }: {
   listingId: string;
   disabled?: boolean;
   reason?: string | null;
+  returnPath?: string;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +22,7 @@ export function BuyListingButton({
     setLoading(true);
     const redirected = await redirectToCheckout({
       endpoint: "/api/marketplace/checkout",
-      body: { listing_id: listingId },
+      body: { listing_id: listingId, return_path: returnPath },
     });
     if (!redirected) {
       setLoading(false);

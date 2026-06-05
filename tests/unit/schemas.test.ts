@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CreateCategorySchema,
   PurchaseInitSchema,
+  ResaleCheckoutSchema,
   TransferToWalletSchema,
 } from "@/lib/schemas";
 
@@ -74,6 +75,45 @@ describe("PurchaseInitSchema", () => {
 
     expect(parsed.extra_guests_count).toBe(2);
     expect(parsed.gift_recipient_email).toBe("friend@example.com");
+  });
+
+  it("accepts only same-site return paths", () => {
+    expect(
+      PurchaseInitSchema.parse({
+        category_id: categoryId,
+        return_path: "/s/acme/events/drop?ticket=1",
+      }).return_path,
+    ).toBe("/s/acme/events/drop?ticket=1");
+
+    expect(
+      PurchaseInitSchema.safeParse({
+        category_id: categoryId,
+        return_path: "https://evil.example",
+      }).success,
+    ).toBe(false);
+    expect(
+      PurchaseInitSchema.safeParse({
+        category_id: categoryId,
+        return_path: "//evil.example",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("ResaleCheckoutSchema", () => {
+  it("validates listing checkout return path", () => {
+    expect(
+      ResaleCheckoutSchema.parse({
+        listing_id: "44444444-4444-4444-8444-444444444444",
+        return_path: "/s/acme/marketplace/44444444-4444-4444-8444-444444444444",
+      }).return_path,
+    ).toContain("/s/acme/marketplace/");
+    expect(
+      ResaleCheckoutSchema.safeParse({
+        listing_id: "44444444-4444-4444-8444-444444444444",
+        return_path: "/bad\\path",
+      }).success,
+    ).toBe(false);
   });
 });
 

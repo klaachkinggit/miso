@@ -11,6 +11,7 @@ Miso will move from a single global billeterie into an organization-first ticket
 **Consequences**
 
 - Public buyer routes resolve through an Organization first, for example `{organization}.miso.com/events/{eventSlug}`.
+- Local development uses `/s/{organizationSlug}` as the same Organization-first buyer surface until subdomain routing is wired.
 - Stripe Connect accounts, legal profile, payout settings, events, sales channels, analytics, and resale marketplaces belong to Organizations.
 - A Platform account can buy across Organizations and can administer multiple Organizations through memberships.
 - The existing global event and marketplace surfaces are legacy migration surfaces, not the MVP buyer path.

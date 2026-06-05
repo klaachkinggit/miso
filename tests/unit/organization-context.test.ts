@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { pickActiveOrganizationId } from "@/lib/organizations/context";
+import {
+  normalizeStorefrontSlug,
+  organizationEventPath,
+  organizationMarketplaceListingPath,
+  organizationMarketplacePath,
+  organizationStorefrontPath,
+} from "@/lib/organizations/public";
 import { slugifyOrganizationName } from "@/lib/organizations/setup";
 
 describe("organization workspace context", () => {
@@ -27,5 +34,18 @@ describe("organization workspace context", () => {
     expect(slugifyOrganizationName("  MISO Events Paris!  ")).toBe("miso-events-paris");
     expect(slugifyOrganizationName("Été Club")).toBe("ete-club");
     expect(slugifyOrganizationName("!!")).toBe("org");
+  });
+
+  it("normalizes public storefront slugs and rejects unsafe path values", () => {
+    expect(normalizeStorefrontSlug("  MISO-Paris  ")).toBe("miso-paris");
+    expect(normalizeStorefrontSlug("-miso")).toBeNull();
+    expect(normalizeStorefrontSlug("miso_legacy")).toBeNull();
+  });
+
+  it("builds organization public paths", () => {
+    expect(organizationStorefrontPath("miso")).toBe("/s/miso");
+    expect(organizationEventPath("miso", "midnight-drop")).toBe("/s/miso/events/midnight-drop");
+    expect(organizationMarketplacePath("miso")).toBe("/s/miso/marketplace");
+    expect(organizationMarketplaceListingPath("miso", "listing-1")).toBe("/s/miso/marketplace/listing-1");
   });
 });

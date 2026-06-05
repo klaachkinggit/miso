@@ -10,7 +10,7 @@ const ITEMS = [
   { href: "/tickets", label: "Wallet", icon: Ticket, match: (p: string) => p.startsWith("/tickets") },
 ];
 
-const HIDDEN_PREFIXES = ["/admin", "/controller", "/login", "/signup", "/checkout", "/redeem"];
+const HIDDEN_PREFIXES = ["/admin", "/controller", "/login", "/signup", "/checkout", "/redeem", "/s/"];
 const HIDDEN_EXACT = ["/"];
 
 export function BottomNav() {

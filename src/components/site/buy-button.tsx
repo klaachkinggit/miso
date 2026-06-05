@@ -34,10 +34,12 @@ export function BuyButton({
   category,
   disabled,
   reason,
+  returnPath,
 }: {
   category: BuyButtonCategory;
   disabled?: boolean;
   reason?: string | null;
+  returnPath?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -71,6 +73,7 @@ export function BuyButton({
         quantity,
         extra_guests_count: extras,
         gift_recipient_email: isGift ? giftEmail : null,
+        return_path: returnPath,
       },
     });
     if (!redirected) {
@@ -82,11 +85,7 @@ export function BuyButton({
     <div className="space-y-2">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button
-            type="button"
-            disabled={disabled}
-            className="w-full sm:w-auto"
-          >
+          <Button type="button" disabled={disabled} className="w-full sm:w-auto">
             <ShoppingCart className="h-4 w-4" />
             {isClub ? "Book table" : "Get ticket"}
           </Button>

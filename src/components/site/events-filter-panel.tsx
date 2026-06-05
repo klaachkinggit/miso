@@ -16,9 +16,10 @@ import {
 interface EventsFilterPanelProps {
   discovery: EventDiscoveryParams;
   hasActive: boolean;
+  basePath?: string;
 }
 
-export function EventsFilterPanel({ discovery, hasActive }: EventsFilterPanelProps) {
+export function EventsFilterPanel({ discovery, hasActive, basePath = "/events" }: EventsFilterPanelProps) {
   const router = useRouter();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -30,12 +31,12 @@ export function EventsFilterPanel({ discovery, hasActive }: EventsFilterPanelPro
       if (value === null || value === "") merged.delete(key);
       else merged.set(key, value);
     }
-    router.push(`/events${merged.toString() ? `?${merged.toString()}` : ""}`);
+    router.push(`${basePath}${merged.toString() ? `?${merged.toString()}` : ""}`);
   }
 
   function clearAll() {
     setQ("");
-    router.push("/events");
+    router.push(basePath);
   }
 
   return (

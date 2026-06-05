@@ -5,6 +5,7 @@ import {
 } from "@/lib/api/auth";
 import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
+import { primaryCheckoutCancelPath } from "@/lib/events/public";
 import { getOrganizationIdForCategory } from "@/lib/organizations/auth";
 import { createPurchaseCheckout } from "@/lib/payments/checkout";
 import { PurchaseInitSchema } from "@/lib/schemas";
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
 
     const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 128);
     const appUrl = getRequestOrigin(request);
+    const cancelPath = await primaryCheckoutCancelPath(body.category_id);
 
     const checkout = await createPurchaseCheckout({
       buyerUserId: profile.id,
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
       giftRecipientEmail: body.gift_recipient_email,
       idempotencyKey,
       successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${appUrl}/checkout/cancel`,
+      cancelUrl: `${appUrl}${cancelPath}`,
     });
 
     return NextResponse.json({ url: checkout.checkoutUrl }, { status: 200 });

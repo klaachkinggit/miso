@@ -28,6 +28,7 @@ Stripe Checkout Sessions directly.
 |------|------------|
 | Organization | Organizer-owned billeterie container with its own public subdomain, branding, events, sales channels, marketplace, legal profile, and payout setup. Miso's own billeterie is also an Organization. |
 | Organization subdomain | Public buyer-facing hostname assigned to an Organization, such as `boilerroom.miso.com`. Event pages and the Organization marketplace live under this hostname. |
+| Storefront fallback route | Local/dev public buyer route for an Organization: `/s/{organizationSlug}`. It mirrors the future Organization subdomain path. |
 | Event slug | Human-readable event URL segment unique within one Organization. Public event pages live at `{organization}.miso.com/events/{eventSlug}`. |
 | Organizer workspace | Admin app for creating and managing Organizations, events, sales channels, attendees, and payouts. In production it lives on `app.miso.com`. |
 | Active Organization | Organization currently selected in the Organizer workspace. It is stored in a server-validated cookie and used to scope event lists, analytics, and event creation. |
