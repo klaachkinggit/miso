@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
@@ -18,6 +19,7 @@ import {
   organizationMarketplacePath,
   organizationStorefrontPath,
 } from "@/lib/organizations/public";
+import { storefrontPathForHost } from "@/lib/organizations/hosts";
 
 type RawSearchParams = {
   when?: string;
@@ -37,17 +39,30 @@ export default async function OrganizationStorefrontPage({
   params: Promise<{ organizationSlug: string }>;
   searchParams?: Promise<RawSearchParams>;
 }) {
-  const [{ organizationSlug }, query, profile] = await Promise.all([
+  const [{ organizationSlug }, query, profile, headerStore] = await Promise.all([
     params,
     searchParams,
     getCurrentProfile(),
+    headers(),
   ]);
   if (profile?.role === "controller") redirect("/controller");
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
   if (!organization) notFound();
 
-  const basePath = organizationStorefrontPath(organization.slug);
+  const host = headerStore.get("host");
+  const basePath = storefrontPathForHost(
+    organization.slug,
+    organizationStorefrontPath(organization.slug),
+    "/",
+    host,
+  );
+  const marketplacePath = storefrontPathForHost(
+    organization.slug,
+    organizationMarketplacePath(organization.slug),
+    "/marketplace",
+    host,
+  );
   const discovery = normalizeEventDiscoveryParams(query);
   const events = await listPublishedEvents({
     discovery,
@@ -65,7 +80,7 @@ export default async function OrganizationStorefrontPage({
           Events
         </Link>
         <Link
-          href={organizationMarketplacePath(organization.slug)}
+          href={marketplacePath}
           className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
           Exchange
@@ -116,7 +131,12 @@ export default async function OrganizationStorefrontPage({
               event={event}
               href={
                 event.slug
-                  ? organizationEventPath(organization.slug, event.slug)
+                  ? storefrontPathForHost(
+                      organization.slug,
+                      organizationEventPath(organization.slug, event.slug),
+                      `/events/${event.slug}`,
+                      host,
+                    )
                   : `/events/${event.id}`
               }
             />

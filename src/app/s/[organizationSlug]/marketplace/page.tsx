@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/site/page-header";
 import { ResaleListingList } from "@/components/site/resale-listing-list";
@@ -10,6 +11,7 @@ import {
   organizationMarketplacePath,
   organizationStorefrontPath,
 } from "@/lib/organizations/public";
+import { storefrontPathForHost } from "@/lib/organizations/hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,11 @@ export default async function OrganizationMarketplacePage({
 }: {
   params: Promise<{ organizationSlug: string }>;
 }) {
-  const [{ organizationSlug }, profile] = await Promise.all([params, getCurrentProfile()]);
+  const [{ organizationSlug }, profile, headerStore] = await Promise.all([
+    params,
+    getCurrentProfile(),
+    headers(),
+  ]);
   if (profile?.role === "controller") redirect("/controller");
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
@@ -27,18 +33,31 @@ export default async function OrganizationMarketplacePage({
   const listings = await listSellableResaleListings({
     organizationId: organization.id,
   });
+  const host = headerStore.get("host");
+  const storefrontPath = storefrontPathForHost(
+    organization.slug,
+    organizationStorefrontPath(organization.slug),
+    "/",
+    host,
+  );
+  const marketplacePath = storefrontPathForHost(
+    organization.slug,
+    organizationMarketplacePath(organization.slug),
+    "/marketplace",
+    host,
+  );
 
   return (
     <div className="container py-10">
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <Link
-          href={organizationStorefrontPath(organization.slug)}
+          href={storefrontPath}
           className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
           Events
         </Link>
         <Link
-          href={organizationMarketplacePath(organization.slug)}
+          href={marketplacePath}
           aria-current="page"
           className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
         >
@@ -52,7 +71,14 @@ export default async function OrganizationMarketplacePage({
       />
       <ResaleListingList
         items={listings}
-        listingHref={(item) => organizationMarketplaceListingPath(organization.slug, item.listing.id)}
+        listingHref={(item) =>
+          storefrontPathForHost(
+            organization.slug,
+            organizationMarketplaceListingPath(organization.slug, item.listing.id),
+            `/marketplace/${item.listing.id}`,
+            host,
+          )
+        }
       />
     </div>
   );

@@ -55,6 +55,14 @@ describe("getRequestOrigin", () => {
 
     expect(getRequestOrigin(request("http://localhost:3002/checkout"))).toBe("http://localhost:3002");
   });
+
+  it("keeps trusted organization storefront origins for checkout redirects", () => {
+    process.env.APP_URL = "https://app.miso.com";
+
+    expect(getRequestOrigin(request("https://boilerroom.miso.com/api/checkout"))).toBe(
+      "https://boilerroom.miso.com",
+    );
+  });
 });
 
 describe("API error response safety", () => {

@@ -205,6 +205,15 @@ test.describe("Organization public storefront", () => {
       await expect(page.getByRole("link", { name: /Alpha Scoped Night/i })).toBeVisible();
       await expect(page.getByText("Beta Scoped Night")).toHaveCount(0);
 
+      if ((process.env.MISO_STOREFRONT_ROOT_DOMAINS ?? "").split(",").includes("localhost")) {
+        const port = process.env.PLAYWRIGHT_PORT ?? "3002";
+        await page.goto(`http://${orgASlug}.localhost:${port}/`);
+        await expect(page.getByRole("heading", { name: "Store Alpha" })).toBeVisible();
+        await page.getByRole("link", { name: /Alpha Scoped Night/i }).first().click();
+        await expect(page).toHaveURL(new RegExp(`^http://${orgASlug}\\.localhost:${port}/events/shared-drop`));
+        await expect(page.getByRole("heading", { name: "Alpha Scoped Night" })).toBeVisible();
+      }
+
       await page.goto(`/s/${orgASlug}/events/shared-drop`);
       await expect(page.getByRole("heading", { name: "Alpha Scoped Night" })).toBeVisible();
       await expect(page.getByRole("heading", { name: /Tickets/i })).toBeVisible();

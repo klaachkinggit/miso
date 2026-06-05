@@ -5,6 +5,11 @@ import {
 } from "@/lib/api/auth";
 import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
+import {
+  checkoutSalesChannel,
+  checkoutTrackingOrigin,
+  sourcePathFromReturnPath,
+} from "@/lib/checkout/attribution";
 import { primaryCheckoutCancelPath } from "@/lib/events/public";
 import { getOrganizationIdForCategory } from "@/lib/organizations/auth";
 import { createPurchaseCheckout } from "@/lib/payments/checkout";
@@ -36,6 +41,11 @@ export async function POST(request: NextRequest) {
       idempotencyKey,
       successUrl: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${appUrl}${cancelPath}`,
+      salesChannel: checkoutSalesChannel("primary"),
+      trackingOrigin: checkoutTrackingOrigin(
+        request,
+        sourcePathFromReturnPath(body.return_path) ?? cancelPath,
+      ),
     });
 
     return NextResponse.json({ url: checkout.checkoutUrl }, { status: 200 });

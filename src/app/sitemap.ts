@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { organizationStorefrontOrigin } from "@/lib/organizations/hosts";
 
 const siteUrl =
   (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3002").replace(
@@ -30,6 +31,13 @@ function page(url: string, priority: number, changeFrequency: "daily" | "weekly"
     changeFrequency,
     priority,
   };
+}
+
+function organizationPageUrl(organizationSlug: string, path = ""): string {
+  if (siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1")) {
+    return `${siteUrl}/s/${organizationSlug}${path}`;
+  }
+  return `${organizationStorefrontOrigin(organizationSlug)}${path}`;
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -78,13 +86,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const organizationPages =
       organizations?.flatMap((organization) => [
         {
-          url: `${siteUrl}/s/${organization.slug}`,
+          url: organizationPageUrl(organization.slug),
           lastModified: organization.updated_at ?? new Date(),
           changeFrequency: "daily" as const,
           priority: 0.8,
         },
         {
-          url: `${siteUrl}/s/${organization.slug}/marketplace`,
+          url: organizationPageUrl(organization.slug, "/marketplace"),
           lastModified: organization.updated_at ?? new Date(),
           changeFrequency: "daily" as const,
           priority: 0.6,
@@ -105,7 +113,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const organization = organizationById.get(event.organization_id ?? "");
           if (!organization || !event.slug) return null;
           return {
-            url: `${siteUrl}/s/${organization.slug}/events/${event.slug}`,
+            url: organizationPageUrl(organization.slug, `/events/${event.slug}`),
             lastModified: event.updated_at ?? event.date ?? new Date(),
             changeFrequency: "weekly" as const,
             priority: 0.8,

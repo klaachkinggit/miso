@@ -7,7 +7,7 @@ import {
 import { DomainError } from "@/lib/api/errors";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reserveTicket } from "@/lib/tickets/lifecycle";
-import type { EventRow, Purchase, Ticket, TicketCategory } from "@/types/db";
+import type { EventRow, Purchase, SalesChannel, Ticket, TicketCategory } from "@/types/db";
 
 export interface PurchaseCheckoutResult {
   purchaseId: string;
@@ -119,6 +119,8 @@ async function createPendingPurchase(
     idempotencyKey?: string;
     extras: number;
     pricing: CheckoutPricing;
+    salesChannel: SalesChannel;
+    trackingOrigin: string | null;
   },
 ): Promise<Purchase> {
   const { data: purchase, error: purchaseError } = await sb
@@ -135,6 +137,8 @@ async function createPendingPurchase(
       extra_guests_count: params.extras,
       online_advance_amount: params.pricing.onlineAdvanceAmount,
       min_spending_total: params.pricing.minSpendingTotal,
+      sales_channel: params.salesChannel,
+      tracking_origin: params.trackingOrigin,
     })
     .select("*")
     .single<Purchase>();
@@ -154,6 +158,8 @@ export async function createPurchaseCheckout(params: {
   idempotencyKey?: string;
   successUrl: string;
   cancelUrl: string;
+  salesChannel?: SalesChannel;
+  trackingOrigin?: string | null;
 }): Promise<PurchaseCheckoutResult> {
   const quantity = normalizeQuantity(params.quantity);
   const ticketIds: string[] = [];
@@ -227,6 +233,8 @@ export async function createPurchaseCheckout(params: {
         idempotencyKey: params.idempotencyKey,
         extras,
         pricing,
+        salesChannel: params.salesChannel ?? "mini_site",
+        trackingOrigin: params.trackingOrigin ?? null,
       });
       purchaseIds.push(purchase.id);
     }

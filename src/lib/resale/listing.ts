@@ -31,7 +31,7 @@ import {
   markTicketListed,
   markTicketResaleCanceled,
 } from "@/lib/tickets/lifecycle";
-import type { Ticket, EventRow, TicketCategory, ResaleListing } from "@/types/db";
+import type { Ticket, EventRow, TicketCategory, ResaleListing, SalesChannel } from "@/types/db";
 
 const INVALID_FOR_RESALE = new Set([
   "used",
@@ -229,6 +229,8 @@ export async function checkoutResaleListing(params: {
   successUrl: string;
   cancelUrl: string;
   idempotencyKey?: string;
+  salesChannel?: SalesChannel;
+  trackingOrigin?: string | null;
 }): Promise<{ listing: ResaleListing; checkoutUrl: string }> {
   const sb = createServiceClient();
   if (params.idempotencyKey) {
@@ -263,6 +265,8 @@ export async function checkoutResaleListing(params: {
       status: "transferring",
       buyer_user_id: params.buyerUserId,
       checkout_idempotency_key: params.idempotencyKey ?? null,
+      sales_channel: params.salesChannel ?? "marketplace",
+      tracking_origin: params.trackingOrigin ?? null,
     })
     .eq("id", listing.id)
     .eq("status", "active")
@@ -323,6 +327,8 @@ export async function checkoutResaleListing(params: {
       platform_fee_amount: platformFeeAmount,
       buyer_total_amount: buyerTotalAmount,
       checkout_idempotency_key: params.idempotencyKey ?? null,
+      sales_channel: params.salesChannel ?? "marketplace",
+      tracking_origin: params.trackingOrigin ?? null,
     })
     .eq("id", listing.id);
   if (providerUpdateError) {

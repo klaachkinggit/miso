@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ResaleListingDetail } from "@/components/site/resale-listing-detail";
 import { getCurrentProfile } from "@/lib/auth";
@@ -7,6 +8,7 @@ import {
   organizationMarketplaceListingPath,
   organizationMarketplacePath,
 } from "@/lib/organizations/public";
+import { storefrontPathForHost } from "@/lib/organizations/hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,11 @@ export default async function OrganizationMarketplaceListingPage({
 }: {
   params: Promise<{ organizationSlug: string; id: string }>;
 }) {
-  const [{ organizationSlug, id }, profile] = await Promise.all([params, getCurrentProfile()]);
+  const [{ organizationSlug, id }, profile, headerStore] = await Promise.all([
+    params,
+    getCurrentProfile(),
+    headers(),
+  ]);
   if (profile?.role === "controller") redirect("/controller");
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
@@ -30,8 +36,18 @@ export default async function OrganizationMarketplaceListingPage({
   return (
     <ResaleListingDetail
       item={item}
-      backHref={organizationMarketplacePath(organization.slug)}
-      returnPath={organizationMarketplaceListingPath(organization.slug, item.listing.id)}
+      backHref={storefrontPathForHost(
+        organization.slug,
+        organizationMarketplacePath(organization.slug),
+        "/marketplace",
+        headerStore.get("host"),
+      )}
+      returnPath={storefrontPathForHost(
+        organization.slug,
+        organizationMarketplaceListingPath(organization.slug, item.listing.id),
+        `/marketplace/${item.listing.id}`,
+        headerStore.get("host"),
+      )}
     />
   );
 }

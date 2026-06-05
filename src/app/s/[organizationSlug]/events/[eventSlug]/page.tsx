@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { EventDetail } from "@/components/site/event-detail";
 import { getCurrentProfile } from "@/lib/auth";
@@ -9,15 +10,17 @@ import {
   getActiveOrganizationBySlug,
   organizationEventPath,
 } from "@/lib/organizations/public";
+import { storefrontPathForHost } from "@/lib/organizations/hosts";
 
 export default async function OrganizationEventPage({
   params,
 }: {
   params: Promise<{ organizationSlug: string; eventSlug: string }>;
 }) {
-  const [{ organizationSlug, eventSlug }, profile] = await Promise.all([
+  const [{ organizationSlug, eventSlug }, profile, headerStore] = await Promise.all([
     params,
     getCurrentProfile(),
+    headers(),
   ]);
   if (profile?.role === "controller") redirect("/controller");
 
@@ -37,7 +40,12 @@ export default async function OrganizationEventPage({
       categories={categories}
       returnPath={
         event.slug
-          ? organizationEventPath(organization.slug, event.slug)
+          ? storefrontPathForHost(
+              organization.slug,
+              organizationEventPath(organization.slug, event.slug),
+              `/events/${event.slug}`,
+              headerStore.get("host"),
+            )
           : undefined
       }
     />

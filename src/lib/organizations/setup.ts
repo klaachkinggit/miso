@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { isReservedStorefrontSlug } from "@/lib/organizations/hosts";
 import type { Json, Organization } from "@/types/db";
 
 export function slugifyOrganizationName(name: string): string {
@@ -15,6 +16,11 @@ export function slugifyOrganizationName(name: string): string {
   return slug.length >= 2 ? slug : "org";
 }
 
+export function organizationSlugBaseForRequest(name: string): string {
+  const slug = slugifyOrganizationName(name);
+  return isReservedStorefrontSlug(slug) ? `${slug}-events` : slug;
+}
+
 export async function createOrganizationForAdmin(params: {
   name: string;
   adminUserId: string;
@@ -22,7 +28,7 @@ export async function createOrganizationForAdmin(params: {
   onboarding?: Json | null;
 }): Promise<Pick<Organization, "id" | "name" | "slug">> {
   const sb = createServiceClient();
-  const baseSlug = slugifyOrganizationName(params.requestedSlug || params.name);
+  const baseSlug = organizationSlugBaseForRequest(params.requestedSlug || params.name);
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const suffix = attempt === 0 ? "" : `-${Math.random().toString(36).slice(2, 6)}`;

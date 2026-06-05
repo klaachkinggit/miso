@@ -179,6 +179,26 @@ describe("createPurchaseCheckout gift recipient flow", () => {
       amount: 40,
       currency: "EUR",
       status: "pending",
+      sales_channel: "mini_site",
+      tracking_origin: null,
+    });
+  });
+
+  it("persists server-derived checkout attribution", async () => {
+    const { createPurchaseCheckout } = await import("@/lib/payments/checkout");
+
+    await createPurchaseCheckout({
+      buyerUserId: "buyer-1",
+      categoryId: "category-1",
+      successUrl: "https://miso.test/success",
+      cancelUrl: "https://miso.test/cancel",
+      salesChannel: "qr",
+      trackingOrigin: "host:boilerroom path:/events/drop",
+    });
+
+    expect(dbState.insertedPurchase).toMatchObject({
+      sales_channel: "qr",
+      tracking_origin: "host:boilerroom path:/events/drop",
     });
   });
 });

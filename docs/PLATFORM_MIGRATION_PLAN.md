@@ -10,6 +10,7 @@ Miso is becoming a Weezevent-style platform where organizers create their own bi
 - Organization marketplace URL: `{organizationSlug}.miso.com/marketplace`.
 - Admin workspace URL: `app.miso.com`.
 - Local development fallback: `/s/[organizationSlug]`.
+- Host resolver rewrites `{organizationSlug}.miso.com` and `{organizationSlug}.shop.miso.com` to the fallback route internally. Reserved platform hosts such as `app`, `admin`, `api`, `shop`, and `www` are not valid Organization subdomains.
 
 ## Commercial Model
 
@@ -57,3 +58,5 @@ Miso is becoming a Weezevent-style platform where organizers create their own bi
 - Slice 2: Organization-aware auth helpers now protect admin, controller, checkout, and marketplace boundaries.
 - Slice 3: Admin workspace selection uses the server-validated `miso_active_organization_id` cookie. Invalid or tampered selections fall back to an Organization the account administers. Event lists, analytics, and event creation use the active Organization, with legacy profile-owned events only as transition fallback when no Organization membership exists.
 - Slice 4: Public Organization storefront fallback routes exist at `/s/[organizationSlug]`, `/s/[organizationSlug]/events/[eventSlug]`, and `/s/[organizationSlug]/marketplace`. Event slugs are unique inside one Organization, and org-scoped pages do not fall back to global event or marketplace queries.
+- Slice 5: Organization host routing maps public storefront subdomains to the same fallback routes while keeping app/API/admin paths out of tenant routing. Storefront pages emit clean subdomain-local links when visited through the Organization host.
+- Slice 8: Primary and resale checkout persist server-derived `sales_channel` and bounded `tracking_origin` values. Primary ticket checkout records `mini_site`; resale checkout records `marketplace`.

@@ -28,7 +28,7 @@ Stripe Checkout Sessions directly.
 |------|------------|
 | Organization | Organizer-owned billeterie container with its own public subdomain, branding, events, sales channels, marketplace, legal profile, and payout setup. Miso's own billeterie is also an Organization. |
 | Organization subdomain | Public buyer-facing hostname assigned to an Organization, such as `boilerroom.miso.com`. Event pages and the Organization marketplace live under this hostname. |
-| Storefront fallback route | Local/dev public buyer route for an Organization: `/s/{organizationSlug}`. It mirrors the future Organization subdomain path. |
+| Storefront fallback route | Local/dev public buyer route for an Organization: `/s/{organizationSlug}`. Public Organization hosts rewrite to this route internally. |
 | Event slug | Human-readable event URL segment unique within one Organization. Public event pages live at `{organization}.miso.com/events/{eventSlug}`. |
 | Organizer workspace | Admin app for creating and managing Organizations, events, sales channels, attendees, and payouts. In production it lives on `app.miso.com`. |
 | Active Organization | Organization currently selected in the Organizer workspace. It is stored in a server-validated cookie and used to scope event lists, analytics, and event creation. |
@@ -40,6 +40,7 @@ Stripe Checkout Sessions directly.
 | Legacy global discovery | Transitional global event and marketplace surface kept only during migration. It is not the MVP buyer path for the organization-first platform. |
 | Organization Stripe account | Stripe Connect account attached to an Organization, not to an individual Platform account. Paid sales are blocked until this account can accept charges. |
 | Sales channel | Source route for a purchase or listing checkout, such as mini-site, QR, marketplace, widget, ticket office, invitation, or import. |
+| Tracking origin | Bounded server-derived source hint stored on purchase or resale checkout rows for analytics, for example `host:boilerroom path:/events/drop`. |
 | Mini-site | Organization-hosted buyer surface for event discovery and primary ticket checkout. |
 | Platform account | One Miso login shared across all Organizations. It is the buyer's global identity and ticket wallet. |
 | Organization customer | A Platform account's relationship with one Organization, created through purchase, attendance, or explicit opt-in. Organizations cannot see customer activity from other Organizations. |
@@ -85,6 +86,7 @@ Stripe processing fees.
 ## Rules
 
 - Controllers can operate gates but cannot buy tickets, list tickets, or use marketplace checkout.
+- Reserved platform hostnames such as `app`, `admin`, `api`, `shop`, and `www` cannot be used as Organization storefront subdomains.
 - Checkout retries must be idempotent and must not duplicate mints, transfers, or Stripe sessions.
 - Backend wallet authority is issuer-controlled: compromise of that wallet means compromise of all event contracts it administers.
 - User smart accounts hold NFTs, but users do not sign on-chain transactions in the current product model.

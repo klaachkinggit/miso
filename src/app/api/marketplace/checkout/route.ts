@@ -6,6 +6,11 @@ import {
 import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
 import {
+  checkoutSalesChannel,
+  checkoutTrackingOrigin,
+  sourcePathFromReturnPath,
+} from "@/lib/checkout/attribution";
+import {
   ChainOpInFlightError,
   ChainOpRepairError,
 } from "@/lib/chain/ops";
@@ -40,6 +45,11 @@ export async function POST(request: NextRequest) {
       successUrl: `${appUrl}/marketplace/success?session_id={CHECKOUT_SESSION_ID}&listing_id=${body.listing_id}`,
       cancelUrl: `${appUrl}${cancelPath}`,
       idempotencyKey,
+      salesChannel: checkoutSalesChannel("resale"),
+      trackingOrigin: checkoutTrackingOrigin(
+        request,
+        sourcePathFromReturnPath(body.return_path) ?? cancelPath,
+      ),
     });
 
     return NextResponse.json({ url: checkoutUrl });
