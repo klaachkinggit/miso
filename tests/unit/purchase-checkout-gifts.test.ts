@@ -188,11 +188,23 @@ describe("createPurchaseCheckout gift recipient flow", () => {
       ticket_id: "ticket-1",
       gift_recipient_user_id: "friend-1",
       amount: 40,
+      platform_fee_amount: 1.6,
+      stripe_fee_amount: 0.89,
+      buyer_total_amount: 42.49,
       currency: "EUR",
       status: "pending",
       sales_channel: "mini_site",
       tracking_origin: null,
     });
+    expect(checkoutMocks.createStripeCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 40,
+        quantity: 1,
+        platformFeeAmount: 1.6,
+        stripeFeeAmount: 0.89,
+      }),
+      expect.any(Object),
+    );
   });
 
   it("persists server-derived checkout attribution", async () => {

@@ -1,4 +1,8 @@
-import { computeClubTablePricing } from "@/lib/payments/pricing";
+import {
+  allocateMoney,
+  computeClubTablePricing,
+  primaryCheckoutFees,
+} from "@/lib/payments/pricing";
 import { settleFailedPurchase } from "@/lib/payments/settlement";
 import {
   createStripeCheckoutSession,
@@ -139,6 +143,9 @@ async function createPendingPurchase(
     idempotencyKey?: string;
     extras: number;
     pricing: CheckoutPricing;
+    platformFeeAmount: number;
+    stripeFeeAmount: number;
+    buyerTotalAmount: number;
     salesChannel: SalesChannel;
     trackingOrigin: string | null;
   },
@@ -157,6 +164,9 @@ async function createPendingPurchase(
       extra_guests_count: params.extras,
       online_advance_amount: params.pricing.onlineAdvanceAmount,
       min_spending_total: params.pricing.minSpendingTotal,
+      platform_fee_amount: params.platformFeeAmount,
+      stripe_fee_amount: params.stripeFeeAmount,
+      buyer_total_amount: params.buyerTotalAmount,
       sales_channel: params.salesChannel,
       tracking_origin: params.trackingOrigin,
     })
@@ -243,8 +253,16 @@ export async function createPurchaseCheckout(params: {
     const event = await loadEventForTicket(sb, reservedTickets[0]);
     const pricing = checkoutPricing(category, extras);
     await assertEventPaymentReadiness(sb, event, pricing.amount);
+    const fees = primaryCheckoutFees({
+      faceAmount: pricing.amount,
+      quantity,
+    });
+    const platformFeeAllocations = allocateMoney(fees.platformFeeAmount, quantity);
+    const stripeFeeAllocations = allocateMoney(fees.stripeFeeAmount, quantity);
 
-    for (const ticket of reservedTickets) {
+    for (const [index, ticket] of reservedTickets.entries()) {
+      const platformFeeAmount = platformFeeAllocations[index] ?? 0;
+      const stripeFeeAmount = stripeFeeAllocations[index] ?? 0;
       const purchase = await createPendingPurchase(sb, {
         buyerUserId: params.buyerUserId,
         ticket,
@@ -254,6 +272,9 @@ export async function createPurchaseCheckout(params: {
         idempotencyKey: params.idempotencyKey,
         extras,
         pricing,
+        platformFeeAmount,
+        stripeFeeAmount,
+        buyerTotalAmount: Math.round((pricing.amount + platformFeeAmount + stripeFeeAmount) * 100) / 100,
         salesChannel: params.salesChannel ?? "mini_site",
         trackingOrigin: params.trackingOrigin ?? null,
       });
@@ -267,6 +288,8 @@ export async function createPurchaseCheckout(params: {
         purchaseId: purchaseIds[0],
         amount: pricing.amount,
         quantity,
+        platformFeeAmount: fees.platformFeeAmount,
+        stripeFeeAmount: fees.stripeFeeAmount,
         currency: category.currency,
         eventName: event.name,
         categoryName: `${categoryLabel}${extraLabel}`,

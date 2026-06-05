@@ -44,7 +44,7 @@ const SITEMAP: SitemapColumn[] = [
       {
         kind: "unwrap",
         label: "Pricing & fees",
-        body: "MISO takes a flat 4% service fee on primary sales and 6% on resale, paid by the buyer. Stripe processing is passed through at cost. No subscription, no listing fee.",
+        body: "Buyers pay the ticket price plus MISO service and Stripe processing fees. Organizers keep near face value. No subscription, no listing fee.",
       },
     ],
   },

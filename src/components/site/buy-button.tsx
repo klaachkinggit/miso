@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { redirectToCheckout } from "@/lib/checkout/client";
 import { formatPrice } from "@/lib/format";
+import { primaryCheckoutFees } from "@/lib/payments/pricing";
 
 export interface BuyButtonCategory {
   id: string;
@@ -59,6 +60,14 @@ export function BuyButton({
     if (isClub) return (advance + extras * extraPrice) * quantity;
     return basePrice * quantity;
   }, [advance, basePrice, extras, extraPrice, isClub, quantity]);
+  const checkoutFees = useMemo(
+    () =>
+      primaryCheckoutFees({
+        faceAmount: isClub ? advance + extras * extraPrice : basePrice,
+        quantity,
+      }),
+    [advance, basePrice, extras, extraPrice, isClub, quantity],
+  );
 
   async function submit() {
     if (isGift && !giftEmail) {
@@ -198,9 +207,21 @@ export function BuyButton({
 
           <div className="rounded-md bg-secondary/40 p-3 text-sm">
             <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Tickets</span>
+              <span className="font-medium">{formatPrice(onlineTotal, category.currency)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+              <span>MISO service fee</span>
+              <span>{formatPrice(checkoutFees.platformFeeAmount, category.currency)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Payment processing</span>
+              <span>{formatPrice(checkoutFees.stripeFeeAmount, category.currency)}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2">
               <span className="text-muted-foreground">You pay online</span>
               <span className="text-lg font-semibold">
-                {formatPrice(onlineTotal, category.currency)}
+                {formatPrice(checkoutFees.buyerTotalAmount, category.currency)}
               </span>
             </div>
             {isClub ? (
