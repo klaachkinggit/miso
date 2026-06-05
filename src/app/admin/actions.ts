@@ -16,15 +16,21 @@ import {
 } from "@/lib/events/setup";
 import {
   canManageEvent,
-  getDefaultAdminOrganizationId,
 } from "@/lib/organizations/auth";
+import {
+  getActiveAdminOrganization,
+  setActiveAdminOrganization,
+} from "@/lib/organizations/context";
+import { createOrganizationForAdmin } from "@/lib/organizations/setup";
 import { refundTicket } from "@/lib/refunds/refund";
 import {
   CreateCategorySchema,
   CreateEventSchema,
+  CreateOrganizationSchema,
   InviteControllerSchema,
   RefundSchema,
   SiteSettingsSchema,
+  SwitchOrganizationSchema,
 } from "@/lib/schemas";
 import { updateSiteSettings as saveSiteSettings } from "@/lib/site/settings";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -101,7 +107,11 @@ async function assertCanManageEvent(
 
 export async function createEvent(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
-  const organizationId = await getDefaultAdminOrganizationId(admin.id);
+  const { activeOrganization, organizations } = await getActiveAdminOrganization(admin);
+  const organizationId = activeOrganization?.id ?? null;
+  if (!organizationId && organizations.length) {
+    fail("/admin/events/new", "Select an organization before creating an event.");
+  }
   const parsed = CreateEventSchema.safeParse(eventFormPayload(formData));
 
   if (!parsed.success) fail("/admin/events/new", parsed.error.issues[0]?.message ?? "Invalid event.");
@@ -118,6 +128,46 @@ export async function createEvent(formData: FormData) {
     fail("/admin/events/new", errorMessage(error, "Event could not be created."));
   }
   redirect(`/admin/events/${event.id}`);
+}
+
+export async function createOrganization(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const parsed = CreateOrganizationSchema.safeParse({
+    name: formData.get("name"),
+  });
+  if (!parsed.success) {
+    fail("/admin/organizations/new", parsed.error.issues[0]?.message ?? "Invalid organization.");
+  }
+
+  let organization: { id: string; name: string };
+  try {
+    organization = await createOrganizationForAdmin({
+      name: parsed.data.name,
+      adminUserId: admin.id,
+    });
+  } catch (error) {
+    fail("/admin/organizations/new", errorMessage(error, "Organization could not be created."));
+  }
+
+  await setActiveAdminOrganization(admin.id, organization.id);
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  redirect(`/admin?success=${encodeURIComponent(`${organization.name} selected.`)}`);
+}
+
+export async function switchOrganization(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const parsed = SwitchOrganizationSchema.safeParse({
+    organization_id: formData.get("organization_id"),
+  });
+  if (!parsed.success) fail("/admin", "Invalid organization.");
+
+  const switched = await setActiveAdminOrganization(admin.id, parsed.data.organization_id);
+  if (!switched) fail("/admin", "You can only switch to organizations you administer.");
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  redirect("/admin");
 }
 
 export async function updateEvent(formData: FormData) {

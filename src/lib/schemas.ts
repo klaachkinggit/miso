@@ -35,6 +35,14 @@ export const SiteSettingsSchema = z.object({
   landing_dashboard_url: z.string().url().optional().nullable(),
 });
 
+export const CreateOrganizationSchema = z.object({
+  name: z.string().trim().min(2).max(160),
+});
+
+export const SwitchOrganizationSchema = z.object({
+  organization_id: z.string().uuid(),
+});
+
 const ClubTableFields = z.object({
   online_advance: z.coerce.number().min(0).optional().nullable(),
   base_capacity: z.coerce.number().int().positive().optional().nullable(),

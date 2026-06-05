@@ -50,3 +50,9 @@ Miso is becoming a Weezevent-style platform where organizers create their own bi
 - Do not let controller accounts buy, list, or checkout through an Organization where they are controllers.
 - Preserve idempotency around Stripe checkout, webhook fulfillment, minting, transfer, and reservation expiry.
 - Make tenant scoping explicit in code: Organization-first paths should not silently fall back to global queries.
+
+## Implemented Platform Slices
+
+- Slice 1: Organization schema and transition backfill added in `20260605004939_organization_foundation.sql`.
+- Slice 2: Organization-aware auth helpers now protect admin, controller, checkout, and marketplace boundaries.
+- Slice 3: Admin workspace selection uses the server-validated `miso_active_organization_id` cookie. Invalid or tampered selections fall back to an Organization the account administers. Event lists, analytics, and event creation use the active Organization, with legacy profile-owned events only as transition fallback when no Organization membership exists.

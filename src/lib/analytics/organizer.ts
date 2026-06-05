@@ -37,20 +37,24 @@ export interface OrganizerEventStat {
 // purchases for revenue. Redemptions = tickets.status = "used".
 export async function loadOrganizerOverview(params: {
   profile: Pick<Profile, "id" | "role">;
+  organizationId?: string | null;
 }): Promise<{
   totals: OrganizerTotals;
   events: OrganizerEventStat[];
 }> {
   const sb = createServiceClient();
   const organizationIds = await getAdminOrganizationIds(params.profile.id);
-  const scopedToOrganizer = !organizationIds.length && params.profile.role === "organizer";
+  const scopedToOrganization = params.organizationId && organizationIds.includes(params.organizationId);
+  const scopedToOrganizer = !scopedToOrganization && !organizationIds.length && params.profile.role === "organizer";
 
   let eventsQuery = sb
     .from("events")
     .select("id, name, date, city, venue_name, status, capacity")
     .order("date", { ascending: false });
 
-  if (organizationIds.length) {
+  if (scopedToOrganization) {
+    eventsQuery = eventsQuery.eq("organization_id", params.organizationId!);
+  } else if (organizationIds.length) {
     eventsQuery = eventsQuery.in("organization_id", organizationIds);
   } else if (scopedToOrganizer) {
     eventsQuery = eventsQuery.eq("organizer_user_id", params.profile.id);

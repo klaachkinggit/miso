@@ -30,6 +30,7 @@ Stripe Checkout Sessions directly.
 | Organization subdomain | Public buyer-facing hostname assigned to an Organization, such as `boilerroom.miso.com`. Event pages and the Organization marketplace live under this hostname. |
 | Event slug | Human-readable event URL segment unique within one Organization. Public event pages live at `{organization}.miso.com/events/{eventSlug}`. |
 | Organizer workspace | Admin app for creating and managing Organizations, events, sales channels, attendees, and payouts. In production it lives on `app.miso.com`. |
+| Active Organization | Organization currently selected in the Organizer workspace. It is stored in a server-validated cookie and used to scope event lists, analytics, and event creation. |
 | Organization admin | Organization member with full control over legal, billing, payouts, team, events, settings, transfer, and deletion. |
 | Organization controller | Organization member who can operate assigned gates for assigned events and cannot buy, list, or checkout through that Organization. |
 | Organization membership | Relationship between a Platform account and an Organization. A Platform account may be a member of multiple Organizations. |
