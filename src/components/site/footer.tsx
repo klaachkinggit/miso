@@ -15,7 +15,6 @@ const SITEMAP: SitemapColumn[] = [
     title: "Fans",
     entries: [
       { kind: "link", label: "My wallet", href: "/tickets" },
-      { kind: "link", label: "Official resale", href: "/marketplace" },
       {
         kind: "unwrap",
         label: "How tickets work",

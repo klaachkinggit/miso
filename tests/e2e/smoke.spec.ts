@@ -8,6 +8,21 @@ test.describe("Public smoke", () => {
     await expect(page.getByRole("link", { name: /all events/i }).first()).toBeVisible();
   });
 
+  test("shared navigation does not promote legacy discovery", async ({ page }) => {
+    await page.goto("/");
+    const header = page.locator("header");
+    await expect(header.getByRole("link", { name: "Events" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: "Exchange" })).toHaveCount(0);
+    await expect(header.getByLabel("Search events")).toHaveCount(0);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/events");
+    const bottomNav = page.getByRole("navigation", { name: "Primary" });
+    await expect(bottomNav.getByRole("link", { name: "Explore" })).toHaveCount(0);
+    await expect(bottomNav.getByRole("link", { name: "Exchange" })).toHaveCount(0);
+    await expect(bottomNav.getByRole("link", { name: "Wallet" })).toBeVisible();
+  });
+
   test("events page lists at least one published event when seeded", async ({ page }) => {
     await page.goto("/events");
     await expect(page.getByRole("heading", { name: "Events" })).toBeVisible();

@@ -63,3 +63,4 @@ Miso is becoming a Weezevent-style platform where organizers create their own bi
 - Slice 7: Resale checkout includes optional buyer-paid Organization royalties. Seller still receives the listing price; buyer pays listing price plus royalty plus Miso marketplace fee.
 - Slice 9: Paid primary and resale checkout are blocked unless the Organization has a Stripe account id, submitted details, and charges enabled. The local demo seed marks Miso's Organization ready so mocked checkout remains usable.
 - Slice 8: Primary and resale checkout persist server-derived `sales_channel` and bounded `tracking_origin` values. Primary ticket checkout records `mini_site`; resale checkout records `marketplace`.
+- Slice 10: Persistent shared navigation no longer promotes legacy global `/events` or `/marketplace` discovery. Those routes remain available by direct URL during transition.

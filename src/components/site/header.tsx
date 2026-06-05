@@ -4,7 +4,6 @@ import { getAdminOrganizationIds, getMemberOrganizationIds } from "@/lib/organiz
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/site/user-menu";
 import { Marquee } from "@/components/site/marquee";
-import { HeroSearch } from "@/components/site/hero-search";
 
 export async function Header() {
   const profile = await getCurrentProfile();
@@ -27,12 +26,6 @@ export async function Header() {
           <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
             {!controllerOnly ? (
               <>
-                <Link href="/events" className="text-muted-foreground transition-colors hover:text-foreground">
-                  Events
-                </Link>
-                <Link href="/marketplace" className="text-muted-foreground transition-colors hover:text-foreground">
-                  Exchange
-                </Link>
                 {profile ? (
                   <Link href="/tickets" className="text-muted-foreground transition-colors hover:text-foreground">
                     Wallet
@@ -52,12 +45,6 @@ export async function Header() {
             ) : null}
           </nav>
 
-          <div className="hidden flex-1 justify-center px-4 lg:flex">
-            <div className="w-full max-w-md">
-              <HeroSearch size="md" />
-            </div>
-          </div>
-
           <div className="ml-auto flex items-center gap-2">
             {profile ? (
               <UserMenu profile={profile} />
@@ -72,9 +59,6 @@ export async function Header() {
               </>
             )}
           </div>
-        </div>
-        <div className="container pb-3 lg:hidden">
-          <HeroSearch size="md" />
         </div>
       </header>
 
