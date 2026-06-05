@@ -58,6 +58,11 @@ export const OrganizationBrandingSchema = z.object({
   hero_image_url: z.string().url().optional().nullable(),
 });
 
+export const OrganizationRoyaltySchema = z.object({
+  resale_royalty_enabled: z.coerce.boolean().default(false),
+  resale_royalty_bps: z.coerce.number().int().min(0).max(10_000).default(0),
+});
+
 const ClubTableFields = z.object({
   online_advance: z.coerce.number().min(0).optional().nullable(),
   base_capacity: z.coerce.number().int().positive().optional().nullable(),

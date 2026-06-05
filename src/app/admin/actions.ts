@@ -29,6 +29,7 @@ import {
   CreateOrganizationSchema,
   InviteControllerSchema,
   OrganizationBrandingSchema,
+  OrganizationRoyaltySchema,
   RefundSchema,
   SiteSettingsSchema,
   SwitchOrganizationSchema,
@@ -211,6 +212,46 @@ export async function updateOrganizationBranding(formData: FormData) {
   revalidatePath(`/s/${activeOrganization.slug}`);
   revalidatePath(`/s/${activeOrganization.slug}/marketplace`);
   redirect("/admin/settings?success=Branding%20saved.");
+}
+
+export async function updateOrganizationRoyalty(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = OrganizationRoyaltySchema.safeParse({
+    resale_royalty_enabled: checkbox(formData, "resale_royalty_enabled"),
+    resale_royalty_bps: formData.get("resale_royalty_bps") || 0,
+  });
+  if (!parsed.success) {
+    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid royalty settings.");
+  }
+
+  const bps = parsed.data.resale_royalty_enabled ? parsed.data.resale_royalty_bps : 0;
+  const sb = createServiceClient();
+  const { error } = await sb
+    .from("organizations")
+    .update({
+      resale_royalty_enabled: parsed.data.resale_royalty_enabled,
+      resale_royalty_bps: bps,
+    })
+    .eq("id", activeOrganization.id);
+  if (error) fail("/admin/settings", error.message);
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.royalty.update",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: {
+      resale_royalty_enabled: parsed.data.resale_royalty_enabled,
+      resale_royalty_bps: bps,
+    },
+  });
+
+  revalidatePath("/admin/settings");
+  revalidatePath(`/s/${activeOrganization.slug}/marketplace`);
+  redirect("/admin/settings?success=Royalty%20settings%20saved.");
 }
 
 export async function updateEvent(formData: FormData) {

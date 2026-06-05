@@ -136,6 +136,12 @@ export function ResaleListingDetail({
                   <span>MISO platform fee</span>
                   <span>{formatPrice(item.platformFee, item.listing.currency)}</span>
                 </div>
+                {item.royaltyAmount > 0 ? (
+                  <div className="flex justify-between gap-3">
+                    <span>Organizer royalty</span>
+                    <span>{formatPrice(item.royaltyAmount, item.listing.currency)}</span>
+                  </div>
+                ) : null}
               </div>
               {item.ticket.min_spending_remaining != null ? (
                 <p className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">

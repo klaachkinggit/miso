@@ -61,7 +61,7 @@ describe("Stripe checkout session builders", () => {
     vi.useRealTimers();
   });
 
-  it("creates resale sessions with seller amount, optional fee line, and buyer total metadata", async () => {
+  it("creates resale sessions with seller amount, optional fee/royalty lines, and buyer total metadata", async () => {
     const { createResaleStripeCheckoutSession } = await import("@/lib/payments/stripe");
 
     await createResaleStripeCheckoutSession({
@@ -69,6 +69,7 @@ describe("Stripe checkout session builders", () => {
       buyerUserId: "buyer-1",
       amount: 50,
       platformFeeAmount: 2.5,
+      royaltyAmount: 5,
       currency: "EUR",
       eventName: "Miso Night",
       categoryName: "Balcony",
@@ -78,12 +79,17 @@ describe("Stripe checkout session builders", () => {
     });
 
     const [payload, opts] = stripeMocks.sessionsCreate.mock.calls[0]!;
-    expect(payload.line_items).toHaveLength(2);
+    expect(payload.line_items).toHaveLength(3);
     expect(payload.line_items[0].price_data.unit_amount).toBe(5_000);
     expect(payload.line_items[1].price_data).toMatchObject({
       currency: "eur",
       unit_amount: 250,
       product_data: { name: "MISO marketplace platform fee" },
+    });
+    expect(payload.line_items[2].price_data).toMatchObject({
+      currency: "eur",
+      unit_amount: 500,
+      product_data: { name: "Organizer resale royalty" },
     });
     expect(payload.metadata).toMatchObject({
       type: "resale",
@@ -91,7 +97,8 @@ describe("Stripe checkout session builders", () => {
       buyer_id: "buyer-1",
       seller_amount: "50",
       platform_fee_amount: "2.5",
-      buyer_total: "52.5",
+      royalty_amount: "5",
+      buyer_total: "57.5",
     });
     expect(payload.payment_method_types).toBeUndefined();
     expect(opts).toEqual({ idempotencyKey: "resale-key" });
@@ -115,6 +122,7 @@ describe("Stripe checkout session builders", () => {
     const [payload, opts] = stripeMocks.sessionsCreate.mock.calls[0]!;
     expect(payload.line_items).toHaveLength(1);
     expect(payload.metadata.platform_fee_amount).toBe("0");
+    expect(payload.metadata.royalty_amount).toBe("0");
     expect(opts).toBeUndefined();
   });
 });

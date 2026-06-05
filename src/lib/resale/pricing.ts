@@ -6,3 +6,16 @@ export function resalePlatformFee(amount: number): number {
   const fee = (amount * safePercent) / 100 + safeFixed;
   return Math.round(fee * 100) / 100;
 }
+
+export function resaleRoyaltyAmount(params: {
+  sellerAmount: number;
+  enabled: boolean;
+  bps: number;
+}): number {
+  if (!params.enabled || params.bps <= 0) return 0;
+  const safeBps = Number.isFinite(params.bps)
+    ? Math.max(0, Math.min(10_000, params.bps))
+    : 0;
+  const royalty = (params.sellerAmount * safeBps) / 10_000;
+  return Math.round(royalty * 100) / 100;
+}

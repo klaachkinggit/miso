@@ -180,6 +180,23 @@ test.describe("Organization workspace selection", () => {
       await expect(page.getByRole("heading", { name: `Workspace Beta ${stamp}` })).toBeVisible();
       await expect(page.getByText(tagline)).toBeVisible();
 
+      await page.goto("/admin/settings");
+      await page.getByText("Activate royalty").click();
+      await page.getByLabel("Royalty rate").fill("750");
+      await page.getByRole("button", { name: /save royalty settings/i }).click();
+      await page.waitForURL(/\/admin\/settings\?success=/);
+      await expect(page.getByText("Royalty settings saved.")).toBeVisible();
+
+      const { data: royaltyOrg } = await client
+        .from("organizations")
+        .select("resale_royalty_enabled, resale_royalty_bps")
+        .eq("id", orgB.id)
+        .single<{ resale_royalty_enabled: boolean; resale_royalty_bps: number }>();
+      expect(royaltyOrg).toMatchObject({
+        resale_royalty_enabled: true,
+        resale_royalty_bps: 750,
+      });
+
       const createdEventName = `Selected Org Draft ${stamp}`;
       await page.goto("/admin/events/new");
       await page.getByLabel("Name", { exact: true }).fill(createdEventName);

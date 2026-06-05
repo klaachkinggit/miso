@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CreateCategorySchema,
   OrganizationBrandingSchema,
+  OrganizationRoyaltySchema,
   PurchaseInitSchema,
   ResaleCheckoutSchema,
   TransferToWalletSchema,
@@ -122,6 +123,29 @@ describe("OrganizationBrandingSchema", () => {
     expect(
       OrganizationBrandingSchema.safeParse({
         hero_image_url: "/local-file.png",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("OrganizationRoyaltySchema", () => {
+  it("accepts buyer-paid royalty settings", () => {
+    const parsed = OrganizationRoyaltySchema.parse({
+      resale_royalty_enabled: "true",
+      resale_royalty_bps: "500",
+    });
+
+    expect(parsed).toEqual({
+      resale_royalty_enabled: true,
+      resale_royalty_bps: 500,
+    });
+  });
+
+  it("rejects royalty rates outside database bounds", () => {
+    expect(
+      OrganizationRoyaltySchema.safeParse({
+        resale_royalty_enabled: true,
+        resale_royalty_bps: 10_001,
       }).success,
     ).toBe(false);
   });

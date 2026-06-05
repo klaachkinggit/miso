@@ -7,7 +7,10 @@ import { requireOrganizerWorkspace } from "@/lib/auth";
 import { normalizeOrganizationBranding } from "@/lib/organizations/branding";
 import { getActiveAdminOrganization } from "@/lib/organizations/context";
 import { organizationStorefrontPath } from "@/lib/organizations/public";
-import { OrganizationBrandingForm } from "./organization-branding-form";
+import {
+  OrganizationBrandingForm,
+  OrganizationRoyaltyForm,
+} from "./organization-branding-form";
 
 export default async function OrganizationSettingsPage({
   searchParams,
@@ -55,6 +58,12 @@ export default async function OrganizationSettingsPage({
         branding={branding}
         organizationSlug={activeOrganization.slug}
       />
+      <div className="mt-8">
+        <OrganizationRoyaltyForm
+          enabled={activeOrganization.resale_royalty_enabled}
+          bps={activeOrganization.resale_royalty_bps}
+        />
+      </div>
     </div>
   );
 }

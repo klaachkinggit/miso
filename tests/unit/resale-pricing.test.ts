@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { resalePlatformFee } from "@/lib/resale/pricing";
+import { resalePlatformFee, resaleRoyaltyAmount } from "@/lib/resale/pricing";
 
 const ORIGINAL_PERCENT = process.env.MISO_RESALE_PLATFORM_FEE_PERCENT;
 const ORIGINAL_FIXED = process.env.MISO_RESALE_PLATFORM_FEE_FIXED;
@@ -44,5 +44,19 @@ describe("resalePlatformFee", () => {
     process.env.MISO_RESALE_PLATFORM_FEE_FIXED = "also-bad";
 
     expect(resalePlatformFee(100)).toBe(0);
+  });
+});
+
+describe("resaleRoyaltyAmount", () => {
+  it("returns zero when disabled", () => {
+    expect(resaleRoyaltyAmount({ sellerAmount: 100, enabled: false, bps: 500 })).toBe(0);
+  });
+
+  it("calculates enabled royalty in basis points", () => {
+    expect(resaleRoyaltyAmount({ sellerAmount: 100, enabled: true, bps: 500 })).toBe(5);
+  });
+
+  it("rounds royalty to cents", () => {
+    expect(resaleRoyaltyAmount({ sellerAmount: 33.33, enabled: true, bps: 333 })).toBe(1.11);
   });
 });

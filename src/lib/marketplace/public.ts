@@ -3,7 +3,7 @@ import "server-only";
 import {
   organizationMarketplaceListingPath,
 } from "@/lib/organizations/public";
-import { resalePlatformFee } from "@/lib/resale/pricing";
+import { resalePlatformFee, resaleRoyaltyAmount } from "@/lib/resale/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
@@ -13,6 +13,7 @@ export type SellableResaleListing = {
   event: EventRow;
   category: TicketCategory;
   platformFee: number;
+  royaltyAmount: number;
   buyerTotal: number;
 };
 
@@ -22,41 +23,50 @@ function toSellable(params: {
   event: EventRow | undefined;
   category: TicketCategory | undefined;
   organizationId?: string;
-  activeOrganizationIds?: Set<string>;
+  activeOrganizationsById?: Map<string, { resale_royalty_enabled: boolean; resale_royalty_bps: number }>;
 }): SellableResaleListing | null {
-  const { listing, ticket, event, category, organizationId, activeOrganizationIds } = params;
+  const { listing, ticket, event, category, organizationId, activeOrganizationsById } = params;
   if (!ticket || ticket.status !== "listed") return null;
   if (!event || event.status !== "published") return null;
   if (organizationId && event.organization_id !== organizationId) return null;
   const listingOrganizationId = listing.organization_id ?? event.organization_id;
-  if (listingOrganizationId && activeOrganizationIds && !activeOrganizationIds.has(listingOrganizationId)) return null;
+  const organization = listingOrganizationId ? activeOrganizationsById?.get(listingOrganizationId) : undefined;
+  if (listingOrganizationId && activeOrganizationsById && !organization) return null;
   if (new Date(event.date).getTime() < Date.now()) return null;
   if (!category?.resale_enabled) return null;
 
   const platformFee = resalePlatformFee(Number(listing.price));
+  const royaltyAmount = resaleRoyaltyAmount({
+    sellerAmount: Number(listing.price),
+    enabled: organization?.resale_royalty_enabled ?? false,
+    bps: organization?.resale_royalty_bps ?? 0,
+  });
   return {
     listing,
     ticket,
     event,
     category,
     platformFee,
-    buyerTotal: Number(listing.price) + platformFee,
+    royaltyAmount,
+    buyerTotal: Number(listing.price) + platformFee + royaltyAmount,
   };
 }
 
-async function activeOrganizationIds(ids: string[]): Promise<Set<string>> {
+async function activeOrganizationsById(
+  ids: string[],
+): Promise<Map<string, { resale_royalty_enabled: boolean; resale_royalty_bps: number }>> {
   const uniqueIds = [...new Set(ids.filter(Boolean))];
-  if (!uniqueIds.length) return new Set();
+  if (!uniqueIds.length) return new Map();
 
   const sb = createServiceClient();
   const { data, error } = await sb
     .from("organizations")
-    .select("id")
+    .select("id, resale_royalty_enabled, resale_royalty_bps")
     .in("id", uniqueIds)
     .eq("status", "active")
-    .returns<Array<{ id: string }>>();
+    .returns<Array<{ id: string; resale_royalty_enabled: boolean; resale_royalty_bps: number }>>();
   if (error) throw new Error(`Marketplace organization status lookup failed: ${error.message}`);
-  return new Set((data ?? []).map((organization) => organization.id));
+  return new Map((data ?? []).map((organization) => [organization.id, organization]));
 }
 
 export async function listSellableResaleListings(params: {
@@ -98,7 +108,7 @@ export async function listSellableResaleListings(params: {
   const ticketById = new Map((tickets ?? []).map((ticket) => [ticket.id, ticket]));
   const eventById = new Map((events ?? []).map((event) => [event.id, event]));
   const categoryById = new Map((categories ?? []).map((category) => [category.id, category]));
-  const activeIds = await activeOrganizationIds([
+  const activeOrganizations = await activeOrganizationsById([
     ...(listings ?? []).map((listing) => listing.organization_id ?? ""),
     ...(events ?? []).map((event) => event.organization_id ?? ""),
   ]);
@@ -111,7 +121,7 @@ export async function listSellableResaleListings(params: {
         event: eventById.get(ticketById.get(listing.ticket_id)?.event_id ?? ""),
         category: categoryById.get(ticketById.get(listing.ticket_id)?.category_id ?? ""),
         organizationId: params.organizationId,
-        activeOrganizationIds: activeIds,
+        activeOrganizationsById: activeOrganizations,
       }),
     )
     .filter((listing): listing is SellableResaleListing => Boolean(listing));
@@ -145,7 +155,7 @@ export async function getSellableResaleListing(params: {
   ]);
   if (eventError) throw new Error(`Marketplace event lookup failed: ${eventError.message}`);
   if (categoryError) throw new Error(`Marketplace category lookup failed: ${categoryError.message}`);
-  const activeIds = await activeOrganizationIds([
+  const activeOrganizations = await activeOrganizationsById([
     listing.organization_id ?? "",
     event?.organization_id ?? "",
   ]);
@@ -157,7 +167,7 @@ export async function getSellableResaleListing(params: {
       event: event ?? undefined,
       category: category ?? undefined,
       organizationId: params.organizationId,
-      activeOrganizationIds: activeIds,
+      activeOrganizationsById: activeOrganizations,
     }) ?? null
   );
 }

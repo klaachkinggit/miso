@@ -28,6 +28,7 @@ Stripe Checkout Sessions directly.
 |------|------------|
 | Organization | Organizer-owned billeterie container with its own public subdomain, branding, events, sales channels, marketplace, legal profile, and payout setup. Miso's own billeterie is also an Organization. |
 | Organization branding | Public storefront identity stored on `organizations.branding`: tagline, accent color, logo, and hero image. |
+| Organization resale royalty setting | Admin-controlled toggle and basis-point rate stored on the Organization. When enabled, resale buyers pay this royalty on top of seller price. |
 | Organization subdomain | Public buyer-facing hostname assigned to an Organization, such as `boilerroom.miso.com`. Event pages and the Organization marketplace live under this hostname. |
 | Storefront fallback route | Local/dev public buyer route for an Organization: `/s/{organizationSlug}`. Public Organization hosts rewrite to this route internally. |
 | Event slug | Human-readable event URL segment unique within one Organization. Public event pages live at `{organization}.miso.com/events/{eventSlug}`. |
@@ -71,8 +72,8 @@ Miso uses a Buyer-paid fee model: organizers set the Face value, while buyers
 pay the Face value plus Miso service fees and Stripe processing fees.
 
 Organization marketplaces may add an optional Resale royalty. When enabled,
-buyers pay the seller's listing price plus the royalty, Miso service fees, and
-Stripe processing fees.
+buyers pay the seller's listing price plus the royalty and Miso marketplace
+fees; the seller still receives the listing price.
 
 ## Ticket Lifecycle
 

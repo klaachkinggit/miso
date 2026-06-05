@@ -26,7 +26,7 @@ import {
 import { backendWallet } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { audit } from "@/lib/audit";
-import { resalePlatformFee } from "@/lib/resale/pricing";
+import { resalePlatformFee, resaleRoyaltyAmount } from "@/lib/resale/pricing";
 import {
   markTicketListed,
   markTicketResaleCanceled,
@@ -223,6 +223,45 @@ async function getResaleCheckoutListing(params: {
   return listing;
 }
 
+async function resaleRoyaltyForListing(
+  sb: ReturnType<typeof createServiceClient>,
+  listing: ResaleListing,
+  sellerAmount: number,
+): Promise<number> {
+  let organizationId = listing.organization_id;
+  if (!organizationId) {
+    const { data: ticket, error: ticketError } = await sb
+      .from("tickets")
+      .select("event_id")
+      .eq("id", listing.ticket_id)
+      .maybeSingle<Pick<Ticket, "event_id">>();
+    if (ticketError) throw ticketError;
+    if (ticket?.event_id) {
+      const { data: event, error: eventError } = await sb
+        .from("events")
+        .select("organization_id")
+        .eq("id", ticket.event_id)
+        .maybeSingle<Pick<EventRow, "organization_id">>();
+      if (eventError) throw eventError;
+      organizationId = event?.organization_id ?? null;
+    }
+  }
+  if (!organizationId) return 0;
+
+  const { data: organization, error: organizationError } = await sb
+    .from("organizations")
+    .select("resale_royalty_enabled, resale_royalty_bps")
+    .eq("id", organizationId)
+    .maybeSingle<{ resale_royalty_enabled: boolean; resale_royalty_bps: number }>();
+  if (organizationError) throw organizationError;
+
+  return resaleRoyaltyAmount({
+    sellerAmount,
+    enabled: organization?.resale_royalty_enabled ?? false,
+    bps: organization?.resale_royalty_bps ?? 0,
+  });
+}
+
 export async function checkoutResaleListing(params: {
   listingId: string;
   buyerUserId: string;
@@ -255,7 +294,8 @@ export async function checkoutResaleListing(params: {
   const listing = await getResaleCheckoutListing(params);
   const sellerAmount = Number(listing.price);
   const platformFeeAmount = resalePlatformFee(sellerAmount);
-  const buyerTotalAmount = sellerAmount + platformFeeAmount;
+  const royaltyAmount = await resaleRoyaltyForListing(sb, listing, sellerAmount);
+  const buyerTotalAmount = sellerAmount + platformFeeAmount + royaltyAmount;
 
   // Atomically claim listing before creating Stripe session so no concurrent
   // buyer can claim the same listing during payment.
@@ -294,6 +334,7 @@ export async function checkoutResaleListing(params: {
       buyerUserId: params.buyerUserId,
       amount: sellerAmount,
       platformFeeAmount,
+      royaltyAmount,
       currency: listing.currency,
       eventName: event?.name ?? "Event",
       categoryName: category?.name ?? "Ticket",
@@ -325,6 +366,7 @@ export async function checkoutResaleListing(params: {
       provider_session_id: session.id,
       payment_provider: "stripe",
       platform_fee_amount: platformFeeAmount,
+      royalty_amount: royaltyAmount,
       buyer_total_amount: buyerTotalAmount,
       checkout_idempotency_key: params.idempotencyKey ?? null,
       sales_channel: params.salesChannel ?? "marketplace",
