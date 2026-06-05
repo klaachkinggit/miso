@@ -28,10 +28,15 @@ import {
   CreateEventSchema,
   CreateOrganizationSchema,
   InviteControllerSchema,
+  OrganizationBrandingSchema,
   RefundSchema,
   SiteSettingsSchema,
   SwitchOrganizationSchema,
 } from "@/lib/schemas";
+import {
+  normalizeOrganizationBranding,
+  organizationBrandingJson,
+} from "@/lib/organizations/branding";
 import { updateSiteSettings as saveSiteSettings } from "@/lib/site/settings";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, Profile, Ticket } from "@/types/db";
@@ -168,6 +173,44 @@ export async function switchOrganization(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/events");
   redirect("/admin");
+}
+
+export async function updateOrganizationBranding(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = OrganizationBrandingSchema.safeParse({
+    tagline: optionalString(formData, "tagline"),
+    accent_color: optionalString(formData, "accent_color"),
+    logo_url: optionalString(formData, "logo_url"),
+    hero_image_url: optionalString(formData, "hero_image_url"),
+  });
+  if (!parsed.success) {
+    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid branding.");
+  }
+
+  const branding = normalizeOrganizationBranding(parsed.data);
+  const sb = createServiceClient();
+  const { error } = await sb
+    .from("organizations")
+    .update({ branding: organizationBrandingJson(branding) })
+    .eq("id", activeOrganization.id);
+  if (error) fail("/admin/settings", error.message);
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.branding.update",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: { organization_slug: activeOrganization.slug },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/settings");
+  revalidatePath(`/s/${activeOrganization.slug}`);
+  revalidatePath(`/s/${activeOrganization.slug}/marketplace`);
+  redirect("/admin/settings?success=Branding%20saved.");
 }
 
 export async function updateEvent(formData: FormData) {

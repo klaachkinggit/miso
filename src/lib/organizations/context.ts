@@ -4,7 +4,7 @@ import type { Organization, Profile } from "@/types/db";
 
 export const ACTIVE_ORGANIZATION_COOKIE = "miso_active_organization_id";
 
-export type OrganizationOption = Pick<Organization, "id" | "name" | "slug" | "status">;
+export type OrganizationOption = Pick<Organization, "id" | "name" | "slug" | "status" | "branding">;
 
 export function pickActiveOrganizationId(
   requestedId: string | null | undefined,
@@ -32,7 +32,7 @@ export async function getAdminOrganizations(userId: string): Promise<Organizatio
 
   const { data: organizations, error: organizationsError } = await sb
     .from("organizations")
-    .select("id, name, slug, status")
+    .select("id, name, slug, status, branding")
     .in("id", organizationIds)
     .eq("status", "active")
     .returns<OrganizationOption[]>();

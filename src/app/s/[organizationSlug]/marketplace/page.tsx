@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/site/page-header";
 import { ResaleListingList } from "@/components/site/resale-listing-list";
 import { getCurrentProfile } from "@/lib/auth";
 import { listSellableResaleListings } from "@/lib/marketplace/public";
+import { normalizeOrganizationBranding } from "@/lib/organizations/branding";
 import {
   getActiveOrganizationBySlug,
   organizationMarketplaceListingPath,
@@ -33,6 +34,7 @@ export default async function OrganizationMarketplacePage({
   const listings = await listSellableResaleListings({
     organizationId: organization.id,
   });
+  const branding = normalizeOrganizationBranding(organization.branding);
   const host = headerStore.get("host");
   const storefrontPath = storefrontPathForHost(
     organization.slug,
@@ -66,7 +68,7 @@ export default async function OrganizationMarketplacePage({
       </div>
       <PageHeader
         title={`${organization.name} exchange`}
-        description="Verified tickets listed by members inside this ticketing channel."
+        description={branding.tagline ?? "Verified tickets listed by members inside this ticketing channel."}
         className="mb-8"
       />
       <ResaleListingList

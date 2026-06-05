@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CreateCategorySchema,
+  OrganizationBrandingSchema,
   PurchaseInitSchema,
   ResaleCheckoutSchema,
   TransferToWalletSchema,
@@ -95,6 +96,32 @@ describe("PurchaseInitSchema", () => {
       PurchaseInitSchema.safeParse({
         category_id: categoryId,
         return_path: "//evil.example",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("OrganizationBrandingSchema", () => {
+  it("accepts public branding fields", () => {
+    const parsed = OrganizationBrandingSchema.parse({
+      tagline: "Tickets for the basement.",
+      accent_color: "#33CC99",
+      logo_url: "https://assets.example/logo.png",
+      hero_image_url: "https://assets.example/hero.png",
+    });
+
+    expect(parsed.accent_color).toBe("#33CC99");
+  });
+
+  it("rejects invalid colors and image URLs", () => {
+    expect(
+      OrganizationBrandingSchema.safeParse({
+        accent_color: "green",
+      }).success,
+    ).toBe(false);
+    expect(
+      OrganizationBrandingSchema.safeParse({
+        hero_image_url: "/local-file.png",
       }).success,
     ).toBe(false);
   });

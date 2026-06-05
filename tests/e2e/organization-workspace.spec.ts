@@ -159,6 +159,27 @@ test.describe("Organization workspace selection", () => {
       await expect(page.getByText(eventBName)).toBeVisible();
       await expect(page.getByText(eventAName)).toHaveCount(0);
 
+      const tagline = `Raw ticket channel ${stamp}`;
+      await page.goto("/admin/settings");
+      await page.getByLabel("Storefront tagline").fill(tagline);
+      await page.getByLabel("Accent color").fill("#33cc99");
+      await page.getByRole("button", { name: /save branding/i }).click();
+      await page.waitForURL(/\/admin\/settings\?success=/);
+      await expect(page.getByText("Branding saved.")).toBeVisible();
+
+      const { data: brandedOrg } = await client
+        .from("organizations")
+        .select("branding")
+        .eq("id", orgB.id)
+        .single<{ branding: { tagline?: string; accent_color?: string } }>();
+      expect(brandedOrg?.branding).toMatchObject({
+        tagline,
+        accent_color: "#33cc99",
+      });
+      await page.goto(`/s/workspace-beta-${stamp}`);
+      await expect(page.getByRole("heading", { name: `Workspace Beta ${stamp}` })).toBeVisible();
+      await expect(page.getByText(tagline)).toBeVisible();
+
       const createdEventName = `Selected Org Draft ${stamp}`;
       await page.goto("/admin/events/new");
       await page.getByLabel("Name", { exact: true }).fill(createdEventName);

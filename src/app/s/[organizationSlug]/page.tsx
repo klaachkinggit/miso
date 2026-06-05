@@ -4,7 +4,6 @@ import { notFound, redirect } from "next/navigation";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
 import { EventsFilterPanel } from "@/components/site/events-filter-panel";
-import { PageHeader } from "@/components/site/page-header";
 import { getCurrentProfile } from "@/lib/auth";
 import {
   EVENT_QUICK_FILTERS,
@@ -13,6 +12,10 @@ import {
   normalizeEventDiscoveryParams,
 } from "@/lib/events/discovery";
 import { listPublishedEvents } from "@/lib/events/public";
+import {
+  DEFAULT_ORGANIZATION_ACCENT,
+  normalizeOrganizationBranding,
+} from "@/lib/organizations/branding";
 import {
   getActiveOrganizationBySlug,
   organizationEventPath,
@@ -68,14 +71,47 @@ export default async function OrganizationStorefrontPage({
     discovery,
     organizationId: organization.id,
   });
+  const branding = normalizeOrganizationBranding(organization.branding);
+  const accent = branding.accent_color ?? DEFAULT_ORGANIZATION_ACCENT;
 
   return (
     <div className="container py-8 pb-20 md:py-12 md:pb-12">
+      <section className="relative mb-6 min-h-64 overflow-hidden rounded-lg border border-border/70 bg-card">
+        {branding.hero_image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={branding.hero_image_url}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
+        <div className="relative flex min-h-64 max-w-3xl flex-col justify-end gap-4 p-6 md:p-8">
+          {branding.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logo_url}
+              alt={`${organization.name} logo`}
+              className="h-16 w-16 rounded-md border border-border/60 object-contain"
+            />
+          ) : null}
+          <div>
+            <p className="mono-stub mb-2" style={{ color: accent }}>
+              Official billeterie
+            </p>
+            <h1 className="display text-4xl md:text-6xl">{organization.name}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+              {branding.tagline ?? eventDiscoveryDescription(events.length, discovery)}
+            </p>
+          </div>
+        </div>
+      </section>
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <Link
           href={basePath}
           aria-current="page"
-          className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+          className="rounded-full px-3 py-1 text-xs font-semibold text-[#121212]"
+          style={{ backgroundColor: accent }}
         >
           Events
         </Link>
@@ -86,13 +122,6 @@ export default async function OrganizationStorefrontPage({
           Exchange
         </Link>
       </div>
-
-      <PageHeader
-        title={organization.name}
-        description={eventDiscoveryDescription(events.length, discovery)}
-        variant="display"
-        className="mb-6"
-      />
 
       <div className="mb-6">
         <EventsFilterPanel

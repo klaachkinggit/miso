@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CalendarDays, LayoutDashboard, Plus, RefreshCw } from "lucide-react";
+import { Building2, CalendarDays, LayoutDashboard, Plus, RefreshCw, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { getActiveAdminOrganization } from "@/lib/organizations/context";
@@ -22,6 +22,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Button asChild variant="ghost" size="sm">
               <Link href="/admin/events">
                 <CalendarDays className="h-4 w-4" /> Events
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/admin/settings">
+                <Settings className="h-4 w-4" /> Settings
               </Link>
             </Button>
           </div>

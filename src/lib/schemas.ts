@@ -51,6 +51,13 @@ export const SwitchOrganizationSchema = z.object({
   organization_id: z.string().uuid(),
 });
 
+export const OrganizationBrandingSchema = z.object({
+  tagline: z.string().trim().max(180).optional().nullable(),
+  accent_color: HexColor.optional().nullable(),
+  logo_url: z.string().url().optional().nullable(),
+  hero_image_url: z.string().url().optional().nullable(),
+});
+
 const ClubTableFields = z.object({
   online_advance: z.coerce.number().min(0).optional().nullable(),
   base_capacity: z.coerce.number().int().positive().optional().nullable(),
