@@ -113,6 +113,7 @@ export interface ResaleStripeCheckoutInput {
   amount: number;
   platformFeeAmount?: number;
   royaltyAmount?: number;
+  stripeFeeAmount?: number;
   currency: Currency;
   eventName: string;
   categoryName: string;
@@ -126,6 +127,7 @@ export async function createResaleStripeCheckoutSession(
 ): Promise<Stripe.Checkout.Session> {
   const platformFeeAmount = input.platformFeeAmount ?? 0;
   const royaltyAmount = input.royaltyAmount ?? 0;
+  const stripeFeeAmount = input.stripeFeeAmount ?? 0;
   const lineItems = [
     {
       price_data: {
@@ -165,6 +167,19 @@ export async function createResaleStripeCheckoutSession(
     });
   }
 
+  if (stripeFeeAmount > 0) {
+    lineItems.push({
+      price_data: {
+        currency: stripeCurrency(input.currency),
+        unit_amount: toCents(stripeFeeAmount),
+        product_data: {
+          name: "Payment processing fee",
+        },
+      },
+      quantity: 1,
+    });
+  }
+
   return stripe.checkout.sessions.create(
     {
       mode: "payment",
@@ -178,7 +193,8 @@ export async function createResaleStripeCheckoutSession(
         seller_amount: String(input.amount),
         platform_fee_amount: String(platformFeeAmount),
         royalty_amount: String(royaltyAmount),
-        buyer_total: String(input.amount + platformFeeAmount + royaltyAmount),
+        stripe_fee_amount: String(stripeFeeAmount),
+        buyer_total: String(input.amount + platformFeeAmount + royaltyAmount + stripeFeeAmount),
       },
       expires_at: Math.floor(Date.now() / 1000) + RESERVATION_TTL_SECONDS,
     },

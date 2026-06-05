@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { resalePlatformFee, resaleRoyaltyAmount } from "@/lib/resale/pricing";
+import {
+  resalePlatformFee,
+  resaleRoyaltyAmount,
+  resaleStripeFeeAmount,
+} from "@/lib/resale/pricing";
 
 const ORIGINAL_PERCENT = process.env.MISO_RESALE_PLATFORM_FEE_PERCENT;
 const ORIGINAL_FIXED = process.env.MISO_RESALE_PLATFORM_FEE_FIXED;
+const ORIGINAL_STRIPE_PERCENT = process.env.MISO_STRIPE_FEE_PERCENT;
+const ORIGINAL_STRIPE_FIXED = process.env.MISO_STRIPE_FEE_FIXED;
 
 afterEach(() => {
   if (ORIGINAL_PERCENT === undefined) {
@@ -14,6 +20,16 @@ afterEach(() => {
     delete process.env.MISO_RESALE_PLATFORM_FEE_FIXED;
   } else {
     process.env.MISO_RESALE_PLATFORM_FEE_FIXED = ORIGINAL_FIXED;
+  }
+  if (ORIGINAL_STRIPE_PERCENT === undefined) {
+    delete process.env.MISO_STRIPE_FEE_PERCENT;
+  } else {
+    process.env.MISO_STRIPE_FEE_PERCENT = ORIGINAL_STRIPE_PERCENT;
+  }
+  if (ORIGINAL_STRIPE_FIXED === undefined) {
+    delete process.env.MISO_STRIPE_FEE_FIXED;
+  } else {
+    process.env.MISO_STRIPE_FEE_FIXED = ORIGINAL_STRIPE_FIXED;
   }
 });
 
@@ -58,5 +74,30 @@ describe("resaleRoyaltyAmount", () => {
 
   it("rounds royalty to cents", () => {
     expect(resaleRoyaltyAmount({ sellerAmount: 33.33, enabled: true, bps: 333 })).toBe(1.11);
+  });
+});
+
+describe("resaleStripeFeeAmount", () => {
+  it("grosses up Stripe processing on seller price plus MISO fee plus royalty", () => {
+    delete process.env.MISO_STRIPE_FEE_PERCENT;
+    delete process.env.MISO_STRIPE_FEE_FIXED;
+
+    expect(
+      resaleStripeFeeAmount({
+        sellerAmount: 50,
+        platformFeeAmount: 2.5,
+        royaltyAmount: 5,
+      }),
+    ).toBe(1.13);
+  });
+
+  it("keeps zero-value resale free", () => {
+    expect(
+      resaleStripeFeeAmount({
+        sellerAmount: 0,
+        platformFeeAmount: 0,
+        royaltyAmount: 0,
+      }),
+    ).toBe(0);
   });
 });

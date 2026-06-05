@@ -27,7 +27,11 @@ import {
 import { backendWallet } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { audit } from "@/lib/audit";
-import { resalePlatformFee, resaleRoyaltyAmount } from "@/lib/resale/pricing";
+import {
+  resalePlatformFee,
+  resaleRoyaltyAmount,
+  resaleStripeFeeAmount,
+} from "@/lib/resale/pricing";
 import {
   markTicketListed,
   markTicketResaleCanceled,
@@ -338,7 +342,12 @@ export async function checkoutResaleListing(params: {
   const sellerAmount = Number(listing.price);
   const platformFeeAmount = resalePlatformFee(sellerAmount);
   const royaltyAmount = await resaleRoyaltyForListing(sb, listing, sellerAmount);
-  const buyerTotalAmount = sellerAmount + platformFeeAmount + royaltyAmount;
+  const stripeFeeAmount = resaleStripeFeeAmount({
+    sellerAmount,
+    platformFeeAmount,
+    royaltyAmount,
+  });
+  const buyerTotalAmount = sellerAmount + platformFeeAmount + royaltyAmount + stripeFeeAmount;
   await assertListingPaymentReadiness(sb, listing, buyerTotalAmount);
 
   // Atomically claim listing before creating Stripe session so no concurrent
@@ -379,6 +388,7 @@ export async function checkoutResaleListing(params: {
       amount: sellerAmount,
       platformFeeAmount,
       royaltyAmount,
+      stripeFeeAmount,
       currency: listing.currency,
       eventName: event?.name ?? "Event",
       categoryName: category?.name ?? "Ticket",
@@ -411,6 +421,7 @@ export async function checkoutResaleListing(params: {
       payment_provider: "stripe",
       platform_fee_amount: platformFeeAmount,
       royalty_amount: royaltyAmount,
+      stripe_fee_amount: stripeFeeAmount,
       buyer_total_amount: buyerTotalAmount,
       checkout_idempotency_key: params.idempotencyKey ?? null,
       sales_channel: params.salesChannel ?? "marketplace",

@@ -90,9 +90,9 @@ export function ResaleListingList({
             <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center">
               <div className="text-right">
                 <div className="text-lg font-semibold">{formatPrice(item.buyerTotal, item.listing.currency)}</div>
-                {item.platformFee > 0 ? (
+                {item.platformFee + item.stripeFee > 0 ? (
                   <p className="text-[11px] text-muted-foreground">
-                    incl. {formatPrice(item.platformFee, item.listing.currency)} fee
+                    incl. {formatPrice(item.platformFee + item.stripeFee, item.listing.currency)} fees
                   </p>
                 ) : null}
               </div>

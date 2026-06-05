@@ -142,6 +142,10 @@ export function ResaleListingDetail({
                     <span>{formatPrice(item.royaltyAmount, item.listing.currency)}</span>
                   </div>
                 ) : null}
+                <div className="flex justify-between gap-3">
+                  <span>Payment processing</span>
+                  <span>{formatPrice(item.stripeFee, item.listing.currency)}</span>
+                </div>
               </div>
               {item.ticket.min_spending_remaining != null ? (
                 <p className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">

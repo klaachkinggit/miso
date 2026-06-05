@@ -3,7 +3,11 @@ import "server-only";
 import {
   organizationMarketplaceListingPath,
 } from "@/lib/organizations/public";
-import { resalePlatformFee, resaleRoyaltyAmount } from "@/lib/resale/pricing";
+import {
+  resalePlatformFee,
+  resaleRoyaltyAmount,
+  resaleStripeFeeAmount,
+} from "@/lib/resale/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
@@ -14,6 +18,7 @@ export type SellableResaleListing = {
   category: TicketCategory;
   platformFee: number;
   royaltyAmount: number;
+  stripeFee: number;
   buyerTotal: number;
 };
 
@@ -41,6 +46,11 @@ function toSellable(params: {
     enabled: organization?.resale_royalty_enabled ?? false,
     bps: organization?.resale_royalty_bps ?? 0,
   });
+  const stripeFee = resaleStripeFeeAmount({
+    sellerAmount: Number(listing.price),
+    platformFeeAmount: platformFee,
+    royaltyAmount,
+  });
   return {
     listing,
     ticket,
@@ -48,7 +58,8 @@ function toSellable(params: {
     category,
     platformFee,
     royaltyAmount,
-    buyerTotal: Number(listing.price) + platformFee + royaltyAmount,
+    stripeFee,
+    buyerTotal: Number(listing.price) + platformFee + royaltyAmount + stripeFee,
   };
 }
 

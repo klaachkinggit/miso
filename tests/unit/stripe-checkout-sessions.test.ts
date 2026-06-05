@@ -92,6 +92,7 @@ describe("Stripe checkout session builders", () => {
       amount: 50,
       platformFeeAmount: 2.5,
       royaltyAmount: 5,
+      stripeFeeAmount: 1.13,
       currency: "EUR",
       eventName: "Miso Night",
       categoryName: "Balcony",
@@ -101,7 +102,7 @@ describe("Stripe checkout session builders", () => {
     });
 
     const [payload, opts] = stripeMocks.sessionsCreate.mock.calls[0]!;
-    expect(payload.line_items).toHaveLength(3);
+    expect(payload.line_items).toHaveLength(4);
     expect(payload.line_items[0].price_data.unit_amount).toBe(5_000);
     expect(payload.line_items[1].price_data).toMatchObject({
       currency: "eur",
@@ -113,6 +114,11 @@ describe("Stripe checkout session builders", () => {
       unit_amount: 500,
       product_data: { name: "Organizer resale royalty" },
     });
+    expect(payload.line_items[3].price_data).toMatchObject({
+      currency: "eur",
+      unit_amount: 113,
+      product_data: { name: "Payment processing fee" },
+    });
     expect(payload.metadata).toMatchObject({
       type: "resale",
       listing_id: "listing-1",
@@ -120,7 +126,8 @@ describe("Stripe checkout session builders", () => {
       seller_amount: "50",
       platform_fee_amount: "2.5",
       royalty_amount: "5",
-      buyer_total: "57.5",
+      stripe_fee_amount: "1.13",
+      buyer_total: "58.63",
     });
     expect(payload.payment_method_types).toBeUndefined();
     expect(opts).toEqual({ idempotencyKey: "resale-key" });
@@ -145,6 +152,7 @@ describe("Stripe checkout session builders", () => {
     expect(payload.line_items).toHaveLength(1);
     expect(payload.metadata.platform_fee_amount).toBe("0");
     expect(payload.metadata.royalty_amount).toBe("0");
+    expect(payload.metadata.stripe_fee_amount).toBe("0");
     expect(opts).toBeUndefined();
   });
 });

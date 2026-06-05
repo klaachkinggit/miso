@@ -713,6 +713,7 @@ export type Database = {
           seller_user_id: string
           sold_at: string | null
           status: Database["public"]["Enums"]["listing_status"]
+          stripe_fee_amount: number
           ticket_id: string
           tracking_origin: string | null
         }
@@ -733,6 +734,7 @@ export type Database = {
           seller_user_id: string
           sold_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
+          stripe_fee_amount?: number
           ticket_id: string
           tracking_origin?: string | null
         }
@@ -753,6 +755,7 @@ export type Database = {
           seller_user_id?: string
           sold_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
+          stripe_fee_amount?: number
           ticket_id?: string
           tracking_origin?: string | null
         }
@@ -1216,10 +1219,6 @@ export type Database = {
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
-      }
-      event_organization_id: {
-        Args: { check_event_id: string }
-        Returns: string
       }
       has_role: {
         Args: { roles: Database["public"]["Enums"]["user_role"][] }

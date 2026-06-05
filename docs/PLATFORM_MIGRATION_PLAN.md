@@ -65,3 +65,4 @@ Miso is becoming a Weezevent-style platform where organizers create their own bi
 - Slice 8: Primary and resale checkout persist server-derived `sales_channel` and bounded `tracking_origin` values. Primary ticket checkout records `mini_site`; resale checkout records `marketplace`.
 - Slice 10: Persistent shared navigation no longer promotes legacy global `/events` or `/marketplace` discovery. Those routes remain available by direct URL during transition.
 - Slice 11: Primary checkout charges buyer-paid MISO service fees and estimated Stripe processing fees as separate Checkout line items, and persists `platform_fee_amount`, `stripe_fee_amount`, and `buyer_total_amount` on purchase rows.
+- Slice 12: Resale checkout charges buyer-paid Stripe processing fees on top of seller price, MISO marketplace fee, and optional Organizer royalty. `resale_listings.stripe_fee_amount` stores the fee used for settlement analytics.
