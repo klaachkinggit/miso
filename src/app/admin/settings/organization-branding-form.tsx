@@ -10,6 +10,8 @@ import { ImageUploadField } from "@/app/admin/events/image-upload-field";
 import type { OrganizationBranding } from "@/lib/organizations/branding";
 import { DEFAULT_ORGANIZATION_ACCENT } from "@/lib/organizations/branding";
 import {
+  addOrganizationMember,
+  removeOrganizationMember,
   updateOrganizationBranding,
   updateOrganizationRoyalty,
 } from "../actions";
@@ -135,5 +137,92 @@ export function OrganizationRoyaltyForm({
         Save royalty settings
       </Button>
     </form>
+  );
+}
+
+export type OrganizationTeamMember = {
+  id: string;
+  role: "admin" | "controller";
+  user_id: string;
+  profiles: {
+    email: string | null;
+    display_name: string | null;
+  } | null;
+};
+
+export function OrganizationTeamPanel({
+  members,
+}: {
+  members: OrganizationTeamMember[];
+}) {
+  return (
+    <Card className="glass rounded-lg">
+      <CardContent className="grid gap-5 p-5">
+        <div>
+          <h2 className="text-lg font-semibold">Team</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Admins manage the Organization. Controllers only scan gates for assigned events.
+          </p>
+        </div>
+
+        <form action={addOrganizationMember} className="grid gap-3 rounded-md border border-border/70 p-4 md:grid-cols-[1fr_180px_auto] md:items-end">
+          <div className="grid gap-2">
+            <Label htmlFor="member-email">Email</Label>
+            <Input id="member-email" name="email" type="email" required placeholder="teammate@example.com" />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="member-role">Role</Label>
+            <select
+              id="member-role"
+              name="role"
+              defaultValue="controller"
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="controller">Controller</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <Button type="submit">Add member</Button>
+        </form>
+
+        <div className="overflow-hidden rounded-md border border-border/70">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 font-medium">Member</th>
+                <th className="px-4 py-3 font-medium">Role</th>
+                <th className="px-4 py-3 text-right font-medium">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => (
+                <tr key={member.id} className="border-t border-border/70">
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{member.profiles?.display_name ?? member.profiles?.email ?? "Member"}</div>
+                    <div className="text-xs text-muted-foreground">{member.profiles?.email}</div>
+                  </td>
+                  <td className="px-4 py-3 capitalize">{member.role}</td>
+                  <td className="px-4 py-3 text-right">
+                    <form action={removeOrganizationMember}>
+                      <input type="hidden" name="membership_id" value={member.id} />
+                      <Button type="submit" variant="outline" size="sm">
+                        Remove
+                      </Button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+              {members.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-6 text-sm text-muted-foreground" colSpan={3}>
+                    No team members yet.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

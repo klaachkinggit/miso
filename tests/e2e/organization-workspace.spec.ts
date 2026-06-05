@@ -197,6 +197,26 @@ test.describe("Organization workspace selection", () => {
         resale_royalty_bps: 750,
       });
 
+      await page.goto("/admin/settings");
+      await page.getByLabel("Email").fill("seller@miso.local");
+      await page.getByLabel("Role").selectOption("controller");
+      await page.getByRole("button", { name: /add member/i }).click();
+      await page.waitForURL(/\/admin\/settings\?success=/);
+      await expect(page.getByText("Team member saved.")).toBeVisible();
+
+      const { data: sellerProfile } = await client
+        .from("profiles")
+        .select("id")
+        .eq("email", "seller@miso.local")
+        .single<{ id: string }>();
+      const { data: sellerMembership } = await client
+        .from("organization_memberships")
+        .select("role")
+        .eq("organization_id", orgB.id)
+        .eq("user_id", sellerProfile!.id)
+        .single<{ role: string }>();
+      expect(sellerMembership?.role).toBe("controller");
+
       const createdEventName = `Selected Org Draft ${stamp}`;
       await page.goto("/admin/events/new");
       await page.getByLabel("Name", { exact: true }).fill(createdEventName);

@@ -28,9 +28,11 @@ import {
   CreateEventSchema,
   CreateOrganizationSchema,
   InviteControllerSchema,
+  OrganizationMemberSchema,
   OrganizationBrandingSchema,
   OrganizationRoyaltySchema,
   RefundSchema,
+  RemoveOrganizationMemberSchema,
   SiteSettingsSchema,
   SwitchOrganizationSchema,
 } from "@/lib/schemas";
@@ -40,7 +42,7 @@ import {
 } from "@/lib/organizations/branding";
 import { updateSiteSettings as saveSiteSettings } from "@/lib/site/settings";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, Profile, Ticket } from "@/types/db";
+import type { EventRow, OrganizationRole, Profile, Ticket } from "@/types/db";
 
 function checkbox(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
@@ -252,6 +254,113 @@ export async function updateOrganizationRoyalty(formData: FormData) {
   revalidatePath("/admin/settings");
   revalidatePath(`/s/${activeOrganization.slug}/marketplace`);
   redirect("/admin/settings?success=Royalty%20settings%20saved.");
+}
+
+export async function addOrganizationMember(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = OrganizationMemberSchema.safeParse({
+    email: formData.get("email"),
+    role: formData.get("role"),
+  });
+  if (!parsed.success) {
+    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid team member.");
+  }
+
+  const sb = createServiceClient();
+  const { email, role } = parsed.data;
+  const { data: existingProfile } = await sb
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle<{ id: string }>();
+
+  let userId = existingProfile?.id;
+  if (!userId) {
+    const invite = await sb.auth.admin.inviteUserByEmail(email);
+    if (invite.error || !invite.data.user) {
+      fail("/admin/settings", invite.error?.message ?? "Invite could not be sent.");
+    }
+    userId = invite.data.user.id;
+    const { error: profileError } = await sb.from("profiles").upsert({
+      id: userId,
+      email,
+      display_name: email.split("@")[0],
+      role: "user",
+    });
+    if (profileError) fail("/admin/settings", profileError.message);
+  }
+
+  const { error } = await sb.from("organization_memberships").upsert(
+    {
+      organization_id: activeOrganization.id,
+      user_id: userId,
+      role,
+    },
+    { onConflict: "organization_id,user_id" },
+  );
+  if (error) fail("/admin/settings", error.message);
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.member.upsert",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: { email, user_id: userId, role },
+  });
+
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?success=Team%20member%20saved.");
+}
+
+export async function removeOrganizationMember(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = RemoveOrganizationMemberSchema.safeParse({
+    membership_id: formData.get("membership_id"),
+  });
+  if (!parsed.success) fail("/admin/settings", "Invalid team member.");
+
+  const sb = createServiceClient();
+  const { data: membership } = await sb
+    .from("organization_memberships")
+    .select("id, user_id, role")
+    .eq("id", parsed.data.membership_id)
+    .eq("organization_id", activeOrganization.id)
+    .maybeSingle<{ id: string; user_id: string; role: OrganizationRole }>();
+  if (!membership) fail("/admin/settings", "Team member not found.");
+
+  if (membership.role === "admin") {
+    const { count, error: countError } = await sb
+      .from("organization_memberships")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", activeOrganization.id)
+      .eq("role", "admin");
+    if (countError) fail("/admin/settings", countError.message);
+    if ((count ?? 0) <= 1) fail("/admin/settings", "Organization needs at least one admin.");
+  }
+
+  const { error } = await sb
+    .from("organization_memberships")
+    .delete()
+    .eq("id", membership.id)
+    .eq("organization_id", activeOrganization.id);
+  if (error) fail("/admin/settings", error.message);
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.member.remove",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: { user_id: membership.user_id, role: membership.role },
+  });
+
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?success=Team%20member%20removed.");
 }
 
 export async function updateEvent(formData: FormData) {

@@ -63,6 +63,15 @@ export const OrganizationRoyaltySchema = z.object({
   resale_royalty_bps: z.coerce.number().int().min(0).max(10_000).default(0),
 });
 
+export const OrganizationMemberSchema = z.object({
+  email: z.string().trim().email().transform((value) => value.toLowerCase()),
+  role: z.enum(["admin", "controller"]),
+});
+
+export const RemoveOrganizationMemberSchema = z.object({
+  membership_id: z.string().uuid(),
+});
+
 const ClubTableFields = z.object({
   online_advance: z.coerce.number().min(0).optional().nullable(),
   base_capacity: z.coerce.number().int().positive().optional().nullable(),

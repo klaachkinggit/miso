@@ -13,7 +13,10 @@ import { organizationStorefrontPath } from "@/lib/organizations/public";
 import {
   OrganizationBrandingForm,
   OrganizationRoyaltyForm,
+  OrganizationTeamPanel,
+  type OrganizationTeamMember,
 } from "./organization-branding-form";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export default async function OrganizationSettingsPage({
   searchParams,
@@ -33,6 +36,14 @@ export default async function OrganizationSettingsPage({
 
   const branding = normalizeOrganizationBranding(activeOrganization.branding);
   const paymentsReady = organizationCanAcceptPaidSales(activeOrganization);
+  const sb = createServiceClient();
+  const { data: members, error: membersError } = await sb
+    .from("organization_memberships")
+    .select("id, role, user_id, profiles(email, display_name)")
+    .eq("organization_id", activeOrganization.id)
+    .order("created_at", { ascending: true })
+    .returns<OrganizationTeamMember[]>();
+  if (membersError) throw new Error(membersError.message);
 
   return (
     <div className="container py-10">
@@ -82,6 +93,7 @@ export default async function OrganizationSettingsPage({
           </div>
         </CardContent>
       </Card>
+      <OrganizationTeamPanel members={members ?? []} />
       <OrganizationBrandingForm
         branding={branding}
         organizationSlug={activeOrganization.slug}

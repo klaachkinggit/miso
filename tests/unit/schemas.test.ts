@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   CreateCategorySchema,
   OrganizationBrandingSchema,
+  OrganizationMemberSchema,
   OrganizationRoyaltySchema,
   PurchaseInitSchema,
+  RemoveOrganizationMemberSchema,
   ResaleCheckoutSchema,
   TransferToWalletSchema,
 } from "@/lib/schemas";
@@ -148,6 +150,37 @@ describe("OrganizationRoyaltySchema", () => {
         resale_royalty_bps: 10_001,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("OrganizationMemberSchema", () => {
+  it("normalizes member email and role", () => {
+    const parsed = OrganizationMemberSchema.parse({
+      email: "TEAM@EXAMPLE.COM",
+      role: "controller",
+    });
+
+    expect(parsed).toEqual({
+      email: "team@example.com",
+      role: "controller",
+    });
+  });
+
+  it("rejects unknown organization roles", () => {
+    expect(
+      OrganizationMemberSchema.safeParse({
+        email: "team@example.com",
+        role: "owner",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates member removal id", () => {
+    expect(
+      RemoveOrganizationMemberSchema.parse({
+        membership_id: "55555555-5555-4555-8555-555555555555",
+      }).membership_id,
+    ).toBe("55555555-5555-4555-8555-555555555555");
   });
 });
 
