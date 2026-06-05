@@ -18,12 +18,12 @@ const SITEMAP: SitemapColumn[] = [
       {
         kind: "unwrap",
         label: "How tickets work",
-        body: "Buy a ticket and a unique NFT is minted to your MISO wallet. Show the in-app QR at the door — the bouncer scans it once and it burns. No screenshots, no duplicates.",
+        body: "Buy a ticket and it appears in your MISO account. Show the in-app QR at the door — the bouncer scans it once. No screenshots, no duplicates.",
       },
       {
         kind: "unwrap",
         label: "Verified tickets",
-        body: "Every ticket is a Base ERC-721 token signed by the event organizer. You can prove ownership on-chain at any time. Lost phone? Recover your wallet and your ticket comes back with you.",
+        body: "Every ticket is verified by MISO and signed by the event organizer. Lost phone? Log back in and your ticket comes back with you.",
       },
       {
         kind: "unwrap",
@@ -33,7 +33,7 @@ const SITEMAP: SitemapColumn[] = [
       {
         kind: "unwrap",
         label: "Resale rules",
-        body: "List unused tickets on the official exchange. Sellers get instant payout once the buyer pays. Buyers are protected: if a sold ticket fails to transfer on-chain, the purchase is refunded automatically.",
+        body: "List unused tickets on the official exchange. Sellers get instant payout once the buyer pays. Buyers are protected: if a sold ticket fails to transfer, the purchase is refunded automatically.",
       },
     ],
   },
@@ -54,7 +54,7 @@ const SITEMAP: SitemapColumn[] = [
       {
         kind: "unwrap",
         label: "About MISO",
-        body: "MISO is on-chain ticketing for nightlife, festivals, and live music. We replace screenshots and shady resale with verifiable NFT tickets on Base, so fans get in and organizers keep control.",
+        body: "MISO is verified ticketing for nightlife, festivals, and live music. We replace screenshots and shady resale with secure digital tickets, so fans get in and organizers keep control.",
       },
       { kind: "link", label: "Contact", href: "mailto:hello@miso.app" },
       { kind: "link", label: "Terms", href: "/legal/terms" },
@@ -75,7 +75,7 @@ export function Footer() {
               <span className="text-accent">●</span> MISO
             </Link>
             <p className="max-w-xs text-sm leading-relaxed text-[#E6D8C9]/65">
-              Premium NFT ticketing for festivals, concerts, nightlife, and exclusive experiences. Live it, own it, resell it.
+              Premium digital ticketing for festivals, concerts, nightlife, and exclusive experiences. Live it, keep it, resell it.
             </p>
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[#E6D8C9]/55">
               <Globe className="h-4 w-4" /> EN · FR · DE

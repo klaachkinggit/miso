@@ -11,7 +11,7 @@ export default async function MarketplacePage() {
     <div className="container py-10">
       <PageHeader
         title="Resale exchange"
-        description="Verified NFT tickets listed by members through the official MISO anti-scalping marketplace."
+        description="Verified digital tickets listed by members through the official MISO anti-scalping marketplace."
         className="mb-8"
       />
       <ResaleListingList

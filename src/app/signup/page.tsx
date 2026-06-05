@@ -27,7 +27,7 @@ export default async function SignupPage() {
             <div>
               <h2 className="text-lg font-semibold">Regular buyer</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Buy event tickets, hold them as NFTs, and resell at face value through the official exchange.
+                Buy event tickets, keep them in your account, and resell at face value through the official exchange.
               </p>
             </div>
           </div>
@@ -44,7 +44,7 @@ export default async function SignupPage() {
             <div>
               <h2 className="text-lg font-semibold">Event organizer</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Publish events, mint on-chain tickets, and get paid via Stripe Connect. Includes onboarding.
+                Publish events, issue secure digital tickets, and get paid via Stripe Connect. Includes onboarding.
               </p>
             </div>
           </div>

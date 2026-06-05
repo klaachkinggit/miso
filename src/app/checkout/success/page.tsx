@@ -59,7 +59,7 @@ export default async function CheckoutSuccessPage({
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {paid
-                ? "Your NFT ticket is now in Wallet."
+                ? "Your digital ticket is now in Wallet."
                 : failed
                   ? "The reservation was released. You can try checkout again."
                   : "This page refreshes while we finalise your ticket."}

@@ -64,7 +64,7 @@ export async function Header() {
 
       <Marquee
         items={[
-          "NFT TICKETS · VERIFIED ACCESS",
+          "DIGITAL TICKETS · VERIFIED ACCESS",
           "FESTIVALS · CONCERTS · NIGHTLIFE",
           "OFFICIAL RESALE · ANTI-SCALPING",
           "VIP MEMBERSHIPS · EVENT WALLET",

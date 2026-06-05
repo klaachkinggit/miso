@@ -16,7 +16,7 @@ const siteUrl =
   );
 
 const description =
-  "MISO Tickets helps fans discover concerts, festivals, nightlife, and cultural events with verified NFT tickets, secure checkout, QR door access, and official anti-scalping resale.";
+  "MISO Tickets helps fans discover concerts, festivals, nightlife, and cultural events with verified digital tickets, secure checkout, QR door access, and official anti-scalping resale.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     "concert tickets",
     "festival tickets",
     "nightlife tickets",
-    "NFT ticketing",
+    "verified digital ticketing",
     "ERC-721 tickets",
     "event organizer dashboard",
     "anti-scalping resale",

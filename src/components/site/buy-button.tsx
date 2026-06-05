@@ -199,7 +199,7 @@ export function BuyButton({
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Must match an existing MISO account. The NFT is minted directly into their wallet.
+                  Must match an existing MISO account. The digital ticket is issued directly to them.
                 </p>
               </div>
             ) : null}

@@ -61,7 +61,7 @@ export default async function TicketsPage() {
     <div className="container py-10">
       <PageHeader
         title="Wallet"
-        description="Your NFT tickets, QR access, resale status, and event ownership history."
+        description="Your digital tickets, QR access, resale status, and event history."
         className="mb-8"
       />
       {tickets?.length ? (
@@ -106,7 +106,7 @@ export default async function TicketsPage() {
           })}
         </div>
       ) : (
-        <EmptyState title="No tickets yet" description="After checkout completes, your NFT ticket appears here." />
+        <EmptyState title="No tickets yet" description="After checkout completes, your digital ticket appears here." />
       )}
     </div>
   );

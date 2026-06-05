@@ -28,7 +28,7 @@ export function AuthShell({ children }: AuthShellProps) {
             <div className="rounded-lg border border-border bg-secondary/40 p-5">
               <div className="mb-5 flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">NFT ticket</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Digital ticket</p>
                   <p className="mt-1 text-lg font-medium">Gold Circle</p>
                 </div>
                 <span className="rounded-md bg-primary/15 px-3 py-1 text-sm font-medium text-primary">
@@ -39,7 +39,7 @@ export function AuthShell({ children }: AuthShellProps) {
                 <div className="flex h-full flex-col justify-between">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Radio className="h-4 w-4 text-primary" />
-                    QR and token ready
+                    QR ready
                   </div>
                   <div className="grid grid-cols-5 gap-1.5">
                     {Array.from({ length: 15 }).map((_, index) => (

@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { BuyListingButton } from "@/components/site/buy-listing-button";
-import { shortAddress } from "@/lib/chain/utils";
 import { eventImage } from "@/lib/events/images";
 import { formatDate, formatPrice } from "@/lib/format";
 import type { SellableResaleListing } from "@/lib/marketplace/public";
@@ -64,7 +63,7 @@ export function ResaleListingDetail({
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
             <p>
-              Purchase settles via Stripe. MISO handles the NFT ticket transfer after
+              Purchase settles via Stripe. MISO handles the verified ticket transfer after
               payment, keeping resale inside the official anti-scalping flow.
             </p>
             <Separator />
@@ -111,10 +110,8 @@ export function ResaleListingDetail({
                 <p className="font-mono text-foreground">#{item.ticket.serial_number}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Token</p>
-                <p className="font-mono text-foreground">
-                  {shortAddress(item.ticket.nft_contract_address)}#{item.ticket.nft_token_id ?? "?"}
-                </p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Secure ticket</p>
+                <p className="text-foreground">Verified by MISO</p>
               </div>
             </div>
           </CardContent>
