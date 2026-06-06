@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
 import { PageHeader } from "@/components/site/page-header";
 import { EventsFilterPanel } from "@/components/site/events-filter-panel";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import {
   EVENT_QUICK_FILTERS,
   eventDiscoveryDescription,
@@ -31,7 +30,7 @@ export default async function EventsPage({
 }) {
   const [params, profile] = await Promise.all([searchParams, getCurrentProfile()]);
   const discovery = normalizeEventDiscoveryParams(params);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const events = await listPublishedEvents({ discovery });
 

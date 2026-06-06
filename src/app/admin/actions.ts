@@ -26,6 +26,10 @@ import {
   findOrInvitePlatformAccount,
   upsertOrganizationMembership,
 } from "@/lib/organizations/members";
+import {
+  deleteEmptyOrganization,
+  transferOrganizationOwnership,
+} from "@/lib/organizations/ownership";
 import { createOrganizationForAdmin } from "@/lib/organizations/setup";
 import { refundTicket } from "@/lib/refunds/refund";
 import {
@@ -318,58 +322,19 @@ export async function transferOrganization(formData: FormData) {
     fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid transfer recipient.");
   }
 
-  const sb = createServiceClient();
-  let targetUserId: string;
   try {
-    targetUserId = await findOrInvitePlatformAccount(parsed.data.email);
-  } catch (error) {
-    fail("/admin/settings", errorMessage(error, "Transfer recipient could not be invited."));
-  }
-
-  try {
-    await upsertOrganizationMembership({
-      organizationId: activeOrganization.id,
-      userId: targetUserId,
-      role: "admin",
+    await transferOrganizationOwnership({
+      actorUserId: admin.id,
+      organization: activeOrganization,
+      recipientEmail: parsed.data.email,
     });
   } catch (error) {
-    fail("/admin/settings", errorMessage(error, "Transfer recipient could not be saved."));
+    fail("/admin/settings", errorMessage(error, "Organization transfer could not be saved."));
   }
-
-  const { error: organizationError } = await sb
-    .from("organizations")
-    .update({ created_by_user_id: targetUserId })
-    .eq("id", activeOrganization.id);
-  if (organizationError) fail("/admin/settings", organizationError.message);
-
-  await audit({
-    actorUserId: admin.id,
-    action: "organization.transfer",
-    entityType: "organization",
-    entityId: activeOrganization.id,
-    metadata: {
-      recipient_email: parsed.data.email,
-      recipient_user_id: targetUserId,
-      organization_slug: activeOrganization.slug,
-    },
-  });
 
   revalidatePath("/admin");
   revalidatePath("/admin/settings");
   redirect("/admin/settings?success=Organization%20transfer%20saved.");
-}
-
-async function countOrganizationRows(
-  table: "events" | "purchases" | "resale_listings" | "organization_customers",
-  organizationId: string,
-): Promise<number> {
-  const sb = createServiceClient();
-  const { count, error } = await sb
-    .from(table)
-    .select("*", { count: "exact", head: true })
-    .eq("organization_id", organizationId);
-  if (error) throw new Error(error.message);
-  return count ?? 0;
 }
 
 export async function deleteOrganization(formData: FormData) {
@@ -382,55 +347,17 @@ export async function deleteOrganization(formData: FormData) {
     confirm_name: formData.get("confirm_name"),
   });
   if (!parsed.success) fail("/admin/settings", "Invalid delete request.");
-  if (parsed.data.organization_id !== activeOrganization.id) {
-    fail("/admin/settings", "Delete request does not match active Organization.");
-  }
-  if (parsed.data.confirm_name !== activeOrganization.name) {
-    fail("/admin/settings", "Type the Organization name exactly to delete it.");
-  }
-  if (activeOrganization.stripe_account_id) {
-    fail("/admin/settings", "Organization has a Stripe account and cannot be deleted.");
-  }
 
-  let counts: {
-    events: number;
-    purchases: number;
-    resaleListings: number;
-    customers: number;
-  };
   try {
-    const [events, purchases, resaleListings, customers] = await Promise.all([
-      countOrganizationRows("events", activeOrganization.id),
-      countOrganizationRows("purchases", activeOrganization.id),
-      countOrganizationRows("resale_listings", activeOrganization.id),
-      countOrganizationRows("organization_customers", activeOrganization.id),
-    ]);
-    counts = { events, purchases, resaleListings, customers };
+    await deleteEmptyOrganization({
+      actorUserId: admin.id,
+      organization: activeOrganization,
+      confirmedOrganizationId: parsed.data.organization_id,
+      confirmedName: parsed.data.confirm_name,
+    });
   } catch (error) {
-    fail("/admin/settings", errorMessage(error, "Organization could not be checked."));
+    fail("/admin/settings", errorMessage(error, "Organization could not be deleted."));
   }
-
-  if (counts.events || counts.purchases || counts.resaleListings || counts.customers) {
-    fail("/admin/settings", "Organization has activity and cannot be deleted.");
-  }
-
-  const sb = createServiceClient();
-  await audit({
-    actorUserId: admin.id,
-    action: "organization.delete",
-    entityType: "organization",
-    entityId: activeOrganization.id,
-    metadata: {
-      organization_name: activeOrganization.name,
-      organization_slug: activeOrganization.slug,
-    },
-  });
-
-  const { error } = await sb
-    .from("organizations")
-    .delete()
-    .eq("id", activeOrganization.id);
-  if (error) fail("/admin/settings", error.message);
 
   revalidatePath("/admin");
   revalidatePath("/admin/events");

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { redirect } from "next/navigation";
 import {
   ArrowUpRight,
   Compass,
@@ -16,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
 import { HeroSearch } from "@/components/site/hero-search";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatDateShort } from "@/lib/format";
 import { eventImage } from "@/lib/events/images";
@@ -28,7 +27,7 @@ const FALLBACK_CITIES = ["Paris", "Berlin", "London", "Amsterdam", "Lisbon", "Ba
 export default async function HomePage() {
   const sb = createServiceClient();
   const [profile, siteSettings] = await Promise.all([getCurrentProfile(), loadSiteSettings()]);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const { data: events } = await sb
     .from("events")

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ResaleListingDetail } from "@/components/site/resale-listing-detail";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { getSellableResaleListing } from "@/lib/marketplace/public";
 import {
   getActiveOrganizationBySlug,
@@ -22,7 +22,7 @@ export default async function OrganizationMarketplaceListingPage({
     getCurrentProfile(),
     headers(),
   ]);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
   if (!organization) notFound();

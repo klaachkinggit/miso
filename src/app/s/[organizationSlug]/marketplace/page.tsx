@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/site/page-header";
 import { ResaleListingList } from "@/components/site/resale-listing-list";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { listSellableResaleListings } from "@/lib/marketplace/public";
 import { normalizeOrganizationBranding } from "@/lib/organizations/branding";
 import {
@@ -26,7 +26,7 @@ export default async function OrganizationMarketplacePage({
     getCurrentProfile(),
     headers(),
   ]);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
   if (!organization) notFound();

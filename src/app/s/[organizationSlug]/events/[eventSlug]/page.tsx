@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { EventDetail } from "@/components/site/event-detail";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import {
   getPublishedEventByOrganizationSlug,
   listPublicEventCategories,
@@ -22,7 +22,7 @@ export default async function OrganizationEventPage({
     getCurrentProfile(),
     headers(),
   ]);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
   if (!organization) notFound();

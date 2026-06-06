@@ -2,14 +2,14 @@ import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/site/empty-state";
 import { PageHeader } from "@/components/site/page-header";
 import { TicketCard } from "@/components/tickets/ticket-card";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, Purchase, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
 export default async function TicketsPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const sb = createServiceClient();
   const { data: tickets } = await sb

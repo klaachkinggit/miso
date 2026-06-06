@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
 import { EventsFilterPanel } from "@/components/site/events-filter-panel";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import {
   EVENT_QUICK_FILTERS,
   eventDiscoveryDescription,
@@ -48,7 +48,7 @@ export default async function OrganizationStorefrontPage({
     getCurrentProfile(),
     headers(),
   ]);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
   if (!organization) notFound();

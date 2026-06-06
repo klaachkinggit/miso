@@ -1,11 +1,11 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { EventDetail } from "@/components/site/event-detail";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { getPublishedEventById, listPublicEventCategories } from "@/lib/events/public";
 
 export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const [{ id }, profile] = await Promise.all([params, getCurrentProfile()]);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const event = await getPublishedEventById(id);
   if (!event) notFound();

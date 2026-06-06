@@ -61,6 +61,16 @@ export function canOperateGateRole(profile: Pick<Profile, "role">): boolean {
   return profile.role === "admin" || profile.role === "controller";
 }
 
+export function canUseBuyerSurface(profile: Pick<Profile, "role"> | null | undefined): boolean {
+  return profile?.role !== "controller";
+}
+
+export function redirectIfCannotUseBuyerSurface(
+  profile: Pick<Profile, "role"> | null | undefined,
+): void {
+  if (!canUseBuyerSurface(profile)) redirect("/controller");
+}
+
 // Where a signed-in user should land instead of seeing /login or /signup
 // again. Controllers go to the gate UI; admins and organizers go to
 // the organizer workspace; everyone else goes to the buyer event feed.

@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { getCurrentUser } from "@/lib/auth";
+import { canUseBuyerSurface, getCurrentUser } from "@/lib/auth";
 
 afterEach(() => {
   getUserMock.mockReset();
@@ -57,5 +57,18 @@ describe("getCurrentUser (refresh-token resilience)", () => {
       error: null,
     });
     await expect(getCurrentUser()).resolves.toEqual({ id: "user-2", email: "" });
+  });
+});
+
+describe("canUseBuyerSurface", () => {
+  it("keeps controllers out of buyer surfaces", () => {
+    expect(canUseBuyerSurface({ role: "controller" })).toBe(false);
+  });
+
+  it("allows anonymous and non-controller profiles into buyer surfaces", () => {
+    expect(canUseBuyerSurface(null)).toBe(true);
+    expect(canUseBuyerSurface({ role: "user" })).toBe(true);
+    expect(canUseBuyerSurface({ role: "admin" })).toBe(true);
+    expect(canUseBuyerSurface({ role: "organizer" })).toBe(true);
   });
 });
