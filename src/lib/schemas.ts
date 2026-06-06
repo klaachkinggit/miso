@@ -72,6 +72,15 @@ export const RemoveOrganizationMemberSchema = z.object({
   membership_id: z.string().uuid(),
 });
 
+export const TransferOrganizationSchema = z.object({
+  email: z.string().trim().email().transform((value) => value.toLowerCase()),
+});
+
+export const DeleteOrganizationSchema = z.object({
+  organization_id: z.string().uuid(),
+  confirm_name: z.string().trim().min(1),
+});
+
 const ClubTableFields = z.object({
   online_advance: z.coerce.number().min(0).optional().nullable(),
   base_capacity: z.coerce.number().int().positive().optional().nullable(),

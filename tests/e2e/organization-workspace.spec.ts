@@ -136,6 +136,12 @@ test.describe("Organization workspace selection", () => {
         slug: `workspace-outsider-${stamp}`,
       });
       createdOrgIds.push(orgC.id);
+      const orgD = await createOrganizationFixture(client, {
+        userId,
+        name: `Workspace Empty ${stamp}`,
+        slug: `workspace-empty-${stamp}`,
+      });
+      createdOrgIds.push(orgD.id);
       await client
         .from("organization_memberships")
         .delete()
@@ -198,7 +204,7 @@ test.describe("Organization workspace selection", () => {
       });
 
       await page.goto("/admin/settings");
-      await page.getByLabel("Email").fill("seller@miso.local");
+      await page.getByLabel("Email", { exact: true }).fill("seller@miso.local");
       await page.getByLabel("Role").selectOption("controller");
       await page.getByRole("button", { name: /add member/i }).click();
       await page.waitForURL(/\/admin\/settings\?success=/);
@@ -217,6 +223,26 @@ test.describe("Organization workspace selection", () => {
         .single<{ role: string }>();
       expect(sellerMembership?.role).toBe("controller");
 
+      await page.goto("/admin/settings");
+      await page.getByLabel("Transfer to email").fill("seller@miso.local");
+      await page.getByRole("button", { name: /transfer organization/i }).click();
+      await page.waitForURL(/\/admin\/settings\?success=/);
+      await expect(page.getByText("Organization transfer saved.")).toBeVisible();
+
+      const { data: transferredOrg } = await client
+        .from("organizations")
+        .select("created_by_user_id")
+        .eq("id", orgB.id)
+        .single<{ created_by_user_id: string | null }>();
+      const { data: transferredMembership } = await client
+        .from("organization_memberships")
+        .select("role")
+        .eq("organization_id", orgB.id)
+        .eq("user_id", sellerProfile!.id)
+        .single<{ role: string }>();
+      expect(transferredOrg?.created_by_user_id).toBe(sellerProfile!.id);
+      expect(transferredMembership?.role).toBe("admin");
+
       const createdEventName = `Selected Org Draft ${stamp}`;
       await page.goto("/admin/events/new");
       await page.getByLabel("Name", { exact: true }).fill(createdEventName);
@@ -233,6 +259,28 @@ test.describe("Organization workspace selection", () => {
         .eq("name", createdEventName)
         .single<{ organization_id: string | null }>();
       expect(createdEvent?.organization_id).toBe(orgB.id);
+
+      await page.goto("/admin/settings");
+      await page.getByLabel("Confirm organization name").fill(orgB.name);
+      await page.getByRole("button", { name: /delete organization/i }).click();
+      await page.waitForURL(/\/admin\/settings\?error=/);
+      await expect(page.getByText("Organization has activity and cannot be deleted.")).toBeVisible();
+
+      await page.getByLabel("Active organization").selectOption(orgD.id);
+      await page.getByRole("button", { name: "Switch organization" }).click();
+      await page.waitForURL((url) => url.pathname === "/admin");
+      await page.goto("/admin/settings");
+      await page.getByLabel("Confirm organization name").fill(orgD.name);
+      await page.getByRole("button", { name: /delete organization/i }).click();
+      await page.waitForURL(/\/admin\?success=/);
+      await expect(page.getByText("Organization deleted.")).toBeVisible();
+
+      const { data: deletedOrg } = await client
+        .from("organizations")
+        .select("id")
+        .eq("id", orgD.id)
+        .maybeSingle<{ id: string }>();
+      expect(deletedOrg).toBeNull();
 
       await page.context().addCookies([
         {

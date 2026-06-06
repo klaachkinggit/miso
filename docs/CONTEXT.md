@@ -35,6 +35,8 @@ Stripe Checkout Sessions directly.
 | Organizer workspace | Admin app for creating and managing Organizations, events, sales channels, attendees, and payouts. In production it lives on `app.miso.com`. |
 | Active Organization | Organization currently selected in the Organizer workspace. It is stored in a server-validated cookie and used to scope event lists, analytics, and event creation. |
 | Organization admin | Organization member with full control over legal, billing, payouts, team, events, settings, transfer, and deletion. |
+| Organization transfer | Admin action that makes another Platform account an Organization admin and records that account as `organizations.created_by_user_id`. |
+| Empty Organization deletion | Admin action that deletes an Organization only when it has no linked Stripe account, events, purchases, Organization customers, or resale listings. |
 | Organization controller | Organization member who can operate assigned gates for assigned events and cannot buy, list, or checkout through that Organization. |
 | Organization membership | Relationship between a Platform account and an Organization. A Platform account may be a member of multiple Organizations. |
 | Organization-first platform | Product model where buyers primarily visit a specific Organization's billeterie, not a global Miso marketplace. |

@@ -27,6 +27,7 @@ import {
   CreateCategorySchema,
   CreateEventSchema,
   CreateOrganizationSchema,
+  DeleteOrganizationSchema,
   InviteControllerSchema,
   OrganizationMemberSchema,
   OrganizationBrandingSchema,
@@ -35,6 +36,7 @@ import {
   RemoveOrganizationMemberSchema,
   SiteSettingsSchema,
   SwitchOrganizationSchema,
+  TransferOrganizationSchema,
 } from "@/lib/schemas";
 import {
   normalizeOrganizationBranding,
@@ -71,6 +73,32 @@ function artistsFromForm(formData: FormData): string[] {
 function optionalString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+async function findOrInviteProfileByEmail(email: string): Promise<string> {
+  const sb = createServiceClient();
+  const { data: existingProfile } = await sb
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle<{ id: string }>();
+
+  if (existingProfile?.id) return existingProfile.id;
+
+  const invite = await sb.auth.admin.inviteUserByEmail(email);
+  if (invite.error || !invite.data.user) {
+    throw new Error(invite.error?.message ?? "Invite could not be sent.");
+  }
+
+  const userId = invite.data.user.id;
+  const { error: profileError } = await sb.from("profiles").upsert({
+    id: userId,
+    email,
+    display_name: email.split("@")[0],
+    role: "user",
+  });
+  if (profileError) throw new Error(profileError.message);
+  return userId;
 }
 
 function eventFormPayload(formData: FormData) {
@@ -271,26 +299,11 @@ export async function addOrganizationMember(formData: FormData) {
 
   const sb = createServiceClient();
   const { email, role } = parsed.data;
-  const { data: existingProfile } = await sb
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle<{ id: string }>();
-
-  let userId = existingProfile?.id;
-  if (!userId) {
-    const invite = await sb.auth.admin.inviteUserByEmail(email);
-    if (invite.error || !invite.data.user) {
-      fail("/admin/settings", invite.error?.message ?? "Invite could not be sent.");
-    }
-    userId = invite.data.user.id;
-    const { error: profileError } = await sb.from("profiles").upsert({
-      id: userId,
-      email,
-      display_name: email.split("@")[0],
-      role: "user",
-    });
-    if (profileError) fail("/admin/settings", profileError.message);
+  let userId: string;
+  try {
+    userId = await findOrInviteProfileByEmail(email);
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Invite could not be sent."));
   }
 
   const { error } = await sb.from("organization_memberships").upsert(
@@ -313,6 +326,138 @@ export async function addOrganizationMember(formData: FormData) {
 
   revalidatePath("/admin/settings");
   redirect("/admin/settings?success=Team%20member%20saved.");
+}
+
+export async function transferOrganization(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = TransferOrganizationSchema.safeParse({
+    email: formData.get("email"),
+  });
+  if (!parsed.success) {
+    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid transfer recipient.");
+  }
+
+  const sb = createServiceClient();
+  let targetUserId: string;
+  try {
+    targetUserId = await findOrInviteProfileByEmail(parsed.data.email);
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Transfer recipient could not be invited."));
+  }
+
+  const { error: membershipError } = await sb.from("organization_memberships").upsert(
+    {
+      organization_id: activeOrganization.id,
+      user_id: targetUserId,
+      role: "admin",
+    },
+    { onConflict: "organization_id,user_id" },
+  );
+  if (membershipError) fail("/admin/settings", membershipError.message);
+
+  const { error: organizationError } = await sb
+    .from("organizations")
+    .update({ created_by_user_id: targetUserId })
+    .eq("id", activeOrganization.id);
+  if (organizationError) fail("/admin/settings", organizationError.message);
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.transfer",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: {
+      recipient_email: parsed.data.email,
+      recipient_user_id: targetUserId,
+      organization_slug: activeOrganization.slug,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?success=Organization%20transfer%20saved.");
+}
+
+async function countOrganizationRows(
+  table: "events" | "purchases" | "resale_listings" | "organization_customers",
+  organizationId: string,
+): Promise<number> {
+  const sb = createServiceClient();
+  const { count, error } = await sb
+    .from(table)
+    .select("*", { count: "exact", head: true })
+    .eq("organization_id", organizationId);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function deleteOrganization(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = DeleteOrganizationSchema.safeParse({
+    organization_id: formData.get("organization_id"),
+    confirm_name: formData.get("confirm_name"),
+  });
+  if (!parsed.success) fail("/admin/settings", "Invalid delete request.");
+  if (parsed.data.organization_id !== activeOrganization.id) {
+    fail("/admin/settings", "Delete request does not match active Organization.");
+  }
+  if (parsed.data.confirm_name !== activeOrganization.name) {
+    fail("/admin/settings", "Type the Organization name exactly to delete it.");
+  }
+  if (activeOrganization.stripe_account_id) {
+    fail("/admin/settings", "Organization has a Stripe account and cannot be deleted.");
+  }
+
+  let counts: {
+    events: number;
+    purchases: number;
+    resaleListings: number;
+    customers: number;
+  };
+  try {
+    const [events, purchases, resaleListings, customers] = await Promise.all([
+      countOrganizationRows("events", activeOrganization.id),
+      countOrganizationRows("purchases", activeOrganization.id),
+      countOrganizationRows("resale_listings", activeOrganization.id),
+      countOrganizationRows("organization_customers", activeOrganization.id),
+    ]);
+    counts = { events, purchases, resaleListings, customers };
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Organization could not be checked."));
+  }
+
+  if (counts.events || counts.purchases || counts.resaleListings || counts.customers) {
+    fail("/admin/settings", "Organization has activity and cannot be deleted.");
+  }
+
+  const sb = createServiceClient();
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.delete",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: {
+      organization_name: activeOrganization.name,
+      organization_slug: activeOrganization.slug,
+    },
+  });
+
+  const { error } = await sb
+    .from("organizations")
+    .delete()
+    .eq("id", activeOrganization.id);
+  if (error) fail("/admin/settings", error.message);
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  revalidatePath("/admin/settings");
+  redirect("/admin?success=Organization%20deleted.");
 }
 
 export async function removeOrganizationMember(formData: FormData) {

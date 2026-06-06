@@ -12,6 +12,7 @@ import { organizationCanAcceptPaidSales } from "@/lib/organizations/payments";
 import { organizationStorefrontPath } from "@/lib/organizations/public";
 import {
   OrganizationBrandingForm,
+  OrganizationOwnershipPanel,
   OrganizationRoyaltyForm,
   OrganizationTeamPanel,
   type OrganizationTeamMember,
@@ -94,10 +95,18 @@ export default async function OrganizationSettingsPage({
         </CardContent>
       </Card>
       <OrganizationTeamPanel members={members ?? []} />
-      <OrganizationBrandingForm
-        branding={branding}
-        organizationSlug={activeOrganization.slug}
-      />
+      <div className="mt-8">
+        <OrganizationOwnershipPanel
+          organizationId={activeOrganization.id}
+          organizationName={activeOrganization.name}
+        />
+      </div>
+      <div className="mt-8">
+        <OrganizationBrandingForm
+          branding={branding}
+          organizationSlug={activeOrganization.slug}
+        />
+      </div>
       <div className="mt-8">
         <OrganizationRoyaltyForm
           enabled={activeOrganization.resale_royalty_enabled}

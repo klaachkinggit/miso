@@ -11,7 +11,9 @@ import type { OrganizationBranding } from "@/lib/organizations/branding";
 import { DEFAULT_ORGANIZATION_ACCENT } from "@/lib/organizations/branding";
 import {
   addOrganizationMember,
+  deleteOrganization,
   removeOrganizationMember,
+  transferOrganization,
   updateOrganizationBranding,
   updateOrganizationRoyalty,
 } from "../actions";
@@ -224,5 +226,62 @@ export function OrganizationTeamPanel({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+export function OrganizationOwnershipPanel({
+  organizationId,
+  organizationName,
+}: {
+  organizationId: string;
+  organizationName: string;
+}) {
+  return (
+    <div className="grid gap-5">
+      <Card className="glass rounded-lg">
+        <CardContent className="grid gap-5 p-5">
+          <div>
+            <h2 className="text-lg font-semibold">Ownership</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Transfer control by making another Platform account an Organization admin.
+            </p>
+          </div>
+          <form action={transferOrganization} className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+            <div className="grid gap-2">
+              <Label htmlFor="transfer-email">Transfer to email</Label>
+              <Input id="transfer-email" name="email" type="email" required placeholder="owner@example.com" />
+            </div>
+            <Button type="submit">Transfer organization</Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-lg border-destructive/40 bg-destructive/10">
+        <CardContent className="grid gap-5 p-5">
+          <div>
+            <h2 className="text-lg font-semibold text-destructive">Danger zone</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Delete only empty Organizations. Stripe accounts, events, purchases, customers, or listings block deletion.
+            </p>
+          </div>
+          <form action={deleteOrganization} className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+            <input type="hidden" name="organization_id" value={organizationId} />
+            <div className="grid gap-2">
+              <Label htmlFor="delete-confirm-name">Confirm organization name</Label>
+              <Input
+                id="delete-confirm-name"
+                name="confirm_name"
+                required
+                placeholder={organizationName}
+                autoComplete="off"
+              />
+            </div>
+            <Button type="submit" variant="destructive">
+              Delete organization
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

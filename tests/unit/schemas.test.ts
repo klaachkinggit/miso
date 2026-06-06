@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   CreateCategorySchema,
+  DeleteOrganizationSchema,
   OrganizationBrandingSchema,
   OrganizationMemberSchema,
   OrganizationRoyaltySchema,
   PurchaseInitSchema,
   RemoveOrganizationMemberSchema,
   ResaleCheckoutSchema,
+  TransferOrganizationSchema,
   TransferToWalletSchema,
 } from "@/lib/schemas";
 
@@ -181,6 +183,31 @@ describe("OrganizationMemberSchema", () => {
         membership_id: "55555555-5555-4555-8555-555555555555",
       }).membership_id,
     ).toBe("55555555-5555-4555-8555-555555555555");
+  });
+});
+
+describe("Organization ownership schemas", () => {
+  it("normalizes transfer recipient email", () => {
+    const parsed = TransferOrganizationSchema.parse({
+      email: "OWNER@EXAMPLE.COM",
+    });
+
+    expect(parsed.email).toBe("owner@example.com");
+  });
+
+  it("validates delete confirmation payload", () => {
+    const parsed = DeleteOrganizationSchema.parse({
+      organization_id: "66666666-6666-4666-8666-666666666666",
+      confirm_name: "Boiler Room",
+    });
+
+    expect(parsed.confirm_name).toBe("Boiler Room");
+    expect(
+      DeleteOrganizationSchema.safeParse({
+        organization_id: "bad",
+        confirm_name: "Boiler Room",
+      }).success,
+    ).toBe(false);
   });
 });
 
