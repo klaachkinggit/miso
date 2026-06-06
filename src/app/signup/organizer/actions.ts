@@ -62,7 +62,7 @@ export async function organizerSignupAction(formData: FormData) {
   const service = createServiceClient();
   const { error: profileError } = await service
     .from("profiles")
-    .update({ organizer_onboarding: onboarding, display_name: input.display_name })
+    .update({ display_name: input.display_name })
     .eq("id", userId);
   if (profileError) fail(profileError.message);
 

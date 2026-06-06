@@ -43,6 +43,7 @@ Stripe Checkout Sessions directly.
 | Organization marketplace | Resale exchange scoped to one Organization's tickets and events. |
 | Legacy global discovery | Transitional global event and marketplace surface kept only during migration. It is not promoted in shared navigation and is not the MVP buyer path for the organization-first platform. |
 | Organization Stripe account | Stripe Connect account attached to an Organization, not to an individual Platform account. Paid sales are blocked until this account can accept charges. |
+| Legacy Stripe profile mirror | Transitional copy of Organization Stripe account/status fields on `profiles`, isolated for older code paths and not the source of truth for new platform code. |
 | Payment readiness | Organization payment state requiring a Stripe account id, submitted onboarding details, and enabled charges before paid checkout can start. |
 | Sales channel | Source route for a purchase or listing checkout, such as mini-site, QR, marketplace, widget, ticket office, invitation, or import. |
 | Tracking origin | Bounded server-derived source hint stored on purchase or resale checkout rows for analytics, for example `host:boilerroom path:/events/drop`. |

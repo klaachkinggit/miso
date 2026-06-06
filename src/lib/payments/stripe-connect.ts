@@ -1,12 +1,13 @@
-// Stripe Connect (Express) onboarding for organizers. We provision a
-// connected account on signup, send the organizer through Stripe's
-// hosted onboarding via an AccountLink, and on return we sync flags
-// back onto the Organization. Legacy profile Stripe fields are mirrored
-// during the platform transition for older code paths.
+// Organization-first Stripe Connect onboarding.
+//
+// New platform code owns Stripe state on `organizations`. The v1 Express
+// account creation and profile mirrors below are transition adapters only,
+// kept in one module so the eventual Accounts v2 migration has one seam.
 import { audit } from "@/lib/audit";
 import { stripe } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Organization, Profile } from "@/types/db";
+import type Stripe from "stripe";
 
 function appOrigin(): string {
   const origin = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002";
@@ -31,6 +32,59 @@ type StripeOrganization = Pick<
   | "stripe_details_submitted"
   | "stripe_payouts_enabled"
 >;
+
+type StripeStatusFlags = Pick<
+  ConnectAccountStatus,
+  "charges_enabled" | "details_submitted" | "payouts_enabled" | "onboarding_complete"
+>;
+
+export function legacyExpressAccountCreateParams(params: {
+  profile: Pick<Profile, "id" | "email" | "organizer_onboarding">;
+  organization: Pick<StripeOrganization, "id" | "organizer_onboarding"> | null;
+}): Stripe.AccountCreateParams {
+  const onboarding = ((params.organization?.organizer_onboarding ??
+    params.profile.organizer_onboarding ??
+    {}) as Partial<OrganizerOnboardingAnswers>);
+
+  return {
+    type: "express",
+    email: params.profile.email,
+    country: onboarding.country?.toUpperCase() || "FR",
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true },
+    },
+    business_profile: onboarding.organization_name
+      ? {
+          name: onboarding.organization_name,
+          url: onboarding.website || undefined,
+        }
+      : undefined,
+    metadata: {
+      profile_id: params.profile.id,
+      ...(params.organization ? { organization_id: params.organization.id } : {}),
+    },
+  };
+}
+
+export function legacyProfileStripeStatusUpdate(params: {
+  accountId: string;
+  status: StripeStatusFlags;
+  currentRole: Profile["role"];
+}): Record<string, unknown> {
+  const updates: Record<string, unknown> = {
+    stripe_account_id: params.accountId,
+    stripe_charges_enabled: params.status.charges_enabled,
+    stripe_details_submitted: params.status.details_submitted,
+    stripe_payouts_enabled: params.status.payouts_enabled,
+  };
+
+  if (params.status.onboarding_complete && params.currentRole === "user") {
+    updates.role = "organizer";
+  }
+
+  return updates;
+}
 
 async function getDefaultStripeOrganization(
   sb: ReturnType<typeof createServiceClient>,
@@ -72,26 +126,9 @@ export async function ensureConnectAccountForProfile(profile: Profile): Promise<
   if (organization?.stripe_account_id) return organization.stripe_account_id;
   if (!organization && profile.stripe_account_id) return profile.stripe_account_id;
 
-  const onboarding = ((organization?.organizer_onboarding ?? profile.organizer_onboarding ?? {}) as Partial<OrganizerOnboardingAnswers>);
-  const account = await stripe.accounts.create({
-    type: "express",
-    email: profile.email,
-    country: onboarding.country?.toUpperCase() || "FR",
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
-    },
-    business_profile: onboarding.organization_name
-      ? {
-          name: onboarding.organization_name,
-          url: onboarding.website || undefined,
-        }
-      : undefined,
-    metadata: {
-      profile_id: profile.id,
-      ...(organization ? { organization_id: organization.id } : {}),
-    },
-  });
+  const account = await stripe.accounts.create(
+    legacyExpressAccountCreateParams({ profile, organization }),
+  );
 
   if (organization) {
     const { error: organizationError } = await sb
@@ -168,18 +205,11 @@ export async function syncConnectAccountStatus(profileId: string): Promise<Conne
     if (organizationError) throw organizationError;
   }
 
-  const updates: Record<string, unknown> = {
-    stripe_account_id: accountId,
-    stripe_charges_enabled: charges_enabled,
-    stripe_details_submitted: details_submitted,
-    stripe_payouts_enabled: payouts_enabled,
-  };
-  // Only promote to organizer workspace access once Stripe
-  // confirms the account can accept payments AND the operator has
-  // submitted the onboarding form. Until then they remain `user`.
-  if (onboarding_complete && profile.role === "user") {
-    updates.role = "organizer";
-  }
+  const updates = legacyProfileStripeStatusUpdate({
+    accountId,
+    status: { charges_enabled, details_submitted, payouts_enabled, onboarding_complete },
+    currentRole: profile.role,
+  });
 
   const { error } = await sb.from("profiles").update(updates).eq("id", profileId);
   if (error) throw error;
