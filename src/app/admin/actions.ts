@@ -21,6 +21,11 @@ import {
   getActiveAdminOrganization,
   setActiveAdminOrganization,
 } from "@/lib/organizations/context";
+import {
+  ensureOrganizationControllerMembership,
+  findOrInvitePlatformAccount,
+  upsertOrganizationMembership,
+} from "@/lib/organizations/members";
 import { createOrganizationForAdmin } from "@/lib/organizations/setup";
 import { refundTicket } from "@/lib/refunds/refund";
 import {
@@ -73,32 +78,6 @@ function artistsFromForm(formData: FormData): string[] {
 function optionalString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-async function findOrInviteProfileByEmail(email: string): Promise<string> {
-  const sb = createServiceClient();
-  const { data: existingProfile } = await sb
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle<{ id: string }>();
-
-  if (existingProfile?.id) return existingProfile.id;
-
-  const invite = await sb.auth.admin.inviteUserByEmail(email);
-  if (invite.error || !invite.data.user) {
-    throw new Error(invite.error?.message ?? "Invite could not be sent.");
-  }
-
-  const userId = invite.data.user.id;
-  const { error: profileError } = await sb.from("profiles").upsert({
-    id: userId,
-    email,
-    display_name: email.split("@")[0],
-    role: "user",
-  });
-  if (profileError) throw new Error(profileError.message);
-  return userId;
 }
 
 function eventFormPayload(formData: FormData) {
@@ -297,24 +276,23 @@ export async function addOrganizationMember(formData: FormData) {
     fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid team member.");
   }
 
-  const sb = createServiceClient();
   const { email, role } = parsed.data;
   let userId: string;
   try {
-    userId = await findOrInviteProfileByEmail(email);
+    userId = await findOrInvitePlatformAccount(email);
   } catch (error) {
     fail("/admin/settings", errorMessage(error, "Invite could not be sent."));
   }
 
-  const { error } = await sb.from("organization_memberships").upsert(
-    {
-      organization_id: activeOrganization.id,
-      user_id: userId,
+  try {
+    await upsertOrganizationMembership({
+      organizationId: activeOrganization.id,
+      userId,
       role,
-    },
-    { onConflict: "organization_id,user_id" },
-  );
-  if (error) fail("/admin/settings", error.message);
+    });
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Team member could not be saved."));
+  }
 
   await audit({
     actorUserId: admin.id,
@@ -343,20 +321,20 @@ export async function transferOrganization(formData: FormData) {
   const sb = createServiceClient();
   let targetUserId: string;
   try {
-    targetUserId = await findOrInviteProfileByEmail(parsed.data.email);
+    targetUserId = await findOrInvitePlatformAccount(parsed.data.email);
   } catch (error) {
     fail("/admin/settings", errorMessage(error, "Transfer recipient could not be invited."));
   }
 
-  const { error: membershipError } = await sb.from("organization_memberships").upsert(
-    {
-      organization_id: activeOrganization.id,
-      user_id: targetUserId,
+  try {
+    await upsertOrganizationMembership({
+      organizationId: activeOrganization.id,
+      userId: targetUserId,
       role: "admin",
-    },
-    { onConflict: "organization_id,user_id" },
-  );
-  if (membershipError) fail("/admin/settings", membershipError.message);
+    });
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Transfer recipient could not be saved."));
+  }
 
   const { error: organizationError } = await sb
     .from("organizations")
@@ -697,35 +675,23 @@ export async function inviteController(formData: FormData) {
 
   let userId = existingProfile?.id;
   if (!userId) {
-    const invite = await sb.auth.admin.inviteUserByEmail(email);
-    if (invite.error || !invite.data.user) {
-      fail(`/admin/events/${parsed.data.event_id}`, invite.error?.message ?? "Invite could not be sent.");
+    try {
+      userId = await findOrInvitePlatformAccount(email);
+    } catch (error) {
+      fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Invite could not be sent."));
     }
-    userId = invite.data.user.id;
-    await sb.from("profiles").upsert({
-      id: userId,
-      email,
-      display_name: email.split("@")[0],
-      role: event.organization_id ? "user" : "controller",
-    });
   } else if (!event.organization_id && existingProfile?.role !== "admin" && existingProfile?.role !== "organizer") {
     await sb.from("profiles").update({ role: "controller" }).eq("id", userId);
   }
 
   if (event.organization_id) {
-    const { data: existingMembership } = await sb
-      .from("organization_memberships")
-      .select("role")
-      .eq("organization_id", event.organization_id)
-      .eq("user_id", userId)
-      .maybeSingle<{ role: string }>();
-    if (!existingMembership) {
-      const { error: membershipError } = await sb.from("organization_memberships").insert({
-        organization_id: event.organization_id,
-        user_id: userId,
-        role: "controller",
+    try {
+      await ensureOrganizationControllerMembership({
+        organizationId: event.organization_id,
+        userId,
       });
-      if (membershipError) fail(`/admin/events/${parsed.data.event_id}`, membershipError.message);
+    } catch (error) {
+      fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Controller could not be added to Organization."));
     }
   }
 
