@@ -24,6 +24,7 @@ import {
 import {
   ensureOrganizationControllerMembership,
   findOrInvitePlatformAccount,
+  removeOrganizationMembership,
   upsertOrganizationMembership,
 } from "@/lib/organizations/members";
 import {
@@ -53,7 +54,7 @@ import {
 } from "@/lib/organizations/branding";
 import { updateSiteSettings as saveSiteSettings } from "@/lib/site/settings";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, OrganizationRole, Profile, Ticket } from "@/types/db";
+import type { EventRow, Profile, Ticket } from "@/types/db";
 
 function checkbox(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
@@ -375,38 +376,22 @@ export async function removeOrganizationMember(formData: FormData) {
   });
   if (!parsed.success) fail("/admin/settings", "Invalid team member.");
 
-  const sb = createServiceClient();
-  const { data: membership } = await sb
-    .from("organization_memberships")
-    .select("id, user_id, role")
-    .eq("id", parsed.data.membership_id)
-    .eq("organization_id", activeOrganization.id)
-    .maybeSingle<{ id: string; user_id: string; role: OrganizationRole }>();
-  if (!membership) fail("/admin/settings", "Team member not found.");
-
-  if (membership.role === "admin") {
-    const { count, error: countError } = await sb
-      .from("organization_memberships")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", activeOrganization.id)
-      .eq("role", "admin");
-    if (countError) fail("/admin/settings", countError.message);
-    if ((count ?? 0) <= 1) fail("/admin/settings", "Organization needs at least one admin.");
+  let removed;
+  try {
+    removed = await removeOrganizationMembership({
+      organizationId: activeOrganization.id,
+      membershipId: parsed.data.membership_id,
+    });
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Team member could not be removed."));
   }
-
-  const { error } = await sb
-    .from("organization_memberships")
-    .delete()
-    .eq("id", membership.id)
-    .eq("organization_id", activeOrganization.id);
-  if (error) fail("/admin/settings", error.message);
 
   await audit({
     actorUserId: admin.id,
     action: "organization.member.remove",
     entityType: "organization",
     entityId: activeOrganization.id,
-    metadata: { user_id: membership.user_id, role: membership.role },
+    metadata: { user_id: removed.userId, role: removed.role },
   });
 
   revalidatePath("/admin/settings");

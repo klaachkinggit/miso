@@ -1,6 +1,11 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type { OrganizationRole } from "@/types/db";
 
+export type RemovedOrganizationMember = {
+  userId: string;
+  role: OrganizationRole;
+};
+
 export async function findOrInvitePlatformAccount(email: string): Promise<string> {
   const sb = createServiceClient();
   const { data: existingProfile } = await sb
@@ -68,4 +73,55 @@ export async function ensureOrganizationControllerMembership(params: {
     role: "controller",
   });
   if (error) throw new Error(error.message);
+}
+
+export function organizationMemberRemovalBlocker(params: {
+  role: OrganizationRole;
+  adminCount: number;
+}): string | null {
+  if (params.role === "admin" && params.adminCount <= 1) {
+    return "Organization needs at least one admin.";
+  }
+  return null;
+}
+
+async function countOrganizationAdmins(organizationId: string): Promise<number> {
+  const sb = createServiceClient();
+  const { count, error } = await sb
+    .from("organization_memberships")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("role", "admin");
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function removeOrganizationMembership(params: {
+  organizationId: string;
+  membershipId: string;
+}): Promise<RemovedOrganizationMember> {
+  const sb = createServiceClient();
+  const { data: membership } = await sb
+    .from("organization_memberships")
+    .select("id, user_id, role")
+    .eq("id", params.membershipId)
+    .eq("organization_id", params.organizationId)
+    .maybeSingle<{ id: string; user_id: string; role: OrganizationRole }>();
+  if (!membership) throw new Error("Team member not found.");
+
+  const adminCount = membership.role === "admin" ? await countOrganizationAdmins(params.organizationId) : 0;
+  const blocker = organizationMemberRemovalBlocker({
+    role: membership.role,
+    adminCount,
+  });
+  if (blocker) throw new Error(blocker);
+
+  const { error } = await sb
+    .from("organization_memberships")
+    .delete()
+    .eq("id", membership.id)
+    .eq("organization_id", params.organizationId);
+  if (error) throw new Error(error.message);
+
+  return { userId: membership.user_id, role: membership.role };
 }
