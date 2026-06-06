@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { formatDateShort } from "@/lib/format";
+import { shouldUseLegacyOrganizerEventScope } from "@/lib/organizations/auth";
 import { getActiveAdminOrganization } from "@/lib/organizations/context";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow } from "@/types/db";
@@ -25,7 +26,7 @@ export default async function AdminEventsListPage({
   const { activeOrganization } = await getActiveAdminOrganization(profile);
   if (activeOrganization) {
     query = query.eq("organization_id", activeOrganization.id);
-  } else if (profile.role === "organizer") {
+  } else if (shouldUseLegacyOrganizerEventScope(profile, Boolean(activeOrganization))) {
     query = query.eq("organizer_user_id", profile.id);
   }
   const { data: events } = await query.returns<EventRow[]>();

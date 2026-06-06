@@ -8,6 +8,13 @@ export function isOrganizationControllerOnly(role: OrganizationRole | null): boo
   return role === "controller";
 }
 
+export function shouldUseLegacyOrganizerEventScope(
+  profile: AuthProfile,
+  hasOrganizationScope: boolean,
+): boolean {
+  return !hasOrganizationScope && profile.role === "organizer";
+}
+
 export function canManageEventWithRole(
   profile: AuthProfile,
   event: EventAuthScope,

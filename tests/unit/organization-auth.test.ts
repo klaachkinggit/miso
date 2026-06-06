@@ -3,6 +3,7 @@ import {
   canManageEventWithRole,
   canOperateEventGateWithRole,
   isOrganizationControllerOnly,
+  shouldUseLegacyOrganizerEventScope,
 } from "@/lib/organizations/auth";
 import type { EventRow, Profile } from "@/types/db";
 
@@ -65,5 +66,11 @@ describe("organization auth decisions", () => {
     expect(isOrganizationControllerOnly("controller")).toBe(true);
     expect(isOrganizationControllerOnly("admin")).toBe(false);
     expect(isOrganizationControllerOnly(null)).toBe(false);
+  });
+
+  it("uses legacy organizer event scope only without Organization scope", () => {
+    expect(shouldUseLegacyOrganizerEventScope(userProfile({ role: "organizer" }), false)).toBe(true);
+    expect(shouldUseLegacyOrganizerEventScope(userProfile({ role: "organizer" }), true)).toBe(false);
+    expect(shouldUseLegacyOrganizerEventScope(userProfile({ role: "admin" }), false)).toBe(false);
   });
 });
