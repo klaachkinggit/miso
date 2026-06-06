@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { canUseBuyerSurface, getCurrentUser } from "@/lib/auth";
+import { canOperateGateRole, canUseBuyerSurface, getCurrentUser } from "@/lib/auth";
 
 afterEach(() => {
   getUserMock.mockReset();
@@ -70,5 +70,17 @@ describe("canUseBuyerSurface", () => {
     expect(canUseBuyerSurface({ role: "user" })).toBe(true);
     expect(canUseBuyerSurface({ role: "admin" })).toBe(true);
     expect(canUseBuyerSurface({ role: "organizer" })).toBe(true);
+  });
+});
+
+describe("canOperateGateRole", () => {
+  it("allows admin and controller global roles into gate surfaces", () => {
+    expect(canOperateGateRole({ role: "admin" })).toBe(true);
+    expect(canOperateGateRole({ role: "controller" })).toBe(true);
+  });
+
+  it("keeps buyer and legacy organizer roles out of global gate surfaces", () => {
+    expect(canOperateGateRole({ role: "user" })).toBe(false);
+    expect(canOperateGateRole({ role: "organizer" })).toBe(false);
   });
 });

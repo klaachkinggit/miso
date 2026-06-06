@@ -1,5 +1,5 @@
 import { ApiRouteError } from "@/lib/api/errors";
-import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
+import { canOperateGateRole, getCurrentProfile, getCurrentUser } from "@/lib/auth";
 import {
   getMemberOrganizationIds,
   isOrganizationControllerForUser,
@@ -61,7 +61,7 @@ export async function assertNotOrganizationController(params: {
 }
 
 export async function assertCanUseGateApi(profile: Pick<Profile, "id" | "role">): Promise<void> {
-  if (profile.role === "admin" || profile.role === "controller") return;
+  if (canOperateGateRole(profile)) return;
   const organizationIds = await getMemberOrganizationIds(profile.id);
   if (!organizationIds.length) {
     throw new ApiRouteError("Controller role required.", 403);
