@@ -11,9 +11,12 @@ test.describe("Public smoke", () => {
   test("shared navigation does not promote legacy discovery", async ({ page }) => {
     await page.goto("/");
     const header = page.locator("header");
+    const main = page.getByRole("main");
     await expect(header.getByRole("link", { name: "Events" })).toHaveCount(0);
     await expect(header.getByRole("link", { name: "Exchange" })).toHaveCount(0);
     await expect(header.getByLabel("Search events")).toHaveCount(0);
+    await expect(main.getByRole("link", { name: "Exchange" })).toHaveCount(0);
+    await expect(main.getByRole("link", { name: /visit exchange/i })).toHaveCount(0);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/events");

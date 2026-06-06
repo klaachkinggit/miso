@@ -209,15 +209,12 @@ export default async function HomePage() {
                 <span className="gradient-text">We&apos;ve got you covered.</span>
               </h2>
               <p className="max-w-md text-lg text-[#E6D8C9]/75">
-                One account for every ticket. Scan at the door, transfer to a friend, or resell at face value through
-                the official MISO exchange.
+                One account for every ticket. Scan at the door, transfer to a friend, or resell safely inside
+                each organizer&apos;s official exchange.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button asChild size="lg">
                   <Link href="/events">Explore events</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline">
-                  <Link href="/marketplace">Visit exchange</Link>
                 </Button>
               </div>
             </div>

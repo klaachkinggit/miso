@@ -8,7 +8,6 @@ const QUICK_CHIPS = [
   { label: "Tonight", href: "/events?when=tonight" },
   { label: "Weekend", href: "/events?when=weekend" },
   { label: "Festivals", href: "/events" },
-  { label: "Exchange", href: "/marketplace" },
 ];
 
 export function HeroSearch({ size = "lg" }: { size?: "lg" | "md" }) {
