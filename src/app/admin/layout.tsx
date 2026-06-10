@@ -8,6 +8,7 @@ import { switchOrganization } from "./actions";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireOrganizerWorkspace();
   const { organizations, activeOrganization } = await getActiveAdminOrganization(profile);
+  const hasOrganization = organizations.length > 0;
 
   return (
     <div>
@@ -19,20 +20,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <LayoutDashboard className="h-4 w-4" /> Dashboard
               </Link>
             </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/admin/events">
-                <CalendarDays className="h-4 w-4" /> Events
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/admin/settings">
-                <Settings className="h-4 w-4" /> Settings
-              </Link>
-            </Button>
+            {hasOrganization ? (
+              <>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/admin/events">
+                    <CalendarDays className="h-4 w-4" /> Events
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/admin/settings">
+                    <Settings className="h-4 w-4" /> Settings
+                  </Link>
+                </Button>
+              </>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {organizations.length ? (
+            {hasOrganization ? (
               <form action={switchOrganization} className="flex items-center gap-2">
                 <label htmlFor="organization_id" className="sr-only">
                   Active organization
@@ -54,10 +59,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </form>
-            ) : (
-              <p className="text-sm text-muted-foreground">No organization selected</p>
-            )}
-            <Button asChild size="sm">
+            ) : null}
+            <Button asChild size="sm" variant={hasOrganization ? "default" : "outline"}>
               <Link href="/admin/organizations/new">
                 <Plus className="h-4 w-4" /> New organization
               </Link>

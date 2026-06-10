@@ -1,13 +1,14 @@
 import Link from "next/link";
 import {
   BarChart3,
+  Building2,
   CalendarPlus,
   CheckCircle2,
+  CircleDollarSign,
   Settings,
   Images,
   TicketCheck,
   TrendingUp,
-  Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,11 +29,31 @@ export default async function OrganizerDashboardPage({
   searchParams?: Promise<{ error?: string; success?: string }>;
 }) {
   const [params, profile] = await Promise.all([searchParams, requireOrganizerWorkspace()]);
-  const { activeOrganization } = await getActiveAdminOrganization(profile);
+  const { organizations, activeOrganization } = await getActiveAdminOrganization(profile);
+
+  if (!organizations.length) {
+    return (
+      <div className="container py-16">
+        <EmptyState
+          title="Create your organization to get started"
+          description="An organization is your ticketing workspace — events, team, payouts, and your public storefront all live inside it. You can run more than one later."
+        >
+          <Button asChild size="lg">
+            <Link href="/admin/organizations/new">
+              <Building2 className="h-4 w-4" /> Create organization
+            </Link>
+          </Button>
+        </EmptyState>
+      </div>
+    );
+  }
+
   const { totals, events } = await loadOrganizerOverview({
     profile,
     organizationId: activeOrganization?.id ?? null,
   });
+  const canCreateEvent =
+    !!activeOrganization?.stripe_charges_enabled && !!activeOrganization.stripe_details_submitted;
 
   return (
     <div className="container py-10">
@@ -59,11 +80,19 @@ export default async function OrganizerDashboardPage({
               </Link>
             </Button>
           ) : null}
-          <Button asChild>
-            <Link href="/admin/events/new">
-              <CalendarPlus className="h-4 w-4" /> New event
-            </Link>
-          </Button>
+          {canCreateEvent ? (
+            <Button asChild>
+              <Link href="/admin/events/new">
+                <CalendarPlus className="h-4 w-4" /> New event
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline">
+              <Link href="/admin/settings">
+                <CircleDollarSign className="h-4 w-4" /> Finish Stripe onboarding
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -80,7 +109,7 @@ export default async function OrganizerDashboardPage({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          icon={Wallet}
+          icon={CircleDollarSign}
           label="Revenue (paid)"
           value={formatPrice(totals.revenue_paid, totals.currency)}
           hint={`${totals.tickets_sold} tickets · ${totals.published_events} live events`}
