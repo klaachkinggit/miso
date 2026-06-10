@@ -21,7 +21,7 @@ export default function RedeemCodePage() {
 
   return (
     <div className="container flex min-h-[calc(100vh-4rem)] max-w-xl items-center py-10">
-      <Card className="glass w-full rounded-lg">
+      <Card className="w-full rounded-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ScanLine className="h-5 w-5 text-primary" />

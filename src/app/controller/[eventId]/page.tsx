@@ -57,7 +57,7 @@ export default async function ControllerEventPage({ params }: { params: Promise<
         <div className="grid gap-3">
           {redemptions?.length ? (
             redemptions.map((redemption) => (
-              <Card key={redemption.id} className="glass rounded-lg">
+              <Card key={redemption.id} className="rounded-lg">
                 <CardContent className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <Badge variant={redemption.result === "valid" ? "success" : "destructive"}>{redemption.result}</Badge>
@@ -69,7 +69,7 @@ export default async function ControllerEventPage({ params }: { params: Promise<
               </Card>
             ))
           ) : (
-            <Card className="glass rounded-lg">
+            <Card className="rounded-lg">
               <CardContent className="p-5 text-sm text-muted-foreground">No scans yet.</CardContent>
             </Card>
           )}

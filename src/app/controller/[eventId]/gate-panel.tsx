@@ -230,7 +230,7 @@ export function GatePanel({
   }
 
   return (
-    <Card className="glass rounded-lg">
+    <Card className="rounded-lg">
       <CardHeader>
         <CardTitle>Gate session</CardTitle>
       </CardHeader>

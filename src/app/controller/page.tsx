@@ -51,7 +51,7 @@ export default async function ControllerPage() {
       {events.length ? (
         <div className="grid gap-4 md:grid-cols-2">
           {events.map((event) => (
-            <Card key={event.id} className="glass rounded-lg">
+            <Card key={event.id} className="rounded-lg">
               <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold">{event.name}</h2>

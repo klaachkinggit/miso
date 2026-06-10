@@ -25,8 +25,8 @@ export function PageHeader({
         <h1
           className={cn(
             variant === "display"
-              ? "display text-4xl md:text-6xl"
-              : "text-3xl font-semibold",
+              ? "display text-4xl text-foreground md:text-6xl"
+              : "text-2xl font-medium text-foreground md:text-3xl",
           )}
         >
           {title}
@@ -34,8 +34,8 @@ export function PageHeader({
         {description ? (
           <p
             className={cn(
-              "mt-2 text-muted-foreground",
-              variant === "display" ? "eyebrow" : "text-sm",
+              "mt-3 text-muted-foreground",
+              variant === "display" ? "max-w-md text-sm" : "text-sm",
             )}
           >
             {description}

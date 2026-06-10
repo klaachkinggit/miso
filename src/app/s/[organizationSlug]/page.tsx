@@ -96,7 +96,7 @@ export default async function OrganizationStorefrontPage({
             />
           ) : null}
           <div>
-            <p className="mono-stub mb-2" style={{ color: accent }}>
+            <p className="eyebrow mb-2" style={{ color: accent }}>
               Official billeterie
             </p>
             <h1 className="display text-4xl md:text-6xl">{organization.name}</h1>
@@ -110,7 +110,7 @@ export default async function OrganizationStorefrontPage({
         <Link
           href={basePath}
           aria-current="page"
-          className="rounded-full px-3 py-1 text-xs font-semibold text-[#121212]"
+          className="rounded-full px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
           style={{ backgroundColor: accent }}
         >
           Events

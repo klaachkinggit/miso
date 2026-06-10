@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function CheckoutCancelPage() {
   return (
     <div className="container flex min-h-[calc(100vh-4rem)] items-center py-12">
-      <Card className="glass mx-auto w-full max-w-lg rounded-lg">
+      <Card className="mx-auto w-full max-w-lg rounded-lg">
         <CardContent className="grid gap-5 p-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-secondary">
             <XCircle className="h-7 w-7 text-accent" />
