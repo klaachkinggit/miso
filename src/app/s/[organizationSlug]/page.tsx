@@ -75,49 +75,58 @@ export default async function OrganizationStorefrontPage({
   const accent = branding.accent_color ?? DEFAULT_ORGANIZATION_ACCENT;
 
   return (
-    <div className="container py-8 pb-20 md:py-12 md:pb-12">
-      <section className="relative mb-6 min-h-64 overflow-hidden rounded-lg border border-border/70 bg-card">
+    <div className="container py-10 pb-20 md:py-14">
+      <section className="relative mb-10 overflow-hidden rounded-md border border-hairline bg-ink-raised">
         {branding.hero_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={branding.hero_image_url}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover opacity-65"
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
-        <div className="relative flex min-h-64 max-w-3xl flex-col justify-end gap-4 p-6 md:p-8">
+        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/85 to-ink/30" />
+        <div className="absolute inset-x-0 bottom-0 h-px" style={{ backgroundColor: accent, opacity: 0.4 }} />
+        <div className="relative flex min-h-72 max-w-3xl flex-col justify-end gap-5 p-8 md:p-12">
           {branding.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={branding.logo_url}
               alt={`${organization.name} logo`}
-              className="h-16 w-16 rounded-md border border-border/60 object-contain"
+              className="h-16 w-16 rounded-md border border-hairline object-contain"
             />
           ) : null}
           <div>
-            <p className="eyebrow mb-2" style={{ color: accent }}>
-              Official billeterie
+            <p className="eyebrow mb-3 flex items-center gap-2.5" style={{ color: accent }}>
+              <span
+                aria-hidden
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: accent, boxShadow: `0 0 0 4px ${accent}33` }}
+              />
+              Official storefront
             </p>
-            <h1 className="display text-4xl md:text-6xl">{organization.name}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+            <h1 className="display text-5xl text-foreground md:text-7xl">
+              {organization.name}<span className="display-italic" style={{ color: accent }}>.</span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
               {branding.tagline ?? eventDiscoveryDescription(events.length, discovery)}
             </p>
           </div>
         </div>
       </section>
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+
+      <div className="mb-8 flex flex-wrap items-center gap-1 border-b border-hairline pb-3">
         <Link
           href={basePath}
           aria-current="page"
-          className="rounded-full px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
+          className="rounded-md px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
           style={{ backgroundColor: accent }}
         >
           Events
         </Link>
         <Link
           href={marketplacePath}
-          className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded-md px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
         >
           Exchange
         </Link>
@@ -131,19 +140,20 @@ export default async function OrganizationStorefrontPage({
         />
       </div>
 
-      <div className="-mx-6 mb-8 flex gap-2 overflow-x-auto px-6 pb-2 [&::-webkit-scrollbar]:hidden">
+      <div className="-mx-6 mb-10 flex gap-2 overflow-x-auto px-6 pb-2 [&::-webkit-scrollbar]:hidden">
         {EVENT_QUICK_FILTERS.map((filter) => {
           const href = filter.key === "all" ? basePath : `${basePath}?when=${filter.key}`;
+          const active = discovery.when === filter.key;
           return (
             <Link
               key={filter.key}
               href={href}
-              aria-current={discovery.when === filter.key ? "page" : undefined}
+              aria-current={active ? "page" : undefined}
               className={
-                "shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors " +
-                (discovery.when === filter.key
-                  ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                  : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground")
+                "shrink-0 rounded-full border px-4 py-1.5 font-mono text-[12px] font-medium uppercase tracking-[0.16em] transition-colors " +
+                (active
+                  ? "border-foreground bg-foreground text-ink"
+                  : "border-hairline bg-transparent text-muted-foreground hover:border-hairline-strong hover:text-foreground")
               }
             >
               {filter.label}

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/site/page-header";
 import { ResaleListingList } from "@/components/site/resale-listing-list";
 import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { listSellableResaleListings } from "@/lib/marketplace/public";
@@ -50,27 +49,32 @@ export default async function OrganizationMarketplacePage({
   );
 
   return (
-    <div className="container py-10">
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+    <div className="container py-12">
+      <div className="mb-8 flex flex-wrap items-center gap-1 border-b border-hairline pb-3">
         <Link
           href={storefrontPath}
-          className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded-md px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
         >
           Events
         </Link>
         <Link
           href={marketplacePath}
           aria-current="page"
-          className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+          className="rounded-md bg-foreground px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
         >
           Exchange
         </Link>
       </div>
-      <PageHeader
-        title={`${organization.name} exchange`}
-        description={branding.tagline ?? "Verified tickets listed by members inside this ticketing channel."}
-        className="mb-8"
-      />
+      <header className="mb-10">
+        <p className="eyebrow-signal">{organization.name}</p>
+        <h1 className="display mt-4 text-4xl text-foreground md:text-6xl">
+          Official<br />
+          <span className="display-italic">exchange.</span>
+        </h1>
+        <p className="mt-4 max-w-xl text-muted-foreground">
+          {branding.tagline ?? "Verified tickets listed by members. Price-capped, no scalping markup."}
+        </p>
+      </header>
       <ResaleListingList
         items={listings}
         listingHref={(item) =>
