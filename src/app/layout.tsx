@@ -3,6 +3,7 @@ import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { BottomNav } from "@/components/site/bottom-nav";
+import { SmoothScroll } from "@/components/site/smooth-scroll";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`dark ${geist.variable} ${geistMono.variable} ${fraunces.variable}`}
     >
       <body className="font-sans">
+        <SmoothScroll />
         <Header />
         <main className="min-h-[calc(100vh-4rem)]">{children}</main>
         <Footer />

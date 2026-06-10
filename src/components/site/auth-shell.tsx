@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 type AuthShellProps = {
@@ -45,13 +46,13 @@ export function AuthShell({ children }: AuthShellProps) {
             ))}
           </dl>
 
-          <a
+          <Link
             href="/"
             className="group inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             Back to homepage
             <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </a>
+          </Link>
         </div>
       </aside>
     </div>
