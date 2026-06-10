@@ -105,8 +105,8 @@ export function EventDetail({
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm leading-6 text-muted-foreground">
-              After checkout, your digital ticket appears in Wallet. At the gate, open the pass for QR
-              verification while MISO keeps ownership and resale history tied to the ticket.
+              After checkout, your digital ticket appears in your ticket wallet. At the gate, open the
+              pass for QR verification while MISO keeps ownership and resale history tied to the ticket.
             </CardContent>
           </Card>
         </div>

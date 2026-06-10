@@ -28,7 +28,7 @@ export async function Header() {
               <>
                 {profile ? (
                   <Link href="/tickets" className="text-muted-foreground transition-colors hover:text-foreground">
-                    Wallet
+                    Tickets
                   </Link>
                 ) : null}
                 {canUseWorkspace ? (
@@ -67,7 +67,7 @@ export async function Header() {
           "DIGITAL TICKETS · VERIFIED ACCESS",
           "FESTIVALS · CONCERTS · NIGHTLIFE",
           "OFFICIAL RESALE · ANTI-SCALPING",
-          "VIP MEMBERSHIPS · EVENT WALLET",
+          "VIP MEMBERSHIPS · TICKET WALLET",
         ]}
       />
     </>

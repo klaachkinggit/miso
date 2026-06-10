@@ -63,7 +63,7 @@ export function AuthShell({ children }: AuthShellProps) {
               <div className="rounded-lg border border-border bg-secondary/40 p-4">
                 <ShieldCheck className="mb-4 h-5 w-5 text-primary" />
                 <p className="text-sm text-muted-foreground">Access</p>
-                <p className="mt-1 font-medium">Wallet held</p>
+                <p className="mt-1 font-medium">Ticket wallet held</p>
               </div>
             </div>
           </div>
