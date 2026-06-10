@@ -32,7 +32,7 @@ export default async function OrganizerStripePage() {
     <AuthShell>
       <div className="grid gap-5">
         <div>
-          <p className="mb-3 text-sm font-medium text-primary">Stripe onboarding</p>
+          <p className="mb-3 text-sm font-medium text-primary">Step 2 of 3 · Stripe onboarding</p>
           <h1 className="text-3xl font-semibold tracking-tight">Could not reach Stripe</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             We were unable to start your Stripe Connect onboarding. Please retry — your account

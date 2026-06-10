@@ -10,11 +10,11 @@ export function OrganizerSignupForm({ error }: { error?: string }) {
   return (
     <form action={organizerSignupAction} className="grid gap-5">
       <div>
-        <p className="mb-3 text-sm font-medium text-primary">Organizer signup</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Set up your ticketing workspace</h1>
+        <p className="mb-3 text-sm font-medium text-primary">Step 1 of 3 · Create your organization</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Create your organization</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Tell us about your events. After this, Stripe Connect takes over to verify your business
-          and enable payouts.
+          Tell us about your business. Next we&apos;ll hook up Stripe Connect so you can take payouts,
+          then you&apos;ll publish your first event.
         </p>
       </div>
       {error ? (
@@ -109,9 +109,9 @@ export function OrganizerSignupForm({ error }: { error?: string }) {
         Continue to Stripe onboarding <ArrowRight className="h-4 w-4" />
       </Button>
       <p className="text-center text-sm text-muted-foreground">
-        Buying tickets instead?{" "}
+        Just here to buy tickets?{" "}
         <Link href="/signup/buyer" className="font-medium text-primary hover:underline">
-          Switch to buyer signup
+          Buyer signup
         </Link>
       </p>
     </form>
