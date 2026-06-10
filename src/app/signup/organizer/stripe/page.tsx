@@ -6,6 +6,7 @@ import {
   createOrganizerOnboardingLink,
   ensureConnectAccountForProfile,
 } from "@/lib/payments/stripe-connect";
+import { StepIndicator } from "../step-indicator";
 
 // Gateway between the questionnaire and Stripe Connect. We provision
 // the connected account here (idempotently) and immediately redirect
@@ -30,22 +31,27 @@ export default async function OrganizerStripePage() {
 
   return (
     <AuthShell>
-      <div className="grid gap-5">
+      <div className="grid gap-6">
         <div>
-          <p className="mb-3 text-sm font-medium text-primary">Step 2 of 3 · Stripe onboarding</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Could not reach Stripe</h1>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            We were unable to start your Stripe Connect onboarding. Please retry — your account
-            is saved and you can resume any time.
+          <StepIndicator current={2} />
+          <h1 className="display mt-5 text-4xl text-foreground md:text-5xl">
+            Could not reach<br />
+            <span className="display-italic">Stripe.</span>
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">
+            We could not start your Stripe Connect onboarding. Retry — your account is saved and
+            you can resume any time.
           </p>
         </div>
         {errorMessage ? (
-          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {errorMessage}
           </div>
         ) : null}
         <form action="/signup/organizer/stripe" method="get">
-          <Button type="submit" size="lg" className="w-full">Retry Stripe onboarding</Button>
+          <Button type="submit" size="lg" className="w-full">
+            Retry Stripe onboarding
+          </Button>
         </form>
       </div>
     </AuthShell>
