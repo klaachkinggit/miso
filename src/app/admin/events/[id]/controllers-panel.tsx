@@ -24,7 +24,7 @@ export function ControllersPanel({
       <div className="space-y-4">
         {controllers.length ? (
           controllers.map((controller) => (
-            <Card key={controller.user_id} className="glass rounded-lg">
+            <Card key={controller.user_id} className="rounded-lg">
               <CardContent className="flex items-center justify-between gap-4 p-5">
                 <div>
                   <h3 className="font-semibold">{controller.display_name ?? controller.email}</h3>
@@ -35,13 +35,13 @@ export function ControllersPanel({
             </Card>
           ))
         ) : (
-          <Card className="glass rounded-lg">
+          <Card className="rounded-lg">
             <CardContent className="p-5 text-sm text-muted-foreground">No controllers assigned.</CardContent>
           </Card>
         )}
       </div>
 
-      <Card className="glass h-fit rounded-lg">
+      <Card className="h-fit rounded-lg">
         <CardHeader>
           <CardTitle>Invite controller</CardTitle>
         </CardHeader>

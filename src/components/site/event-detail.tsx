@@ -36,11 +36,11 @@ export function EventDetail({
         </div>
         <div className="container relative flex min-h-[520px] items-end pb-12 pt-28 md:min-h-[640px] md:pb-16">
           <div className="max-w-4xl">
-            <span className="mono-stub mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[#E6D8C9] px-3 py-1 text-[#121212]">
+            <span className="eyebrow mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-[hsl(var(--foreground))] px-3 py-1 text-[hsl(var(--ink))]">
               {formatDateShort(event.date)}
             </span>
-            <h1 className="display text-5xl text-[#F5F3EE] md:text-7xl lg:text-8xl">{event.name}</h1>
-            <div className="mono-stub mt-6 flex flex-wrap gap-4 text-[#E6D8C9]/80">
+            <h1 className="display text-5xl text-[hsl(var(--foreground))] md:text-7xl lg:text-8xl">{event.name}</h1>
+            <div className="eyebrow mt-6 flex flex-wrap gap-4 text-[hsl(var(--foreground))]/80">
               <span className="flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5" />
                 {formatDate(event.date)}
@@ -60,7 +60,7 @@ export function EventDetail({
 
       <div className="container grid gap-8 py-10 lg:grid-cols-[1fr_380px]">
         <div className="space-y-8">
-          <Card className="glass rounded-lg">
+          <Card className="rounded-lg">
             <CardHeader>
               <CardTitle>About this event</CardTitle>
             </CardHeader>
@@ -79,7 +79,7 @@ export function EventDetail({
           </Card>
 
           {event.floor_plan_url ? (
-            <Card className="glass rounded-lg">
+            <Card className="rounded-lg">
               <CardHeader>
                 <CardTitle className="text-base">Floor plan</CardTitle>
               </CardHeader>
@@ -97,7 +97,7 @@ export function EventDetail({
             </Card>
           ) : null}
 
-          <Card className="glass rounded-lg">
+          <Card className="rounded-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-primary" />
@@ -133,7 +133,7 @@ export function EventDetail({
               );
 
               return (
-                <Card key={category.id} className="glass rounded-lg">
+                <Card key={category.id} className="rounded-lg">
                   <CardContent className="space-y-4 p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3">
@@ -206,7 +206,7 @@ export function EventDetail({
               );
             })
           ) : (
-            <Card className="glass rounded-lg">
+            <Card className="rounded-lg">
               <CardContent className="p-5 text-sm text-muted-foreground">No ticket tiers are available.</CardContent>
             </Card>
           )}
@@ -216,7 +216,7 @@ export function EventDetail({
       {cheapest ? (
         <div className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-between gap-3 border-t border-border bg-background/95 px-4 backdrop-blur-xl md:hidden">
           <div className="flex flex-col">
-            <span className="mono-stub text-muted-foreground">From</span>
+            <span className="eyebrow text-muted-foreground">From</span>
             <span className="text-base font-bold">{formatPrice(cheapest.price, cheapest.currency)}</span>
           </div>
           <a

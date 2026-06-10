@@ -31,7 +31,7 @@ export function ResaleListingList({
         return (
           <li
             key={item.listing.id}
-            className="group flex flex-col gap-4 bg-[#0d0d0d] p-4 transition-colors hover:bg-[#121212] sm:flex-row sm:items-center sm:gap-5"
+            className="group flex flex-col gap-4 bg-[#0d0d0d] p-4 transition-colors hover:bg-[hsl(var(--ink))] sm:flex-row sm:items-center sm:gap-5"
           >
             <Link
               href={href}
@@ -48,7 +48,7 @@ export function ResaleListingList({
                     className="object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212_0%,#2b2620_52%,#E6D8C9_130%)]" />
+                  <div className="absolute inset-0 bg-[linear-gradient(145deg,hsl(var(--ink))_0%,#2b2620_52%,hsl(var(--foreground))_130%)]" />
                 );
               })()}
               <Badge className="absolute left-2 top-2" variant="secondary">

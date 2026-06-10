@@ -65,7 +65,7 @@ export function TicketCard({
   const displayLabel = displayStatus === "used" ? "consumed" : displayStatus.replace("_", " ");
 
   return (
-    <Card className={cn("glass group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.01]", inactive && "opacity-60 grayscale")}>
+    <Card className={cn("group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.01]", inactive && "opacity-60 grayscale")}>
       <div className="relative aspect-[5/2] overflow-hidden bg-secondary">
         {(() => {
           const tv = ticket.image_url ?? eventImage(event, "ticket");

@@ -30,7 +30,7 @@ export function OrganizationBrandingForm({
 
   return (
     <form action={updateOrganizationBranding} className="grid gap-5">
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardContent className="grid gap-6 p-5">
           <div className="grid gap-2">
             <Label htmlFor="tagline">Storefront tagline</Label>
@@ -97,7 +97,7 @@ export function OrganizationRoyaltyForm({
 }) {
   return (
     <form action={updateOrganizationRoyalty} className="grid gap-5">
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardContent className="grid gap-5 p-5">
           <div>
             <h2 className="text-lg font-semibold">Resale royalty</h2>
@@ -158,7 +158,7 @@ export function OrganizationTeamPanel({
   members: OrganizationTeamMember[];
 }) {
   return (
-    <Card className="glass rounded-lg">
+    <Card className="rounded-lg">
       <CardContent className="grid gap-5 p-5">
         <div>
           <h2 className="text-lg font-semibold">Team</h2>
@@ -238,7 +238,7 @@ export function OrganizationOwnershipPanel({
 }) {
   return (
     <div className="grid gap-5">
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardContent className="grid gap-5 p-5">
           <div>
             <h2 className="text-lg font-semibold">Ownership</h2>

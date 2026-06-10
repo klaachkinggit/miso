@@ -2,7 +2,6 @@ import Link from "next/link";
 import { CalendarPlus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { formatDateShort } from "@/lib/format";
@@ -33,13 +32,14 @@ export default async function AdminEventsListPage({
 
   return (
     <div className="container py-10">
-      <div className="mb-8 flex items-center justify-between gap-4">
+      <div className="mb-10 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">Events</h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="eyebrow">Workspace · Events</p>
+          <h1 className="display mt-3 text-4xl text-foreground md:text-5xl">Events.</h1>
+          <p className="mt-3 max-w-md text-muted-foreground">
             {activeOrganization
               ? `Create and manage events for ${activeOrganization.name}.`
-              : "Create events, manage inventory, invite controllers, and refund tickets."}
+              : "Create events, manage inventory, invite controllers, refund tickets."}
           </p>
         </div>
         <Button asChild>
@@ -55,39 +55,45 @@ export default async function AdminEventsListPage({
         </div>
       ) : null}
       {params?.success ? (
-        <div className="mb-6 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+        <div className="mb-6 rounded-md border border-signal/40 bg-signal/10 p-3 text-sm text-signal">
           {params.success}
         </div>
       ) : null}
 
       {events?.length ? (
-        <div className="grid gap-4">
+        <ol className="space-y-px overflow-hidden rounded-md border border-hairline bg-hairline">
           {events.map((event) => (
-            <Card key={event.id} className="glass rounded-lg">
-              <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold">{event.name}</h2>
-                    <Badge variant={event.status === "published" ? "success" : "secondary"}>{event.status}</Badge>
-                    {event.status !== "draft" && !event.nft_contract_address ? (
-                      <Badge variant="warning">contract pending</Badge>
-                    ) : null}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDateShort(event.date)} at {event.venue_name}, {event.city}
-                  </p>
+            <li
+              key={event.id}
+              className="flex flex-col gap-4 bg-ink-raised p-5 transition-colors hover:bg-ink-soft md:flex-row md:items-center md:justify-between"
+            >
+              <div className="min-w-0">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-medium text-foreground">{event.name}</h2>
+                  <Badge variant={event.status === "published" ? "signal" : "secondary"}>
+                    {event.status}
+                  </Badge>
+                  {event.status !== "draft" && !event.nft_contract_address ? (
+                    <Badge variant="warning">contract pending</Badge>
+                  ) : null}
                 </div>
-                <Button asChild variant="outline">
-                  <Link href={`/admin/events/${event.id}`}>
-                    <Settings className="h-4 w-4" /> Manage
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+                <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {formatDateShort(event.date)} · {event.venue_name}, {event.city}
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href={`/admin/events/${event.id}`}>
+                  <Settings className="h-4 w-4" /> Manage
+                </Link>
+              </Button>
+            </li>
           ))}
-        </div>
+        </ol>
       ) : (
-        <EmptyState title="No events yet" description="Create the first event and deploy its on-chain ticket contract.">
+        <EmptyState
+          title="No events yet"
+          description="Create the first event and deploy its on-chain ticket contract."
+        >
           <Button asChild>
             <Link href="/admin/events/new">Create event</Link>
           </Button>

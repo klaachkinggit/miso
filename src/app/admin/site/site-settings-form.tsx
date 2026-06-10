@@ -12,7 +12,7 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null }
 
   return (
     <form action={updateSiteSettings} className="grid gap-5">
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardContent className="grid gap-6 p-5">
           <ImageUploadField
             id="landing-hero-bg"

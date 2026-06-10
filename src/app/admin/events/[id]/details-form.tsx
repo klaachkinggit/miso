@@ -32,7 +32,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
 
   return (
     <div className="grid gap-5">
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-3">
             <span>Event details</span>
@@ -188,7 +188,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
         </CardContent>
       </Card>
 
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="font-semibold">MisoTicket contract</h3>

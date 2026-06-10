@@ -70,7 +70,7 @@ export default async function OrganizationSettingsPage({
           {params.success}
         </div>
       ) : null}
-      <Card className="glass mb-8 rounded-lg">
+      <Card className="mb-8 rounded-lg">
         <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-lg font-semibold">Payments</h2>

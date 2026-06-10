@@ -27,7 +27,7 @@ export function ResaleListingDetail({
             return mp ? (
               <Image src={mp} alt={item.event.name} fill priority sizes="100vw" className="object-cover" />
             ) : (
-              <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212_0%,#2b2620_52%,#E6D8C9_130%)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(145deg,hsl(var(--ink))_0%,#2b2620_52%,hsl(var(--foreground))_130%)]" />
             );
           })()}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
@@ -54,7 +54,7 @@ export function ResaleListingDetail({
           </div>
         </div>
 
-        <Card className="glass rounded-lg">
+        <Card className="rounded-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
@@ -119,7 +119,7 @@ export function ResaleListingDetail({
       </div>
 
       <aside className="space-y-4">
-        <Card className="glass rounded-lg">
+        <Card className="rounded-lg">
           <CardContent className="space-y-4 p-5">
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">You pay today</p>

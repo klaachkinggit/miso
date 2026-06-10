@@ -29,21 +29,21 @@ export function HeroSearch({ size = "lg" }: { size?: "lg" | "md" }) {
         method="get"
         onSubmit={submit}
         role="search"
-        className={`group relative flex items-center gap-2 rounded-full border border-[#E6D8C9]/15 bg-[#0b0b0b]/80 backdrop-blur-xl transition-colors focus-within:border-accent/60 ${padding}`}
+        className={`group relative flex items-center gap-2 rounded-full border border-[hsl(var(--foreground))]/15 bg-[#0b0b0b]/80 backdrop-blur-xl transition-colors focus-within:border-accent/60 ${padding}`}
       >
-        <Search className="h-5 w-5 shrink-0 text-[#E6D8C9]/55" />
+        <Search className="h-5 w-5 shrink-0 text-[hsl(var(--foreground))]/55" />
         <input
           name="q"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Search an event, artist, organizer or city"
-          className="min-w-0 flex-1 bg-transparent text-[#F5F3EE] placeholder:text-[#E6D8C9]/45 focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--foreground))]/45 focus:outline-none"
           aria-label="Search events"
         />
         {size === "lg" ? (
           <button
             type="submit"
-            className="hidden h-10 shrink-0 items-center rounded-full bg-[#F5F3EE] px-5 text-sm font-medium text-[#121212] transition-colors hover:bg-[#E6D8C9] sm:inline-flex"
+            className="hidden h-10 shrink-0 items-center rounded-full bg-[hsl(var(--foreground))] px-5 text-sm font-medium text-[hsl(var(--ink))] transition-colors hover:bg-[hsl(var(--foreground))] sm:inline-flex"
           >
             Explore
           </button>
@@ -57,7 +57,7 @@ export function HeroSearch({ size = "lg" }: { size?: "lg" | "md" }) {
             <a
               key={chip.label}
               href={chip.href}
-              className="rounded-full border border-[#E6D8C9]/15 bg-[#121212]/70 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[#E6D8C9]/75 transition-colors hover:border-accent/50 hover:text-[#F5F3EE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="rounded-full border border-[hsl(var(--foreground))]/15 bg-[hsl(var(--ink))]/70 px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[hsl(var(--foreground))]/75 transition-colors hover:border-accent/50 hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {chip.label}
             </a>

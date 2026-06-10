@@ -35,7 +35,7 @@ export function PageHeader({
           <p
             className={cn(
               "mt-2 text-muted-foreground",
-              variant === "display" ? "mono-stub" : "text-sm",
+              variant === "display" ? "eyebrow" : "text-sm",
             )}
           >
             {description}

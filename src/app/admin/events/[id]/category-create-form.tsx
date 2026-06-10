@@ -31,7 +31,7 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
   const isClub = kind === "club_table";
 
   return (
-    <Card className="glass h-fit rounded-lg">
+    <Card className="h-fit rounded-lg">
       <CardHeader>
         <CardTitle>Add category</CardTitle>
       </CardHeader>
