@@ -3,20 +3,23 @@ import { loadOrganizationAnalytics } from "@/lib/analytics/organization";
 import { serializeAnalyticsCsv } from "@/lib/analytics/csv";
 import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { requireApiAuthenticatedProfile } from "@/lib/api/auth";
-import { getOrganizationRole } from "@/lib/organizations/auth";
-import { getActiveAdminOrganization } from "@/lib/organizations/context";
+import {
+  ActiveAdminOrganizationRequired,
+  requireActiveAdminOrganization,
+} from "@/lib/organizations/context";
 import { parseAnalyticsSearchParams } from "@/lib/analytics/search-params";
 
 export async function GET(request: NextRequest) {
   try {
     const profile = await requireApiAuthenticatedProfile();
-    const { activeOrganization } = await getActiveAdminOrganization(profile);
-    if (!activeOrganization) {
-      throw new ApiRouteError("No active organization for this account.", 400);
-    }
-    const role = await getOrganizationRole(profile.id, activeOrganization.id);
-    if (role !== "admin" && profile.role !== "admin") {
-      throw new ApiRouteError("Only organization admins can export analytics.", 403);
+    let activeOrganization;
+    try {
+      ({ activeOrganization } = await requireActiveAdminOrganization(profile));
+    } catch (error) {
+      if (error instanceof ActiveAdminOrganizationRequired) {
+        throw new ApiRouteError("No active organization for this account.", 400);
+      }
+      throw error;
     }
 
     const searchParams: Record<string, string> = {};

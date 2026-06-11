@@ -109,12 +109,6 @@ export async function canManageEvent(profile: AuthProfile, event: EventAuthScope
   return canManageEventWithRole(profile, event, role);
 }
 
-export async function canManageEventById(profile: AuthProfile, eventId: string): Promise<boolean> {
-  const event = await getEventAuthScope(eventId);
-  if (!event) return false;
-  return canManageEvent(profile, event);
-}
-
 async function hasEventControllerAssignment(userId: string, eventId: string): Promise<boolean> {
   const sb = createServiceClient();
   const { data } = await sb
@@ -191,4 +185,24 @@ export async function getOrganizationIdForListing(listingId: string): Promise<st
     .maybeSingle<{ organization_id: string | null; ticket_id: string }>();
   if (!listing) return null;
   return listing.organization_id ?? getOrganizationIdForTicket(listing.ticket_id);
+}
+
+// Deep dispatcher so callers don't thread which-lookup-per-entity. Each
+// branch is the same 2-step (entity → event → org) the per-entity helpers
+// already do; consolidating the dispatch removes the friction the
+// architecture review flagged (candidate #3).
+export type OrganizationOwnedResource =
+  | { kind: "category"; id: string }
+  | { kind: "ticket"; id: string }
+  | { kind: "listing"; id: string };
+
+export function resourceOrganizationId(resource: OrganizationOwnedResource): Promise<string | null> {
+  switch (resource.kind) {
+    case "category":
+      return getOrganizationIdForCategory(resource.id);
+    case "ticket":
+      return getOrganizationIdForTicket(resource.id);
+    case "listing":
+      return getOrganizationIdForListing(resource.id);
+  }
 }

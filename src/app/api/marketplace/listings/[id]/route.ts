@@ -4,7 +4,7 @@ import {
   requireApiNonControllerProfile,
 } from "@/lib/api/auth";
 import { apiErrorResponse } from "@/lib/api/errors";
-import { getOrganizationIdForListing } from "@/lib/organizations/auth";
+import { resourceOrganizationId } from "@/lib/organizations/auth";
 import { cancelResaleListing } from "@/lib/resale/listing";
 
 export async function DELETE(
@@ -18,7 +18,7 @@ export async function DELETE(
     const { id } = await params;
     await assertNotOrganizationController({
       profile,
-      organizationId: await getOrganizationIdForListing(id),
+      organizationId: await resourceOrganizationId({ kind: "listing", id }),
       deniedMessage: "Controllers cannot use this organization marketplace.",
     });
     await cancelResaleListing({ listingId: id, sellerUserId: profile.id });

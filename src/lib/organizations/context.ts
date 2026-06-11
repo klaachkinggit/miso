@@ -72,6 +72,25 @@ export async function getActiveAdminOrganization(profile: Pick<Profile, "id" | "
   };
 }
 
+// Single seam for surfaces that require an Active Organization the caller can administer.
+// `getAdminOrganizations` already filters by membership role = "admin", so a non-null
+// `activeOrganization` is the admin-witness — no second role check needed.
+export class ActiveAdminOrganizationRequired extends Error {
+  constructor() {
+    super("No active organization for this account.");
+    this.name = "ActiveAdminOrganizationRequired";
+  }
+}
+
+export async function requireActiveAdminOrganization(profile: Pick<Profile, "id" | "role">): Promise<{
+  organizations: OrganizationOption[];
+  activeOrganization: OrganizationOption;
+}> {
+  const { organizations, activeOrganization } = await getActiveAdminOrganization(profile);
+  if (!activeOrganization) throw new ActiveAdminOrganizationRequired();
+  return { organizations, activeOrganization };
+}
+
 export async function setActiveAdminOrganization(userId: string, organizationId: string): Promise<boolean> {
   const organizations = await getAdminOrganizations(userId);
   if (!organizations.some((organization) => organization.id === organizationId)) return false;

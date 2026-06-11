@@ -1,8 +1,5 @@
 import { fulfillReservedTicket, releaseReservation } from "@/lib/tickets/lifecycle";
-import {
-  ChainOpInFlightError,
-  ChainOpRepairError,
-} from "@/lib/chain/ops";
+import { classifyChainError } from "@/lib/chain/ops";
 import { createServiceClient } from "@/lib/supabase/service";
 import { TransactionTimeoutError } from "@/lib/thirdweb/transactions";
 import { audit } from "@/lib/audit";
@@ -55,15 +52,8 @@ export async function settlePaidPurchase(params: { purchaseId: string }): Promis
       purchaseId: purchase.id,
     });
   } catch (error) {
-    const nonCompensatable =
-      error instanceof TransactionTimeoutError ||
-      error instanceof ChainOpInFlightError ||
-      error instanceof ChainOpRepairError ||
-      (error instanceof Error &&
-        (error.name === "TransactionTimeoutError" ||
-          error.name === "ChainOpInFlightError" ||
-          error.name === "ChainOpRepairError"));
-    if (nonCompensatable) {
+    const classification = classifyChainError(error);
+    if (classification.kind === "non_compensatable") {
       await sb
         .from("purchases")
         .update({ status: "pending" })
@@ -76,8 +66,7 @@ export async function settlePaidPurchase(params: { purchaseId: string }): Promis
         metadata: {
           ticket_id: purchase.ticket_id,
           reason: error instanceof Error ? error.message : "pending",
-          state:
-            error instanceof ChainOpRepairError ? "repair_needed" : "in_flight",
+          state: classification.state,
         },
       });
       throw new FulfillmentPendingError(

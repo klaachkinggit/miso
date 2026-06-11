@@ -9,7 +9,7 @@ import {
   expireStripeCheckoutSession,
 } from "@/lib/payments/stripe";
 import { DomainError } from "@/lib/api/errors";
-import { assertOrganizationCanAcceptPaidSales } from "@/lib/organizations/payments";
+import { assertOrganizationPaymentReadiness } from "@/lib/organizations/payments";
 import { createServiceClient } from "@/lib/supabase/service";
 import { reserveTicket } from "@/lib/tickets/lifecycle";
 import type { EventRow, Purchase, SalesChannel, Ticket, TicketCategory } from "@/types/db";
@@ -118,18 +118,11 @@ async function assertEventPaymentReadiness(
   event: EventRow,
   amount: number,
 ): Promise<void> {
-  if (amount <= 0 || !event.organization_id) return;
-  const { data: organization, error } = await sb
-    .from("organizations")
-    .select("stripe_account_id, stripe_charges_enabled, stripe_details_submitted")
-    .eq("id", event.organization_id)
-    .maybeSingle<{
-      stripe_account_id: string | null;
-      stripe_charges_enabled: boolean;
-      stripe_details_submitted: boolean;
-    }>();
-  if (error) throw error;
-  assertOrganizationCanAcceptPaidSales(organization);
+  await assertOrganizationPaymentReadiness({
+    organizationId: event.organization_id,
+    amount,
+    sb,
+  });
 }
 
 async function createPendingPurchase(

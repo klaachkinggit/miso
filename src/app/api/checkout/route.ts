@@ -11,7 +11,7 @@ import {
   sourcePathFromReturnPath,
 } from "@/lib/checkout/attribution";
 import { primaryCheckoutCancelPath } from "@/lib/events/public";
-import { getOrganizationIdForCategory } from "@/lib/organizations/auth";
+import { resourceOrganizationId } from "@/lib/organizations/auth";
 import { createPurchaseCheckout } from "@/lib/payments/checkout";
 import { PurchaseInitSchema } from "@/lib/schemas";
 import { getRequestOrigin } from "@/lib/url";
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const body = await parseJsonBody(request, PurchaseInitSchema, "Invalid checkout request.");
     await assertNotOrganizationController({
       profile,
-      organizationId: await getOrganizationIdForCategory(body.category_id),
+      organizationId: await resourceOrganizationId({ kind: "category", id: body.category_id }),
       deniedMessage: "Controllers cannot purchase tickets for this organization.",
     });
 
