@@ -93,9 +93,9 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
           </div>
 
           {isClub ? (
-            <div className="grid gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-              <p className="text-xs uppercase tracking-wide text-amber-300/80">Club table</p>
-              <p className="text-xs text-amber-200/70">
+            <div className="grid gap-3 rounded-md border border-hairline bg-ink-soft p-3">
+              <p className="eyebrow-signal">Club table</p>
+              <p className="text-xs text-muted-foreground">
                 The table price above doubles as the minimum spending for the table.
               </p>
               <div className="grid grid-cols-2 gap-3">
@@ -199,7 +199,7 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
                     <Loader2 className="h-4 w-4 animate-spin" /> Uploading
                   </span>
                 ) : imageUrl ? (
-                  <span className="flex items-center gap-2 text-emerald-300">
+                  <span className="flex items-center gap-2 text-signal">
                     <ImagePlus className="h-4 w-4" /> Tier artwork ready
                   </span>
                 ) : (

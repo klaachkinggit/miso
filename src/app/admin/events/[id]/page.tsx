@@ -69,7 +69,7 @@ export default async function AdminEventPage({
         </div>
       ) : null}
       {notices?.warning ? (
-        <div className="mb-5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+        <div className="mb-5 rounded-md border border-hairline-strong bg-ink-soft px-3 py-2 text-sm text-foreground">
           {notices.warning}
         </div>
       ) : null}

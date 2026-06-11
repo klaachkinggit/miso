@@ -139,7 +139,7 @@ export function CreateEventForm({ error }: { error?: string }) {
             {uploadingFloor ? (
               <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Uploading</span>
             ) : floorPlanUrl ? (
-              <span className="flex items-center gap-2 text-emerald-300"><Map className="h-4 w-4" /> Map ready</span>
+              <span className="flex items-center gap-2 text-signal"><Map className="h-4 w-4" /> Map ready</span>
             ) : (
               "Optional"
             )}

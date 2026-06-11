@@ -155,7 +155,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
                       <Loader2 className="h-4 w-4 animate-spin" /> Uploading
                     </span>
                   ) : floorPlanUrl ? (
-                    <span className="flex items-center gap-2 text-emerald-300">
+                    <span className="flex items-center gap-2 text-signal">
                       <Map className="h-4 w-4" /> Map ready
                     </span>
                   ) : (
