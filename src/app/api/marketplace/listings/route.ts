@@ -5,7 +5,7 @@ import {
 } from "@/lib/api/auth";
 import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
-import { getOrganizationIdForTicket } from "@/lib/organizations/auth";
+import { resourceOrganizationId } from "@/lib/organizations/auth";
 import { createResaleListing } from "@/lib/resale/listing";
 import { ResellInitSchema } from "@/lib/schemas";
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const body = await parseJsonBody(request, ResellInitSchema, "Invalid listing request.");
     await assertNotOrganizationController({
       profile,
-      organizationId: await getOrganizationIdForTicket(body.ticket_id),
+      organizationId: await resourceOrganizationId({ kind: "ticket", id: body.ticket_id }),
       deniedMessage: "Controllers cannot use this organization marketplace.",
     });
 

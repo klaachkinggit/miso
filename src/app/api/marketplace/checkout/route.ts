@@ -15,7 +15,7 @@ import {
   ChainOpRepairError,
 } from "@/lib/chain/ops";
 import { resaleCheckoutCancelPath } from "@/lib/marketplace/public";
-import { getOrganizationIdForListing } from "@/lib/organizations/auth";
+import { resourceOrganizationId } from "@/lib/organizations/auth";
 import {
   checkoutResaleListing,
   ResaleCheckoutPreflightError,
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const body = await parseJsonBody(request, ResaleCheckoutSchema, "Invalid checkout request.");
     await assertNotOrganizationController({
       profile,
-      organizationId: await getOrganizationIdForListing(body.listing_id),
+      organizationId: await resourceOrganizationId({ kind: "listing", id: body.listing_id }),
       deniedMessage: "Controllers cannot use this organization marketplace.",
     });
 

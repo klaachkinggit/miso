@@ -192,3 +192,23 @@ export async function getOrganizationIdForListing(listingId: string): Promise<st
   if (!listing) return null;
   return listing.organization_id ?? getOrganizationIdForTicket(listing.ticket_id);
 }
+
+// Deep dispatcher so callers don't thread which-lookup-per-entity. Each
+// branch is the same 2-step (entity → event → org) the per-entity helpers
+// already do; consolidating the dispatch removes the friction the
+// architecture review flagged (candidate #3).
+export type OrganizationOwnedResource =
+  | { kind: "category"; id: string }
+  | { kind: "ticket"; id: string }
+  | { kind: "listing"; id: string };
+
+export function resourceOrganizationId(resource: OrganizationOwnedResource): Promise<string | null> {
+  switch (resource.kind) {
+    case "category":
+      return getOrganizationIdForCategory(resource.id);
+    case "ticket":
+      return getOrganizationIdForTicket(resource.id);
+    case "listing":
+      return getOrganizationIdForListing(resource.id);
+  }
+}
