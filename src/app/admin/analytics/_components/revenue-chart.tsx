@@ -27,7 +27,7 @@ export function RevenueChart({ series, currency }: RevenueChartProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  const { points, xScale, yScale, maxValue, ticks } = useMemo(() => {
+  const { points, ticks } = useMemo(() => {
     const innerW = WIDTH - PADDING.left - PADDING.right;
     const innerH = HEIGHT - PADDING.top - PADDING.bottom;
     const maxValue = Math.max(1, ...series.map((b) => b.revenue));
@@ -37,7 +37,7 @@ export function RevenueChart({ series, currency }: RevenueChartProps) {
     const yScale = (v: number) => PADDING.top + innerH - (v / niceMax) * innerH;
     const points = series.map((b, i) => ({ x: xScale(i), y: yScale(b.revenue), bucket: b }));
     const ticks = [0, 0.25, 0.5, 0.75, 1].map((p) => ({ value: niceMax * p, y: yScale(niceMax * p) }));
-    return { points, xScale, yScale, maxValue: niceMax, ticks };
+    return { points, ticks };
   }, [series]);
 
   if (series.length === 0) return null;
