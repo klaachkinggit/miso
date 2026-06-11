@@ -82,13 +82,13 @@ export default async function OrganizationSettingsPage({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant={activeOrganization.stripe_account_id ? "signal" : "secondary"}>
+            <Badge variant={activeOrganization.stripe_account_id ? "success" : "outline"}>
               Account {activeOrganization.stripe_account_id ? "linked" : "missing"}
             </Badge>
-            <Badge variant={activeOrganization.stripe_details_submitted ? "signal" : "secondary"}>
+            <Badge variant={activeOrganization.stripe_details_submitted ? "success" : "outline"}>
               Details {activeOrganization.stripe_details_submitted ? "submitted" : "pending"}
             </Badge>
-            <Badge variant={activeOrganization.stripe_charges_enabled ? "signal" : "secondary"}>
+            <Badge variant={activeOrganization.stripe_charges_enabled ? "success" : "outline"}>
               Charges {activeOrganization.stripe_charges_enabled ? "enabled" : "blocked"}
             </Badge>
             <Badge variant={paymentsReady ? "signal" : "destructive"}>

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { canOperateGateRole, getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { canOperateEventGate } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -10,14 +10,15 @@ import { GatePanel } from "./gate-panel";
 
 export default async function ControllerEventPage({ params }: { params: Promise<{ eventId: string }> }) {
   const [{ eventId }, profile] = await Promise.all([params, getCurrentProfile()]);
-  if (!profile || !canOperateGateRole(profile)) redirect("/");
+  if (!profile) redirect("/login");
+
+  // Authorize before fetching so unauthorized users cannot probe event existence.
+  const canOperateGate = await canOperateEventGate({ eventId, profile });
+  if (!canOperateGate) redirect("/controller");
 
   const sb = createServiceClient();
   const { data: event } = await sb.from("events").select("*").eq("id", eventId).single<EventRow>();
   if (!event) notFound();
-
-  const canOperateGate = await canOperateEventGate({ eventId, profile });
-  if (!canOperateGate) redirect("/controller");
 
   const { data: redemptions } = await sb
     .from("ticket_redemptions")

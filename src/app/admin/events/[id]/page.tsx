@@ -54,6 +54,21 @@ export default async function AdminEventPage({
       })) ?? [];
   }
 
+  const ownerIds = Array.from(
+    new Set((tickets ?? []).map((ticket) => ticket.owner_user_id).filter((id): id is string => !!id)),
+  );
+  const ownerLabels = new Map<string, string>();
+  if (ownerIds.length) {
+    const { data: ownerProfiles } = await sb
+      .from("profiles")
+      .select("id, display_name, email")
+      .in("id", ownerIds)
+      .returns<Array<Pick<Profile, "id" | "display_name" | "email">>>();
+    for (const owner of ownerProfiles ?? []) {
+      ownerLabels.set(owner.id, owner.display_name || owner.email);
+    }
+  }
+
   return (
     <div className="container py-10">
       <header className="mb-10 border-b border-hairline pb-8">
@@ -91,7 +106,11 @@ export default async function AdminEventPage({
           <ControllersPanel eventId={event.id} controllers={controllers} />
         </TabsContent>
         <TabsContent value="refunds">
-          <RefundsPanel tickets={tickets ?? []} categories={categories ?? []} />
+          <RefundsPanel
+            tickets={tickets ?? []}
+            categories={categories ?? []}
+            ownerLabels={Object.fromEntries(ownerLabels)}
+          />
         </TabsContent>
       </Tabs>
     </div>

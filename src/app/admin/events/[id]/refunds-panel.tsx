@@ -10,9 +10,11 @@ import { refundTicketAction } from "../../actions";
 export function RefundsPanel({
   tickets,
   categories,
+  ownerLabels,
 }: {
   tickets: Ticket[];
   categories: TicketCategory[];
+  ownerLabels: Record<string, string>;
 }) {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
 
@@ -40,7 +42,7 @@ export function RefundsPanel({
                     <Badge variant={statusVariant}>{ticket.status}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Owner {shortAddress(ticket.owner_evm_address)} · Minted {ticket.minted_at ? formatDateShort(ticket.minted_at) : "pending"}
+                    Owner {(ticket.owner_user_id && ownerLabels[ticket.owner_user_id]) || shortAddress(ticket.owner_evm_address) || "unknown"} · Minted {ticket.minted_at ? formatDateShort(ticket.minted_at) : "pending"}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
