@@ -70,6 +70,16 @@ describe("escapeCsvField", () => {
     expect(escapeCsvField(null)).toBe("");
     expect(escapeCsvField(undefined)).toBe("");
   });
+
+  it("neutralizes formula triggers in string cells (CSV injection)", () => {
+    expect(escapeCsvField("=cmd|/c calc!A1")).toBe("'=cmd|/c calc!A1");
+    expect(escapeCsvField("=SUM(A1, B1)")).toBe('"' + "'=SUM(A1, B1)" + '"');
+    expect(escapeCsvField("+1+2")).toBe("'+1+2");
+    expect(escapeCsvField("-9")).toBe("'-9");
+    expect(escapeCsvField("@SUM")).toBe("'@SUM");
+    // Numeric cells are passed through; only string inputs get the prefix.
+    expect(escapeCsvField(-9)).toBe("-9");
+  });
 });
 
 describe("serializeAnalyticsCsv", () => {

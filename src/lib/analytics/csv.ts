@@ -13,9 +13,17 @@ import type {
   OrganizationAnalytics,
 } from "@/lib/analytics/organization";
 
+// Excel/Sheets treat cells starting with `=`, `+`, `-`, `@`, `\t`, `\r`
+// as formulas. Prefix with a single quote so user-supplied event names
+// can't smuggle one in (OWASP CSV injection).
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+
 export function escapeCsvField(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const str = typeof value === "string" ? value : String(value);
+  let str = typeof value === "string" ? value : String(value);
+  if (typeof value === "string" && FORMULA_TRIGGER.test(str)) {
+    str = `'${str}`;
+  }
   if (/[",\n\r]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }
