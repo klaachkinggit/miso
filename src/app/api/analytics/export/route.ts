@@ -5,7 +5,7 @@ import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { requireApiAuthenticatedProfile } from "@/lib/api/auth";
 import { getOrganizationRole } from "@/lib/organizations/auth";
 import { getActiveAdminOrganization } from "@/lib/organizations/context";
-import { parseAnalyticsSearchParams } from "@/app/admin/analytics/_lib/params";
+import { parseAnalyticsSearchParams } from "@/lib/analytics/search-params";
 
 export async function GET(request: NextRequest) {
   try {

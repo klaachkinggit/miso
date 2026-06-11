@@ -21,7 +21,7 @@ import { FilterChips } from "./_components/filter-chips";
 import { KpiTile } from "./_components/kpi-tile";
 import { RangePicker } from "./_components/range-picker";
 import { RevenueChart } from "./_components/revenue-chart";
-import { parseAnalyticsSearchParams } from "./_lib/params";
+import { parseAnalyticsSearchParams } from "@/lib/analytics/search-params";
 
 const SALES_CHANNELS: Array<{ id: string; label: string }> = [
   { id: "primary", label: "Primary" },
