@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   aggregateOrganizationAnalytics,
+  aggregateCategoryBreakdown,
   computePriorRange,
   rangePresetWindow,
   type AnalyticsCategoryRow,
@@ -214,5 +215,62 @@ describe("computePriorRange", () => {
   it("returns null for an all-time range (no prior window defined)", () => {
     const current = range("all", "2000-01-01T00:00:00Z", "2026-06-11T00:00:00Z");
     expect(computePriorRange(current)).toBeNull();
+  });
+});
+
+describe("aggregateCategoryBreakdown", () => {
+  function makeCategories(): AnalyticsCategoryRow[] {
+    return [
+      { id: "c1", event_id: "e1", name: "VIP", supply: 50, sold_count: 30, currency: "EUR", price: 100 },
+      { id: "c2", event_id: "e1", name: "General", supply: 150, sold_count: 80, currency: "EUR", price: 20 },
+      { id: "c3", event_id: "e2", name: "Early Bird", supply: 100, sold_count: 40, currency: "EUR", price: 15 },
+    ];
+  }
+
+  it("returns empty array for empty input", () => {
+    const result = aggregateCategoryBreakdown([], "EUR");
+    expect(result).toEqual([]);
+  });
+
+  it("computes revenue as price * sold_count per category", () => {
+    const result = aggregateCategoryBreakdown(makeCategories(), "EUR");
+    const vip = result.find((r) => r.category_id === "c1");
+    expect(vip?.revenue).toBe(3000); // 100 * 30
+    const gen = result.find((r) => r.category_id === "c2");
+    expect(gen?.revenue).toBe(1600); // 20 * 80
+    const early = result.find((r) => r.category_id === "c3");
+    expect(early?.revenue).toBe(600); // 15 * 40
+  });
+
+  it("sorts by revenue descending", () => {
+    const result = aggregateCategoryBreakdown(makeCategories(), "EUR");
+    expect(result[0].category_id).toBe("c1"); // 3000
+    expect(result[1].category_id).toBe("c2"); // 1600
+    expect(result[2].category_id).toBe("c3"); // 600
+  });
+
+  it("caps output at the given limit", () => {
+    const result = aggregateCategoryBreakdown(makeCategories(), "EUR", 2);
+    expect(result).toHaveLength(2);
+    expect(result[0].category_id).toBe("c1");
+  });
+
+  it("excludes categories without an id", () => {
+    const cats: AnalyticsCategoryRow[] = [
+      { event_id: "e1", name: "No ID", supply: 100, sold_count: 50, currency: "EUR", price: 10 },
+      { id: "c1", event_id: "e1", name: "Has ID", supply: 50, sold_count: 10, currency: "EUR", price: 20 },
+    ];
+    const result = aggregateCategoryBreakdown(cats, "EUR");
+    expect(result).toHaveLength(1);
+    expect(result[0].category_id).toBe("c1");
+  });
+
+  it("treats missing price as zero revenue", () => {
+    const cats: AnalyticsCategoryRow[] = [
+      { id: "c1", event_id: "e1", name: "Free", supply: 50, sold_count: 20, currency: "EUR" },
+    ];
+    const result = aggregateCategoryBreakdown(cats, "EUR");
+    expect(result[0].revenue).toBe(0);
+    expect(result[0].tickets_sold).toBe(20);
   });
 });

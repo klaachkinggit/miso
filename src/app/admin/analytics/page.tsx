@@ -17,6 +17,7 @@ import {
 } from "@/lib/organizations/context";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ChannelBars } from "./_components/channel-bars";
+import { CategoryTable } from "./_components/category-table";
 import { EventTable } from "./_components/event-table";
 import { ExportButton } from "./_components/export-button";
 import { FilterChips } from "./_components/filter-chips";
@@ -169,6 +170,18 @@ export default async function OrganizationAnalyticsPage({
         </section>
       </div>
 
+      {analytics.categoryBreakdown.length > 0 && (
+        <div className="mt-8">
+          <section className="rounded-md border border-hairline bg-ink-raised p-6">
+            <div className="mb-4">
+              <p className="eyebrow">Top categories</p>
+              <h2 className="display mt-1.5 text-xl text-foreground">By revenue.</h2>
+            </div>
+            <CategoryTable rows={analytics.categoryBreakdown} />
+          </section>
+        </div>
+      )}
+
       <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_3fr]">
         <aside className="rounded-md border border-hairline bg-ink-raised p-6">
           <p className="eyebrow">Filters</p>
@@ -188,9 +201,18 @@ export default async function OrganizationAnalyticsPage({
               <p className="eyebrow">Per-event performance</p>
               <h2 className="display mt-1.5 text-xl text-foreground">Live ledger.</h2>
             </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/admin/events">All events →</Link>
-            </Button>
+            <div className="flex items-center gap-3">
+              <a
+                href={`/api/admin/analytics/export?range=${parsed.range.preset}`}
+                download
+                className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                Download CSV
+              </a>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/admin/events">All events →</Link>
+              </Button>
+            </div>
           </div>
           <EventTable events={analytics.events} />
         </section>

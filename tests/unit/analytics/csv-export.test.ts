@@ -51,6 +51,9 @@ function makeAnalytics(): OrganizationAnalytics {
         sellout_rate: 0.55,
       },
     ],
+    categoryBreakdown: [
+      { category_id: "c1", name: "General Admission", tickets_sold: 110, revenue: 130, currency: "EUR" },
+    ],
   };
 }
 

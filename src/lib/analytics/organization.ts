@@ -51,6 +51,16 @@ export interface AnalyticsCategoryRow {
   sold_count: number;
   currency: Currency;
   id?: string;
+  name?: string;
+  price?: number;
+}
+
+export interface AnalyticsCategoryBreakdownRow {
+  category_id: string;
+  name: string;
+  tickets_sold: number;
+  revenue: number;
+  currency: Currency;
 }
 
 export interface AnalyticsPurchaseRow {
@@ -112,6 +122,7 @@ export interface OrganizationAnalytics {
   timeseries: AnalyticsTimeBucket[];
   salesChannelBreakdown: AnalyticsChannelStat[];
   events: AnalyticsEventStat[];
+  categoryBreakdown: AnalyticsCategoryBreakdownRow[];
 }
 
 // --- Range helpers ------------------------------------------------------
@@ -184,6 +195,30 @@ function alignBucketStart(time: number, range: AnalyticsRange, bucketSize: numbe
   }
   // hourly
   return Math.floor(time / bucketSize) * bucketSize;
+}
+
+// --- Category breakdown aggregation ------------------------------------
+
+// Pure aggregation: top categories by gross revenue, capped at `limit`.
+// tickets_sold = sold_count (same authoritative counter used everywhere on
+// the dashboard). revenue = price * sold_count — consistent with the per-
+// purchase amount which equals the category price at checkout time.
+export function aggregateCategoryBreakdown(
+  categories: AnalyticsCategoryRow[],
+  currency: Currency,
+  limit = 8,
+): AnalyticsCategoryBreakdownRow[] {
+  const rows: AnalyticsCategoryBreakdownRow[] = categories
+    .filter((c) => c.id !== undefined)
+    .map((c) => ({
+      category_id: c.id!,
+      name: c.name ?? c.id!,
+      tickets_sold: c.sold_count,
+      revenue: (c.price ?? 0) * c.sold_count,
+      currency,
+    }));
+
+  return rows.sort((a, b) => b.revenue - a.revenue).slice(0, limit);
 }
 
 // --- Aggregation --------------------------------------------------------
@@ -380,6 +415,8 @@ export function aggregateOrganizationAnalytics(
     };
   });
 
+  const categoryBreakdown = aggregateCategoryBreakdown(scopedCategories, currency);
+
   return {
     range: params.range,
     prior: params.prior,
@@ -388,6 +425,7 @@ export function aggregateOrganizationAnalytics(
     timeseries,
     salesChannelBreakdown,
     events,
+    categoryBreakdown,
   };
 }
 
@@ -444,7 +482,7 @@ export async function loadOrganizationAnalytics(params: {
     purchasesQuery,
     sb
       .from("ticket_categories")
-      .select("id, event_id, supply, sold_count, currency")
+      .select("id, event_id, supply, sold_count, currency, name, price")
       .in("event_id", eventIds),
     sb
       .from("tickets")
