@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/button";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { loadOrganizationAnalytics } from "@/lib/analytics/organization";
 import { formatDateShort, formatPrice } from "@/lib/format";
-import { getActiveAdminOrganization } from "@/lib/organizations/context";
-import { getOrganizationRole } from "@/lib/organizations/auth";
+import {
+  ActiveAdminOrganizationRequired,
+  requireActiveAdminOrganization,
+} from "@/lib/organizations/context";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ChannelBars } from "./_components/channel-bars";
 import { EventTable } from "./_components/event-table";
@@ -46,14 +48,13 @@ export default async function OrganizationAnalyticsPage({
     searchParams ?? Promise.resolve({} as Record<string, string | string[] | undefined>),
     requireOrganizerWorkspace(),
   ]);
-  const { organizations, activeOrganization } = await getActiveAdminOrganization(profile);
-
-  if (!activeOrganization) {
-    redirect("/admin");
-  }
-  const role = await getOrganizationRole(profile.id, activeOrganization.id);
-  if (role !== "admin" && profile.role !== "admin") {
-    redirect("/admin");
+  let organizations: Awaited<ReturnType<typeof requireActiveAdminOrganization>>["organizations"];
+  let activeOrganization: Awaited<ReturnType<typeof requireActiveAdminOrganization>>["activeOrganization"];
+  try {
+    ({ organizations, activeOrganization } = await requireActiveAdminOrganization(profile));
+  } catch (error) {
+    if (error instanceof ActiveAdminOrganizationRequired) redirect("/admin");
+    throw error;
   }
 
   const parsed = parseAnalyticsSearchParams(raw);
