@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { getCurrentProfile } from "@/lib/auth";
 import { formatDateShort } from "@/lib/format";
@@ -43,34 +42,43 @@ export default async function ControllerPage() {
   }
 
   return (
-    <div className="container py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold">Controller</h1>
-        <p className="mt-2 text-muted-foreground">Choose an event to verify entry codes.</p>
-      </div>
+    <div className="container py-12">
+      <header className="mb-10 border-b border-hairline pb-8">
+        <p className="eyebrow-signal">Door · Controller</p>
+        <h1 className="display mt-4 text-4xl text-foreground md:text-6xl">
+          Controller<span className="display-italic">.</span>
+        </h1>
+        <p className="mt-3 max-w-md text-muted-foreground">
+          Pick an event to verify entry codes at the door.
+        </p>
+      </header>
       {events.length ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <ul className="divide-y divide-hairline overflow-hidden rounded-md border border-hairline">
           {events.map((event) => (
-            <Card key={event.id} className="rounded-lg">
-              <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">{event.name}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {formatDateShort(event.date)} · {event.venue_name}, {event.city}
-                  </p>
-                </div>
-                <Button asChild>
-                  <Link href={`/controller/${event.id}`}>
-                    <ScanLine className="h-4 w-4" />
-                    Scan
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <li
+              key={event.id}
+              className="flex flex-col gap-4 bg-ink-raised p-5 transition-colors hover:bg-ink-soft md:flex-row md:items-center md:justify-between"
+            >
+              <div className="min-w-0">
+                <h2 className="display text-2xl text-foreground">{event.name}</h2>
+                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {formatDateShort(event.date)} · {event.venue_name}, {event.city}
+                </p>
+              </div>
+              <Button asChild>
+                <Link href={`/controller/${event.id}`}>
+                  <ScanLine className="h-4 w-4" />
+                  Scan
+                </Link>
+              </Button>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
-        <EmptyState title="No controller assignments" description="An admin must invite you to an event before scanning." />
+        <EmptyState
+          title="No controller assignments"
+          description="An admin must invite you to an event before scanning."
+        />
       )}
     </div>
   );

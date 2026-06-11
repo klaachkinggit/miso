@@ -6,7 +6,6 @@ import QRCode from "qrcode";
 import { CheckCircle2, Loader2, ScanLine, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
@@ -139,7 +138,7 @@ export function GatePanel({
       margin: 1,
       width: 280,
       color: {
-        dark: "#020617",
+        dark: "#0e0e10",
         light: "#ffffff",
       },
     })
@@ -157,12 +156,12 @@ export function GatePanel({
 
   const gateClosed = session?.status !== "open";
   const activeTone = gateClosed
-    ? "border-red-300/30 bg-red-800"
+    ? "border-destructive/40 bg-destructive/10"
     : !last
-    ? "border-white/10 bg-[#101010]"
+    ? "border-hairline bg-ink-raised"
     : valid
-      ? "border-emerald-300/30 bg-emerald-700"
-      : "border-red-300/30 bg-red-800";
+      ? "border-signal/40 bg-signal/10"
+      : "border-destructive/40 bg-destructive/10";
   const activeMessage = gateClosed
     ? "Gate closed"
     : !last
@@ -176,11 +175,11 @@ export function GatePanel({
   if (session) {
     return (
       <section
-        className={`grid min-h-[520px] content-center justify-items-center gap-5 rounded-lg border p-5 text-center transition-colors duration-300 ${activeTone}`}
+        className={`grid min-h-[520px] content-center justify-items-center gap-5 rounded-md border p-6 text-center transition-colors duration-300 ${activeTone}`}
         aria-live="polite"
       >
         <div className="grid justify-items-center gap-4">
-          <div className="grid h-[min(72vw,340px)] w-[min(72vw,340px)] place-items-center rounded-lg bg-white p-4 shadow-[0_24px_80px_-44px_rgba(0,0,0,0.9)]">
+          <div className="grid h-[min(72vw,340px)] w-[min(72vw,340px)] place-items-center rounded-md bg-paper p-4 shadow-[0_24px_80px_-44px_rgba(0,0,0,0.9)]">
             {qrDataUrl ? (
               <Image
                 src={qrDataUrl}
@@ -191,21 +190,21 @@ export function GatePanel({
                 className="h-full w-full"
               />
             ) : (
-              <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-ink/40" />
             )}
           </div>
 
           <div className="grid justify-items-center gap-2">
             {last ? (
               valid ? (
-                <CheckCircle2 className="h-7 w-7 text-emerald-100" />
+                <CheckCircle2 className="h-7 w-7 text-signal" />
               ) : (
-                <XCircle className="h-7 w-7 text-red-100" />
+                <XCircle className="h-7 w-7 text-destructive" />
               )
             ) : (
-              <Loader2 className="h-6 w-6 animate-spin text-white/60" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             )}
-            <p className="text-sm font-medium text-white">{activeMessage}</p>
+            <p className="text-sm font-medium text-foreground">{activeMessage}</p>
           </div>
         </div>
 
@@ -230,85 +229,84 @@ export function GatePanel({
   }
 
   return (
-    <Card className="rounded-lg">
-      <CardHeader>
-        <CardTitle>Gate session</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        {!session ? (
-          <>
+    <div className="rounded-md border border-hairline bg-ink-raised">
+      <div className="border-b border-hairline px-6 py-5">
+        <p className="eyebrow">Door</p>
+        <h2 className="display mt-2 text-2xl text-foreground">
+          Open gate<span className="display-italic">.</span>
+        </h2>
+      </div>
+      <div className="grid gap-5 p-6">
+        <div className="grid gap-2">
+          <Label htmlFor="gate">Gate name (optional)</Label>
+          <Input
+            id="gate"
+            placeholder="Main gate"
+            value={gateName}
+            onChange={(event) => setGateName(event.target.value)}
+          />
+        </div>
+        <div className="grid gap-3">
+          <Label>Accepted categories</Label>
+          <div className="grid grid-cols-2 rounded-md border border-hairline p-1">
+            <button
+              type="button"
+              onClick={() => setScope("all")}
+              className={`rounded px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] transition ${
+                scope === "all"
+                  ? "bg-signal text-ink"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              aria-pressed={scope === "all"}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope("selected")}
+              className={`rounded px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] transition ${
+                scope === "selected"
+                  ? "bg-signal text-ink"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              aria-pressed={scope === "selected"}
+            >
+              Selected
+            </button>
+          </div>
+          {scope === "selected" ? (
             <div className="grid gap-2">
-              <Label htmlFor="gate">Gate name (optional)</Label>
-              <Input
-                id="gate"
-                placeholder="Main gate"
-                value={gateName}
-                onChange={(event) => setGateName(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-3">
-              <Label>Accepted categories</Label>
-              <div className="grid grid-cols-2 rounded-md border border-border/70 p-1">
-                <button
-                  type="button"
-                  onClick={() => setScope("all")}
-                  className={`rounded px-3 py-2 text-sm font-medium transition ${
-                    scope === "all"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  aria-pressed={scope === "all"}
+              {categories.map((category) => (
+                <label
+                  key={category.id}
+                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-hairline px-3 py-2 text-sm transition hover:border-hairline-strong"
                 >
-                  All categories
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScope("selected")}
-                  className={`rounded px-3 py-2 text-sm font-medium transition ${
-                    scope === "selected"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  aria-pressed={scope === "selected"}
-                >
-                  Selected
-                </button>
-              </div>
-              {scope === "selected" ? (
-                <div className="grid gap-2">
-                  {categories.map((category) => (
-                    <label
-                      key={category.id}
-                      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border/60 px-3 py-2 text-sm transition hover:border-border"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCategoryIds.includes(category.id)}
-                        onChange={() => toggleCategory(category.id)}
-                        className="h-4 w-4 accent-primary"
-                      />
-                      <span className="flex-1">{category.name}</span>
-                      <Badge variant="secondary">
-                        {category.kind === "club_table" ? "Table" : "Ticket"}
-                      </Badge>
-                    </label>
-                  ))}
-                  {categories.length === 0 ? (
-                    <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-                      No ticket categories have been created for this event.
-                    </p>
-                  ) : null}
-                </div>
+                  <input
+                    type="checkbox"
+                    checked={selectedCategoryIds.includes(category.id)}
+                    onChange={() => toggleCategory(category.id)}
+                    className="h-4 w-4 accent-signal"
+                  />
+                  <span className="flex-1">{category.name}</span>
+                  <Badge variant="secondary">
+                    {category.kind === "club_table" ? "Table" : "Ticket"}
+                  </Badge>
+                </label>
+              ))}
+              {categories.length === 0 ? (
+                <p className="rounded-md border border-dashed border-hairline p-3 text-sm text-muted-foreground">
+                  No ticket categories have been created for this event.
+                </p>
               ) : null}
             </div>
-            <Button type="button" onClick={openGate} disabled={creating || needsCategorySelection}>
-              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
-              Open gate
-            </Button>
-          </>
-        ) : null}
-      </CardContent>
-    </Card>
+          ) : null}
+        </div>
+        <Button type="button" onClick={openGate} disabled={creating || needsCategorySelection}>
+          {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+          Open gate
+        </Button>
+      </div>
+    </div>
   );
 }
 

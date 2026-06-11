@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { canOperateGateRole, getCurrentProfile } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { canOperateEventGate } from "@/lib/gates/operations";
@@ -41,40 +40,46 @@ export default async function ControllerEventPage({ params }: { params: Promise<
   const origin = `${proto}://${host}`;
 
   return (
-    <div className="container grid gap-8 py-10 lg:grid-cols-[420px_1fr]">
-      <div>
-        <div className="mb-5">
-          <h1 className="text-3xl font-semibold">{event.name}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {formatDate(event.date)} · {event.venue_name}, {event.city}
-          </p>
-        </div>
-        <GatePanel eventId={event.id} origin={origin} categories={categories ?? []} />
-      </div>
+    <div className="container py-12">
+      <header className="mb-10 border-b border-hairline pb-8">
+        <p className="eyebrow-signal">Door · Gate</p>
+        <h1 className="display mt-4 text-4xl text-foreground md:text-5xl">
+          {event.name}<span className="display-italic">.</span>
+        </h1>
+        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          {formatDate(event.date)} · {event.venue_name}, {event.city}
+        </p>
+      </header>
 
-      <section>
-        <h2 className="mb-4 text-xl font-semibold">Recent scans</h2>
-        <div className="grid gap-3">
+      <div className="grid gap-10 lg:grid-cols-[420px_1fr]">
+        <GatePanel eventId={event.id} origin={origin} categories={categories ?? []} />
+
+        <section>
+          <p className="eyebrow mb-4">Recent scans</p>
           {redemptions?.length ? (
-            redemptions.map((redemption) => (
-              <Card key={redemption.id} className="rounded-lg">
-                <CardContent className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <Badge variant={redemption.result === "valid" ? "success" : "destructive"}>{redemption.result}</Badge>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {formatDate(redemption.redeemed_at)}{redemption.gate_name ? ` · ${redemption.gate_name}` : ""}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <ol className="divide-y divide-hairline overflow-hidden rounded-md border border-hairline">
+              {redemptions.map((redemption) => (
+                <li
+                  key={redemption.id}
+                  className="flex items-center justify-between gap-3 bg-ink-raised p-4"
+                >
+                  <Badge variant={redemption.result === "valid" ? "signal" : "destructive"}>
+                    {redemption.result}
+                  </Badge>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {formatDate(redemption.redeemed_at)}
+                    {redemption.gate_name ? ` · ${redemption.gate_name}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ol>
           ) : (
-            <Card className="rounded-lg">
-              <CardContent className="p-5 text-sm text-muted-foreground">No scans yet.</CardContent>
-            </Card>
+            <p className="rounded-md border border-dashed border-hairline bg-ink-raised p-6 text-sm text-muted-foreground">
+              No scans yet.
+            </p>
           )}
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
