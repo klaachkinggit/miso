@@ -60,3 +60,9 @@ Full sentences. Explicit confirmation required. Never skip hooks. Never force-pu
 - Payments: PayZone is explicitly out of scope; mock provider settles inline.
 - Supabase migrations live in `supabase/`; regenerate types with `npm run supabase:types` after schema changes.
 - Smart contracts in `contracts/`; compile via `npm run contracts:compile`.
+
+## Branching
+- `main` is the **deployment branch only** — never open PRs against it, never push directly. It moves only when production is cut from `development`.
+- `development` is the integration branch where features land for local testing and shared QA.
+- Open every PR against `development` (or against its predecessor when the work is stacked). Stacked PRs target the previous branch in the chain; the chain's root branch targets `development`.
+- When asked to "create a PR" without an explicit base, assume `--base development`.
