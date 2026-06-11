@@ -21,7 +21,7 @@ export function CategoriesPanel({
           categories.map((category) => {
             const remaining = Math.max(0, category.supply - category.sold_count);
             return (
-              <Card key={category.id} className="glass rounded-lg">
+              <Card key={category.id} className="rounded-lg">
                 <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-start gap-4">
                     {category.image_url ? (
@@ -66,7 +66,7 @@ export function CategoriesPanel({
             );
           })
         ) : (
-          <Card className="glass rounded-lg">
+          <Card className="rounded-lg">
             <CardContent className="p-5 text-sm text-muted-foreground">No categories yet.</CardContent>
           </Card>
         )}

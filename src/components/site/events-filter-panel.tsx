@@ -75,7 +75,7 @@ export function EventsFilterPanel({ discovery, hasActive, basePath = "/events" }
       </form>
 
       {open ? (
-        <div className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 rounded-md border border-hairline bg-ink-raised p-5 sm:grid-cols-2 lg:grid-cols-4">
           <FilterSelect
             label="Music style"
             value={discovery.genre}
@@ -148,12 +148,12 @@ function FilterSelect({
   clearable = true,
 }: FilterSelectProps) {
   return (
-    <label className="flex flex-col gap-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+    <label className="flex flex-col gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
       {label}
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+        className="h-10 rounded-md border border-hairline bg-ink-soft/60 px-3 text-sm text-foreground focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/30"
       >
         {clearable ? <option value="">Any</option> : null}
         {options.map((option) => (

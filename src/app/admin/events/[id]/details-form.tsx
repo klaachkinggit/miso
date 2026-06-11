@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { casablancaInputValue } from "@/lib/format";
 import { shortAddress } from "@/lib/chain/utils";
 import { uploadPublicEventImage } from "@/lib/supabase/uploads";
-import { ImageUploadField } from "@/app/admin/events/image-upload-field";
-import { DiscoveryFields } from "@/app/admin/events/discovery-fields";
+import { ImageUploadField } from "@/app/admin/_components/image-upload-field";
+import { DiscoveryFields } from "@/app/admin/_components/discovery-fields";
 import type { EventRow } from "@/types/db";
 import { cancelEvent, publishEvent, unpublishEvent, updateEvent } from "../../actions";
 
@@ -32,12 +32,17 @@ export function DetailsForm({ event }: { event: EventRow }) {
 
   return (
     <div className="grid gap-5">
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-3">
-            <span>Event details</span>
-            <Badge variant={event.status === "published" ? "success" : "secondary"}>{event.status}</Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="eyebrow">Event</p>
+              <CardTitle className="mt-2">Details.</CardTitle>
+            </div>
+            <Badge variant={event.status === "published" ? "signal" : "secondary"}>
+              {event.status}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <form action={updateEvent} className="grid gap-5">
@@ -150,7 +155,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
                       <Loader2 className="h-4 w-4 animate-spin" /> Uploading
                     </span>
                   ) : floorPlanUrl ? (
-                    <span className="flex items-center gap-2 text-emerald-300">
+                    <span className="flex items-center gap-2 text-signal">
                       <Map className="h-4 w-4" /> Map ready
                     </span>
                   ) : (
@@ -188,7 +193,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
         </CardContent>
       </Card>
 
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="font-semibold">MisoTicket contract</h3>

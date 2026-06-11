@@ -2,9 +2,7 @@ import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
-import { PageHeader } from "@/components/site/page-header";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { normalizeOrganizationBranding } from "@/lib/organizations/branding";
 import { getActiveAdminOrganization } from "@/lib/organizations/context";
@@ -48,52 +46,57 @@ export default async function OrganizationSettingsPage({
 
   return (
     <div className="container py-10">
-      <PageHeader
-        title="Organization settings"
-        description="Control the public billeterie identity buyers see on your Organization storefront."
-        actions={
-          <Button asChild variant="outline">
-            <Link href={organizationStorefrontPath(activeOrganization.slug)}>
-              <ExternalLink className="h-4 w-4" /> View storefront
-            </Link>
-          </Button>
-        }
-        className="mb-6"
-      />
+      <header className="mb-10 flex flex-col gap-4 border-b border-hairline pb-8 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="eyebrow">Workspace · Settings</p>
+          <h1 className="display mt-3 text-4xl text-foreground md:text-5xl">Settings.</h1>
+          <p className="mt-3 max-w-md text-muted-foreground">
+            Control the public storefront identity, team, payouts, and resale royalties.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href={organizationStorefrontPath(activeOrganization.slug)}>
+            <ExternalLink className="h-4 w-4" /> View storefront
+          </Link>
+        </Button>
+      </header>
+
       {params?.error ? (
         <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           {params.error}
         </div>
       ) : null}
       {params?.success ? (
-        <div className="mb-6 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+        <div className="mb-6 rounded-md border border-signal/40 bg-signal/10 p-3 text-sm text-signal">
           {params.success}
         </div>
       ) : null}
-      <Card className="glass mb-8 rounded-lg">
-        <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+
+      <section className="mb-10 rounded-md border border-hairline bg-ink-raised p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Payments</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Paid checkout opens only after this Organization has completed Stripe onboarding.
+            <p className="eyebrow-signal">Payments</p>
+            <h2 className="display mt-2 text-2xl text-foreground">Stripe Connect.</h2>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              Paid checkout opens only after this organization has completed Stripe onboarding.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <Badge variant={activeOrganization.stripe_account_id ? "success" : "secondary"}>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={activeOrganization.stripe_account_id ? "signal" : "secondary"}>
               Account {activeOrganization.stripe_account_id ? "linked" : "missing"}
             </Badge>
-            <Badge variant={activeOrganization.stripe_details_submitted ? "success" : "secondary"}>
+            <Badge variant={activeOrganization.stripe_details_submitted ? "signal" : "secondary"}>
               Details {activeOrganization.stripe_details_submitted ? "submitted" : "pending"}
             </Badge>
-            <Badge variant={activeOrganization.stripe_charges_enabled ? "success" : "secondary"}>
+            <Badge variant={activeOrganization.stripe_charges_enabled ? "signal" : "secondary"}>
               Charges {activeOrganization.stripe_charges_enabled ? "enabled" : "blocked"}
             </Badge>
-            <Badge variant={paymentsReady ? "success" : "destructive"}>
+            <Badge variant={paymentsReady ? "signal" : "destructive"}>
               {paymentsReady ? "Ready for paid sales" : "Paid sales blocked"}
             </Badge>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
       <OrganizationTeamPanel members={members ?? []} />
       <div className="mt-8">
         <OrganizationOwnershipPanel

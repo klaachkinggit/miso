@@ -25,13 +25,13 @@ export function ResaleListingList({
   }
 
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+    <ul className="divide-y divide-hairline overflow-hidden rounded-md border border-hairline">
       {items.map((item) => {
         const href = listingHref(item);
         return (
           <li
             key={item.listing.id}
-            className="group flex flex-col gap-4 bg-[#0d0d0d] p-4 transition-colors hover:bg-[#121212] sm:flex-row sm:items-center sm:gap-5"
+            className="group flex flex-col gap-4 bg-ink-raised p-4 transition-colors hover:bg-ink-soft sm:flex-row sm:items-center sm:gap-5"
           >
             <Link
               href={href}
@@ -48,7 +48,7 @@ export function ResaleListingList({
                     className="object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0 bg-[linear-gradient(145deg,#121212_0%,#2b2620_52%,#E6D8C9_130%)]" />
+                  <div className="absolute inset-0 bg-[linear-gradient(145deg,hsl(var(--ink))_0%,hsl(var(--ink-soft))_52%,hsl(var(--signal))_180%)]" />
                 );
               })()}
               <Badge className="absolute left-2 top-2" variant="secondary">

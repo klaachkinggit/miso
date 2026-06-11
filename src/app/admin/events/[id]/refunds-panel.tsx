@@ -31,7 +31,7 @@ export function RefundsPanel({
               ? "warning"
               : "success";
           return (
-            <Card key={ticket.id} className="glass rounded-lg">
+            <Card key={ticket.id} className="rounded-lg">
               <CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -57,7 +57,7 @@ export function RefundsPanel({
           );
         })
       ) : (
-        <Card className="glass rounded-lg">
+        <Card className="rounded-lg">
           <CardContent className="p-5 text-sm text-muted-foreground">No paid tickets to refund yet.</CardContent>
         </Card>
       )}

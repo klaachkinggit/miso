@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ImageUploadField } from "@/app/admin/events/image-upload-field";
-import { DiscoveryFields } from "@/app/admin/events/discovery-fields";
+import { ImageUploadField } from "@/app/admin/_components/image-upload-field";
+import { DiscoveryFields } from "@/app/admin/_components/discovery-fields";
 import { uploadPublicEventImage } from "@/lib/supabase/uploads";
 import { createEvent } from "../../actions";
 
@@ -27,9 +27,12 @@ export function CreateEventForm({ error }: { error?: string }) {
   }
 
   return (
-    <form action={createEvent} className="glass grid gap-5 rounded-lg p-6">
+    <form
+      action={createEvent}
+      className="grid gap-6 rounded-md border border-hairline bg-ink-raised p-6"
+    >
       {error ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
       ) : null}
@@ -136,7 +139,7 @@ export function CreateEventForm({ error }: { error?: string }) {
             {uploadingFloor ? (
               <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Uploading</span>
             ) : floorPlanUrl ? (
-              <span className="flex items-center gap-2 text-emerald-300"><Map className="h-4 w-4" /> Map ready</span>
+              <span className="flex items-center gap-2 text-signal"><Map className="h-4 w-4" /> Map ready</span>
             ) : (
               "Optional"
             )}

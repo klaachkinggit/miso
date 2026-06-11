@@ -26,8 +26,10 @@ export default async function OrganizerCompletePage() {
     <AuthShell>
       <div className="grid gap-5">
         <div>
-          <p className="mb-3 text-sm font-medium text-primary">Almost there</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Stripe onboarding incomplete</h1>
+          <p className="eyebrow-signal mb-3">Almost there</p>
+          <h1 className="display text-3xl text-foreground md:text-4xl">
+            Stripe onboarding incomplete<span className="display-italic">.</span>
+          </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Stripe has not yet confirmed your account is ready to accept payments. Finish the
             remaining steps and you&apos;ll unlock the organizer dashboard.
@@ -39,10 +41,10 @@ export default async function OrganizerCompletePage() {
           </div>
         ) : null}
         {status ? (
-          <ul className="space-y-2 rounded-md border border-border bg-card/60 p-4 text-sm">
-            <li>Details submitted: <span className={status.details_submitted ? "text-emerald-300" : "text-amber-300"}>{status.details_submitted ? "yes" : "pending"}</span></li>
-            <li>Charges enabled: <span className={status.charges_enabled ? "text-emerald-300" : "text-amber-300"}>{status.charges_enabled ? "yes" : "pending"}</span></li>
-            <li>Payouts enabled: <span className={status.payouts_enabled ? "text-emerald-300" : "text-amber-300"}>{status.payouts_enabled ? "yes" : "pending"}</span></li>
+          <ul className="space-y-2 rounded-md border border-hairline bg-ink-raised p-4 text-sm">
+            <li>Details submitted: <span className={status.details_submitted ? "text-signal" : "text-muted-foreground"}>{status.details_submitted ? "yes" : "pending"}</span></li>
+            <li>Charges enabled: <span className={status.charges_enabled ? "text-signal" : "text-muted-foreground"}>{status.charges_enabled ? "yes" : "pending"}</span></li>
+            <li>Payouts enabled: <span className={status.payouts_enabled ? "text-signal" : "text-muted-foreground"}>{status.payouts_enabled ? "yes" : "pending"}</span></li>
           </ul>
         ) : null}
         <Button asChild size="lg" className="w-full">

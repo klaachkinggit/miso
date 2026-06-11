@@ -61,13 +61,15 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
 
   return (
     <div className="container grid min-h-[calc(100vh-8rem)] content-center py-8">
-      <header className="mx-auto mb-6 max-w-sm text-center">
-        <Badge variant={usable ? "success" : "destructive"}>
+      <header className="mx-auto mb-8 max-w-sm text-center">
+        <Badge variant={usable ? "signal" : "destructive"}>
           {usable ? "Gate open" : `Gate ${gate.status}`}
         </Badge>
-        <h1 className="mt-3 text-3xl font-semibold">Entry scan</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {event.name} · {formatDate(event.date)} · {event.venue_name}, {event.city}
+        <h1 className="display mt-4 text-3xl text-foreground md:text-4xl">
+          Entry scan<span className="display-italic">.</span>
+        </h1>
+        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          {event.name} · {formatDate(event.date)} · {event.venue_name}
           {gate.gate_name ? ` · ${gate.gate_name}` : ""}
         </p>
       </header>
@@ -120,14 +122,14 @@ function StaticRedeemState({
   const accepted = label === "consumed";
   return (
     <section
-      className={`mx-auto grid min-h-[320px] max-w-sm content-center justify-items-center gap-4 rounded-lg border p-6 text-center ${
+      className={`mx-auto grid min-h-[320px] max-w-sm content-center justify-items-center gap-4 rounded-md border p-6 text-center ${
         accepted
-          ? "border-emerald-300/30 bg-emerald-300/10"
-          : "border-red-300/30 bg-red-400/10"
+          ? "border-signal/40 bg-signal/10"
+          : "border-destructive/40 bg-destructive/10"
       }`}
     >
-      <Badge variant={accepted ? "success" : "destructive"}>{label}</Badge>
-      <h2 className="text-2xl font-semibold">{title}</h2>
+      <Badge variant={accepted ? "signal" : "destructive"}>{label}</Badge>
+      <h2 className="display text-2xl text-foreground">{title}</h2>
       <p className="text-sm text-muted-foreground">{description}</p>
     </section>
   );

@@ -1,110 +1,83 @@
 import Link from "next/link";
-import { ChevronDown, Globe } from "lucide-react";
-
-type SitemapEntry =
-  | { kind: "link"; label: string; href: string }
-  | { kind: "unwrap"; label: string; body: string };
+import { ArrowUpRight } from "lucide-react";
 
 type SitemapColumn = {
   title: string;
-  entries: SitemapEntry[];
+  entries: Array<{ label: string; href: string; external?: boolean }>;
 };
 
 const SITEMAP: SitemapColumn[] = [
   {
-    title: "Fans",
+    title: "Product",
     entries: [
-      { kind: "link", label: "My tickets", href: "/tickets" },
-      {
-        kind: "unwrap",
-        label: "How tickets work",
-        body: "Buy a ticket and it appears in your MISO account. Show the in-app QR at the door — the bouncer scans it once. No screenshots, no duplicates.",
-      },
-      {
-        kind: "unwrap",
-        label: "Verified tickets",
-        body: "Every ticket is verified by MISO and signed by the event organizer. Lost phone? Log back in and your ticket comes back with you.",
-      },
-      {
-        kind: "unwrap",
-        label: "Anti-scalping",
-        body: "Resale is capped at the price set by the organizer. Bots are blocked at checkout. Listings above the cap are rejected, so you never pay scalper markups.",
-      },
-      {
-        kind: "unwrap",
-        label: "Resale rules",
-        body: "List unused tickets on the official exchange. Sellers get instant payout once the buyer pays. Buyers are protected: if a sold ticket fails to transfer, the purchase is refunded automatically.",
-      },
+      { label: "Storefronts", href: "/#storefronts" },
+      { label: "Payouts", href: "/#payouts" },
+      { label: "Resale", href: "/#resale" },
+      { label: "Door entry", href: "/#entry" },
+      { label: "Analytics", href: "/#analytics" },
     ],
   },
   {
     title: "Organizers",
     entries: [
-      { kind: "link", label: "Publish an event", href: "/signup/organizer" },
-      {
-        kind: "unwrap",
-        label: "Pricing & fees",
-        body: "Buyers pay the ticket price plus MISO service and Stripe processing fees. Organizers keep near face value. No subscription, no listing fee.",
-      },
+      { label: "Start free", href: "/signup/organizer" },
+      { label: "Workspace", href: "/admin" },
+      { label: "Pricing", href: "/#pricing" },
+    ],
+  },
+  {
+    title: "Fans",
+    entries: [
+      { label: "Explore events", href: "/events" },
+      { label: "My tickets", href: "/tickets" },
+      { label: "Buyer signup", href: "/signup/buyer" },
     ],
   },
   {
     title: "Company",
     entries: [
-      {
-        kind: "unwrap",
-        label: "About MISO",
-        body: "MISO is verified ticketing for nightlife, festivals, and live music. We replace screenshots and shady resale with secure digital tickets, so fans get in and organizers keep control.",
-      },
-      { kind: "link", label: "Contact", href: "mailto:hello@miso.app" },
-      { kind: "link", label: "Terms", href: "/legal/terms" },
-      { kind: "link", label: "Privacy", href: "/legal/privacy" },
+      { label: "Contact", href: "mailto:hello@miso.app" },
+      { label: "Terms", href: "/legal/terms" },
+      { label: "Privacy", href: "/legal/privacy" },
     ],
   },
 ];
 
-const SOCIALS = ["Instagram", "TikTok", "X", "YouTube", "SoundCloud"];
-
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-border bg-[#0b0b0b] text-[#E6D8C9]/80">
+    <footer className="mt-24 border-t border-hairline bg-ink">
       <div className="container py-16">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
-          <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-2 text-lg font-black tracking-tight text-[#F5F3EE]">
-              <span className="text-accent">●</span> MISO
+        <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(4,1fr)] md:gap-10">
+          <div className="space-y-5">
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 text-foreground"
+              aria-label="MISO home"
+            >
+              <span className="ticker-mark" aria-hidden />
+              <span className="font-mono text-[15px] font-medium tracking-[0.18em]">MISO</span>
             </Link>
-            <p className="max-w-xs text-sm leading-relaxed text-[#E6D8C9]/65">
-              Premium digital ticketing for festivals, concerts, nightlife, and exclusive experiences. Live it, keep it, resell it.
+            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+              Ticketing infrastructure for venues, festivals, and cultural collectives. One workspace
+              per organization — branded storefront, Stripe payouts, anti-scalping resale.
             </p>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[#E6D8C9]/55">
-              <Globe className="h-4 w-4" /> EN · FR · DE
-            </div>
+            <p className="eyebrow">Built in Europe · Base Sepolia</p>
           </div>
           {SITEMAP.map((column) => (
             <div key={column.title}>
-              <h4 className="mono-stub text-[#E6D8C9]/55">{column.title}</h4>
-              <ul className="mt-4 space-y-2 text-sm">
+              <h4 className="eyebrow">{column.title}</h4>
+              <ul className="mt-5 space-y-2.5 text-sm">
                 {column.entries.map((entry) => (
                   <li key={entry.label}>
-                    {entry.kind === "link" ? (
-                      <Link
-                        href={entry.href}
-                        className="text-[#E6D8C9]/80 transition-colors hover:text-[#F5F3EE]"
-                      >
-                        {entry.label}
-                      </Link>
-                    ) : (
-                      <details className="group">
-                        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[#E6D8C9]/80 transition-colors hover:text-[#F5F3EE]">
-                          {entry.label}
-                          <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-                        </summary>
-                        <p className="mt-2 text-xs leading-relaxed text-[#E6D8C9]/60">
-                          {entry.body}
-                        </p>
-                      </details>
-                    )}
+                    <Link
+                      href={entry.href}
+                      className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {entry.label}
+                      {entry.external ? (
+                        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                      ) : null}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -112,17 +85,12 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col gap-6 border-t border-border/60 pt-8 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs uppercase tracking-[0.24em] text-[#E6D8C9]/55">
-            {SOCIALS.map((social) => (
-              <span key={social}>{social}</span>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs uppercase tracking-[0.24em] text-[#E6D8C9]/45">
-            <span>© {new Date().getFullYear()} MISO</span>
-            <Link href="/legal/terms" className="hover:text-[#F5F3EE]">Terms</Link>
-            <Link href="/legal/privacy" className="hover:text-[#F5F3EE]">Privacy</Link>
-            <Link href="/legal/cookies" className="hover:text-[#F5F3EE]">Cookies</Link>
+        <div className="mt-16 flex flex-col gap-4 border-t border-hairline pt-8 text-[12px] uppercase tracking-[0.18em] text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <span>© {new Date().getFullYear()} MISO — All rights reserved</span>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <Link href="/legal/terms" className="hover:text-foreground">Terms</Link>
+            <Link href="/legal/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link href="/legal/cookies" className="hover:text-foreground">Cookies</Link>
           </div>
         </div>
       </div>

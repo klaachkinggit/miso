@@ -65,7 +65,7 @@ export function TicketCard({
   const displayLabel = displayStatus === "used" ? "consumed" : displayStatus.replace("_", " ");
 
   return (
-    <Card className={cn("glass group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.01]", inactive && "opacity-60 grayscale")}>
+    <Card className={cn("group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.01]", inactive && "opacity-60 grayscale")}>
       <div className="relative aspect-[5/2] overflow-hidden bg-secondary">
         {(() => {
           const tv = ticket.image_url ?? eventImage(event, "ticket");
@@ -131,7 +131,7 @@ export function TicketCard({
           ) : null}
         </div>
         {ticket.transferred_off_platform_at ? (
-          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+          <p className="rounded-md border border-hairline-strong bg-ink-soft p-3 text-xs text-muted-foreground">
             Transferred to personal wallet {shortAddress(ticket.transferred_to_address)}.
           </p>
         ) : null}

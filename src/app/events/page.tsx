@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
-import { PageHeader } from "@/components/site/page-header";
 import { EventsFilterPanel } from "@/components/site/events-filter-panel";
 import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import {
@@ -35,34 +34,40 @@ export default async function EventsPage({
   const events = await listPublishedEvents({ discovery });
 
   return (
-    <div className="container py-8 pb-20 md:py-12 md:pb-12">
-      <PageHeader
-        title="Events"
-        description={eventDiscoveryDescription(events.length, discovery)}
-        variant="display"
-        className="mb-6"
-      />
+    <div className="container py-12 pb-20 md:py-16 md:pb-12">
+      <header className="mb-10 border-b border-hairline pb-10">
+        <p className="eyebrow-signal">Explore</p>
+        <h1 className="display mt-4 text-5xl text-foreground md:text-7xl">
+          Events<span className="display-italic">.</span>
+        </h1>
+        <p className="mt-4 max-w-xl text-muted-foreground">
+          {eventDiscoveryDescription(events.length, discovery)}
+        </p>
+      </header>
 
       <div className="mb-6">
         <EventsFilterPanel discovery={discovery} hasActive={hasActiveFilters(discovery)} />
       </div>
 
-      <div className="-mx-6 mb-8 flex gap-2 overflow-x-auto px-6 pb-2 [&::-webkit-scrollbar]:hidden">
-        {EVENT_QUICK_FILTERS.map((filter) => (
-          <Link
-            key={filter.key}
-            href={filter.href}
-            aria-current={discovery.when === filter.key ? "page" : undefined}
-            className={
-              "shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors " +
-              (discovery.when === filter.key
-                ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground")
-            }
-          >
-            {filter.label}
-          </Link>
-        ))}
+      <div className="-mx-6 mb-10 flex gap-2 overflow-x-auto px-6 pb-2 [&::-webkit-scrollbar]:hidden">
+        {EVENT_QUICK_FILTERS.map((filter) => {
+          const active = discovery.when === filter.key;
+          return (
+            <Link
+              key={filter.key}
+              href={filter.href}
+              aria-current={active ? "page" : undefined}
+              className={
+                "shrink-0 rounded-full border px-4 py-1.5 font-mono text-[12px] font-medium uppercase tracking-[0.16em] transition-colors " +
+                (active
+                  ? "border-signal bg-signal text-ink"
+                  : "border-hairline bg-transparent text-muted-foreground hover:border-hairline-strong hover:text-foreground")
+              }
+            >
+              {filter.label}
+            </Link>
+          );
+        })}
       </div>
 
       {events.length ? (
@@ -73,11 +78,11 @@ export default async function EventsPage({
         </div>
       ) : (
         <EmptyState
-          title="No events match your filters"
+          title="Nothing matches yet"
           description={
             hasActiveFilters(discovery)
-              ? "Try clearing some filters or widening your search."
-              : "New ticket drops will be published soon."
+              ? "Clear some filters or widen your search."
+              : "New drops will be published soon."
           }
         />
       )}
