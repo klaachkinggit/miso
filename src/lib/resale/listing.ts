@@ -9,7 +9,7 @@ import type { Address } from "viem";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { DomainError } from "@/lib/api/errors";
-import { assertOrganizationCanAcceptPaidSales } from "@/lib/organizations/payments";
+import { assertOrganizationPaymentReadiness } from "@/lib/organizations/payments";
 import {
   createResaleStripeCheckoutSession,
   expireStripeCheckoutSession,
@@ -295,18 +295,11 @@ async function assertListingPaymentReadiness(
 ): Promise<void> {
   if (buyerTotalAmount <= 0) return;
   const organizationId = await organizationIdForListing(sb, listing);
-  if (!organizationId) return;
-  const { data: organization, error } = await sb
-    .from("organizations")
-    .select("stripe_account_id, stripe_charges_enabled, stripe_details_submitted")
-    .eq("id", organizationId)
-    .maybeSingle<{
-      stripe_account_id: string | null;
-      stripe_charges_enabled: boolean;
-      stripe_details_submitted: boolean;
-    }>();
-  if (error) throw error;
-  assertOrganizationCanAcceptPaidSales(organization);
+  await assertOrganizationPaymentReadiness({
+    organizationId,
+    amount: buyerTotalAmount,
+    sb,
+  });
 }
 
 export async function checkoutResaleListing(params: {
