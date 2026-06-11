@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ImageUploadField } from "@/app/admin/events/image-upload-field";
+import { ImageUploadField } from "@/app/admin/_components/image-upload-field";
 import type { OrganizationBranding } from "@/lib/organizations/branding";
 import { DEFAULT_ORGANIZATION_ACCENT } from "@/lib/organizations/branding";
 import {

@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { casablancaInputValue } from "@/lib/format";
 import { shortAddress } from "@/lib/chain/utils";
 import { uploadPublicEventImage } from "@/lib/supabase/uploads";
-import { ImageUploadField } from "@/app/admin/events/image-upload-field";
-import { DiscoveryFields } from "@/app/admin/events/discovery-fields";
+import { ImageUploadField } from "@/app/admin/_components/image-upload-field";
+import { DiscoveryFields } from "@/app/admin/_components/discovery-fields";
 import type { EventRow } from "@/types/db";
 import { cancelEvent, publishEvent, unpublishEvent, updateEvent } from "../../actions";
 

@@ -73,35 +73,3 @@ export function WordReveal({
   );
 }
 
-export function SimpleWordReveal({
-  text,
-  className,
-  delay = 0,
-  stagger = 0.04,
-}: {
-  text: string;
-  className?: string;
-  delay?: number;
-  stagger?: number;
-}): ReactNode {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-15% 0px" });
-  const words = text.split(" ");
-  return (
-    <div ref={ref} className={className}>
-      {words.map((w, i) => (
-        <span key={i} style={{ display: "inline-block", overflow: "hidden", verticalAlign: "bottom" }}>
-          <motion.span
-            initial={{ y: "100%", opacity: 0 }}
-            animate={inView ? { y: 0, opacity: 1 } : { y: "100%", opacity: 0 }}
-            transition={{ duration: 0.7, delay: delay + i * stagger, ease: [0.22, 0.72, 0.18, 1] }}
-            style={{ display: "inline-block" }}
-          >
-            {w}
-          </motion.span>
-          {i < words.length - 1 ? " " : ""}
-        </span>
-      ))}
-    </div>
-  );
-}

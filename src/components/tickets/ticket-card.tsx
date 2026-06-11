@@ -131,7 +131,7 @@ export function TicketCard({
           ) : null}
         </div>
         {ticket.transferred_off_platform_at ? (
-          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+          <p className="rounded-md border border-hairline-strong bg-ink-soft p-3 text-xs text-muted-foreground">
             Transferred to personal wallet {shortAddress(ticket.transferred_to_address)}.
           </p>
         ) : null}

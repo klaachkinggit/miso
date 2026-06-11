@@ -145,7 +145,7 @@ export function ResaleListingDetail({
                 </div>
               </div>
               {item.ticket.min_spending_remaining != null ? (
-                <p className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+                <p className="mt-3 rounded-md border border-hairline-strong bg-ink-soft p-3 text-xs text-muted-foreground">
                   As-is resale: you inherit the table headcount and the remaining minimum
                   spending balance due at the venue ({formatPrice(item.ticket.min_spending_remaining, item.category.currency)}).
                 </p>
