@@ -25,14 +25,29 @@ vi.mock("@/lib/thirdweb/transactions", () => ({
   },
 }));
 
-vi.mock("@/lib/chain/ops", () => ({
-  ChainOpInFlightError: class ChainOpInFlightError extends Error {
+vi.mock("@/lib/chain/ops", () => {
+  class ChainOpInFlightError extends Error {
     name = "ChainOpInFlightError";
-  },
-  ChainOpRepairError: class ChainOpRepairError extends Error {
+  }
+  class ChainOpRepairError extends Error {
     name = "ChainOpRepairError";
-  },
-}));
+  }
+  const NON_COMPENSATABLE = new Set([
+    "TransactionTimeoutError",
+    "ChainOpInFlightError",
+    "ChainOpRepairError",
+  ]);
+  function classifyChainError(error: unknown) {
+    if (error instanceof ChainOpRepairError || (error instanceof Error && error.name === "ChainOpRepairError")) {
+      return { kind: "non_compensatable", state: "repair_needed" };
+    }
+    if (error instanceof ChainOpInFlightError || (error instanceof Error && NON_COMPENSATABLE.has(error.name))) {
+      return { kind: "non_compensatable", state: "in_flight" };
+    }
+    return { kind: "compensatable" };
+  }
+  return { ChainOpInFlightError, ChainOpRepairError, classifyChainError };
+});
 
 class PurchasesQuery {
   private filterId: string | null = null;
