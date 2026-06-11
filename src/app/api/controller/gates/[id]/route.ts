@@ -3,7 +3,10 @@
 // without holding open a websocket.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { requireApiControllerProfile } from "@/lib/api/auth";
+import {
+  assertCanUseGateApi,
+  requireApiAuthenticatedProfile,
+} from "@/lib/api/auth";
 import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { getGatePollForController } from "@/lib/gates/operations";
 
@@ -12,7 +15,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const profile = await requireApiControllerProfile();
+    const profile = await requireApiAuthenticatedProfile();
+    await assertCanUseGateApi(profile);
     const { id } = await params;
     const poll = await getGatePollForController({ gateSessionId: id, profile });
     if (!poll) throw new ApiRouteError("Gate not found.", 404);

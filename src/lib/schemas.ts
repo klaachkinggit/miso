@@ -1,6 +1,14 @@
 import { z } from "zod";
 
 const CurrencySchema = z.literal("EUR");
+const RelativeReturnPathSchema = z
+  .string()
+  .trim()
+  .max(512)
+  .regex(/^\/(?!\/)/, "Return path must be a relative path")
+  .refine((value) => !value.includes("\\") && !/[\r\n]/.test(value), {
+    message: "Return path contains invalid characters",
+  });
 const HexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #AABBCC");
@@ -33,6 +41,44 @@ export const SiteSettingsSchema = z.object({
   landing_hero_bg_url: z.string().url().optional().nullable(),
   landing_audience_url: z.string().url().optional().nullable(),
   landing_dashboard_url: z.string().url().optional().nullable(),
+});
+
+export const CreateOrganizationSchema = z.object({
+  name: z.string().trim().min(2).max(160),
+});
+
+export const SwitchOrganizationSchema = z.object({
+  organization_id: z.string().uuid(),
+});
+
+export const OrganizationBrandingSchema = z.object({
+  tagline: z.string().trim().max(180).optional().nullable(),
+  accent_color: HexColor.optional().nullable(),
+  logo_url: z.string().url().optional().nullable(),
+  hero_image_url: z.string().url().optional().nullable(),
+});
+
+export const OrganizationRoyaltySchema = z.object({
+  resale_royalty_enabled: z.coerce.boolean().default(false),
+  resale_royalty_bps: z.coerce.number().int().min(0).max(10_000).default(0),
+});
+
+export const OrganizationMemberSchema = z.object({
+  email: z.string().trim().email().transform((value) => value.toLowerCase()),
+  role: z.enum(["admin", "controller"]),
+});
+
+export const RemoveOrganizationMemberSchema = z.object({
+  membership_id: z.string().uuid(),
+});
+
+export const TransferOrganizationSchema = z.object({
+  email: z.string().trim().email().transform((value) => value.toLowerCase()),
+});
+
+export const DeleteOrganizationSchema = z.object({
+  organization_id: z.string().uuid(),
+  confirm_name: z.string().trim().min(1),
 });
 
 const ClubTableFields = z.object({
@@ -91,6 +137,12 @@ export const PurchaseInitSchema = z.object({
     .optional()
     .nullable()
     .transform((v) => (v ? v.toLowerCase() : null)),
+  return_path: RelativeReturnPathSchema.optional().nullable(),
+});
+
+export const ResaleCheckoutSchema = z.object({
+  listing_id: z.string().uuid(),
+  return_path: RelativeReturnPathSchema.optional().nullable(),
 });
 
 export const ResellInitSchema = z.object({

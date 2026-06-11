@@ -17,10 +17,10 @@ export type Database = {
     Functions: {
       graphql: {
         Args: {
+          extensions?: Json
           operationName?: string
           query?: string
           variables?: Json
-          extensions?: Json
         }
         Returns: Json
       }
@@ -209,12 +209,15 @@ export type Database = {
           marketplace_url: string | null
           name: string
           nft_contract_address: string | null
+          organization_id: string | null
           organizer_user_id: string | null
           public_sales_counter_enabled: boolean
           resale_enabled: boolean
           role_admin_address: string | null
+          sales_channel: Database["public"]["Enums"]["sales_channel"]
           sales_enabled: boolean
-          search_tsv: unknown | null
+          search_tsv: unknown
+          slug: string | null
           status: Database["public"]["Enums"]["event_status"]
           thumbnail_url: string | null
           ticket_visual_url: string | null
@@ -240,12 +243,15 @@ export type Database = {
           marketplace_url?: string | null
           name: string
           nft_contract_address?: string | null
+          organization_id?: string | null
           organizer_user_id?: string | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
           role_admin_address?: string | null
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           sales_enabled?: boolean
-          search_tsv?: unknown | null
+          search_tsv?: unknown
+          slug?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           thumbnail_url?: string | null
           ticket_visual_url?: string | null
@@ -271,12 +277,15 @@ export type Database = {
           marketplace_url?: string | null
           name?: string
           nft_contract_address?: string | null
+          organization_id?: string | null
           organizer_user_id?: string | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
           role_admin_address?: string | null
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           sales_enabled?: boolean
-          search_tsv?: unknown | null
+          search_tsv?: unknown
+          slug?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           thumbnail_url?: string | null
           ticket_visual_url?: string | null
@@ -285,6 +294,13 @@ export type Database = {
           vibe?: Database["public"]["Enums"]["event_vibe"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "events_organizer_user_id_fkey"
             columns: ["organizer_user_id"]
@@ -374,6 +390,155 @@ export type Database = {
           },
         ]
       }
+      organization_customers: {
+        Row: {
+          first_seen_at: string
+          last_seen_at: string
+          organization_id: string
+          source: Database["public"]["Enums"]["sales_channel"] | null
+          user_id: string
+        }
+        Insert: {
+          first_seen_at?: string
+          last_seen_at?: string
+          organization_id: string
+          source?: Database["public"]["Enums"]["sales_channel"] | null
+          user_id: string
+        }
+        Update: {
+          first_seen_at?: string
+          last_seen_at?: string
+          organization_id?: string
+          source?: Database["public"]["Enums"]["sales_channel"] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_customers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role: Database["public"]["Enums"]["organization_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["organization_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          branding: Json
+          created_at: string
+          created_by_user_id: string | null
+          default_currency: Database["public"]["Enums"]["currency"]
+          id: string
+          legal_profile: Json
+          name: string
+          organizer_onboarding: Json | null
+          resale_royalty_bps: number
+          resale_royalty_enabled: boolean
+          slug: string
+          status: Database["public"]["Enums"]["organization_status"]
+          stripe_account_id: string | null
+          stripe_charges_enabled: boolean
+          stripe_details_submitted: boolean
+          stripe_payouts_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          branding?: Json
+          created_at?: string
+          created_by_user_id?: string | null
+          default_currency?: Database["public"]["Enums"]["currency"]
+          id?: string
+          legal_profile?: Json
+          name: string
+          organizer_onboarding?: Json | null
+          resale_royalty_bps?: number
+          resale_royalty_enabled?: boolean
+          slug: string
+          status?: Database["public"]["Enums"]["organization_status"]
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
+          stripe_payouts_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          branding?: Json
+          created_at?: string
+          created_by_user_id?: string | null
+          default_currency?: Database["public"]["Enums"]["currency"]
+          id?: string
+          legal_profile?: Json
+          name?: string
+          organizer_onboarding?: Json | null
+          resale_royalty_bps?: number
+          resale_royalty_enabled?: boolean
+          slug?: string
+          status?: Database["public"]["Enums"]["organization_status"]
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_details_submitted?: boolean
+          stripe_payouts_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -419,6 +584,7 @@ export type Database = {
       purchases: {
         Row: {
           amount: number
+          buyer_total_amount: number | null
           buyer_user_id: string
           checkout_idempotency_key: string | null
           created_at: string
@@ -429,15 +595,21 @@ export type Database = {
           id: string
           min_spending_total: number | null
           online_advance_amount: number | null
+          organization_id: string | null
           paid_at: string | null
           payment_provider: string | null
+          platform_fee_amount: number
           provider_payment_id: string | null
           provider_session_id: string | null
+          sales_channel: Database["public"]["Enums"]["sales_channel"]
           status: Database["public"]["Enums"]["purchase_status"]
+          stripe_fee_amount: number
           ticket_id: string
+          tracking_origin: string | null
         }
         Insert: {
           amount: number
+          buyer_total_amount?: number | null
           buyer_user_id: string
           checkout_idempotency_key?: string | null
           created_at?: string
@@ -448,15 +620,21 @@ export type Database = {
           id?: string
           min_spending_total?: number | null
           online_advance_amount?: number | null
+          organization_id?: string | null
           paid_at?: string | null
           payment_provider?: string | null
+          platform_fee_amount?: number
           provider_payment_id?: string | null
           provider_session_id?: string | null
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           status?: Database["public"]["Enums"]["purchase_status"]
+          stripe_fee_amount?: number
           ticket_id: string
+          tracking_origin?: string | null
         }
         Update: {
           amount?: number
+          buyer_total_amount?: number | null
           buyer_user_id?: string
           checkout_idempotency_key?: string | null
           created_at?: string
@@ -467,12 +645,17 @@ export type Database = {
           id?: string
           min_spending_total?: number | null
           online_advance_amount?: number | null
+          organization_id?: string | null
           paid_at?: string | null
           payment_provider?: string | null
+          platform_fee_amount?: number
           provider_payment_id?: string | null
           provider_session_id?: string | null
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           status?: Database["public"]["Enums"]["purchase_status"]
+          stripe_fee_amount?: number
           ticket_id?: string
+          tracking_origin?: string | null
         }
         Relationships: [
           {
@@ -487,6 +670,20 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_gift_recipient_user_id_fkey"
+            columns: ["gift_recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -506,14 +703,19 @@ export type Database = {
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
           id: string
+          organization_id: string | null
           payment_provider: string | null
           platform_fee_amount: number
           price: number
           provider_session_id: string | null
+          royalty_amount: number
+          sales_channel: Database["public"]["Enums"]["sales_channel"]
           seller_user_id: string
           sold_at: string | null
           status: Database["public"]["Enums"]["listing_status"]
+          stripe_fee_amount: number
           ticket_id: string
+          tracking_origin: string | null
         }
         Insert: {
           buyer_total_amount?: number | null
@@ -522,14 +724,19 @@ export type Database = {
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
           id?: string
+          organization_id?: string | null
           payment_provider?: string | null
           platform_fee_amount?: number
           price: number
           provider_session_id?: string | null
+          royalty_amount?: number
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           seller_user_id: string
           sold_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
+          stripe_fee_amount?: number
           ticket_id: string
+          tracking_origin?: string | null
         }
         Update: {
           buyer_total_amount?: number | null
@@ -538,14 +745,19 @@ export type Database = {
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
           id?: string
+          organization_id?: string | null
           payment_provider?: string | null
           platform_fee_amount?: number
           price?: number
           provider_session_id?: string | null
+          royalty_amount?: number
+          sales_channel?: Database["public"]["Enums"]["sales_channel"]
           seller_user_id?: string
           sold_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
+          stripe_fee_amount?: number
           ticket_id?: string
+          tracking_origin?: string | null
         }
         Relationships: [
           {
@@ -553,6 +765,13 @@ export type Database = {
             columns: ["buyer_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resale_listings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -740,6 +959,7 @@ export type Database = {
           gate_name: string | null
           gate_session_id: string | null
           id: string
+          organization_id: string | null
           redeem_tx_hash: string | null
           redeemed_at: string
           result: Database["public"]["Enums"]["redemption_result"]
@@ -752,6 +972,7 @@ export type Database = {
           gate_name?: string | null
           gate_session_id?: string | null
           id?: string
+          organization_id?: string | null
           redeem_tx_hash?: string | null
           redeemed_at?: string
           result: Database["public"]["Enums"]["redemption_result"]
@@ -764,6 +985,7 @@ export type Database = {
           gate_name?: string | null
           gate_session_id?: string | null
           id?: string
+          organization_id?: string | null
           redeem_tx_hash?: string | null
           redeemed_at?: string
           result?: Database["public"]["Enums"]["redemption_result"]
@@ -789,6 +1011,13 @@ export type Database = {
             columns: ["gate_session_id"]
             isOneToOne: false
             referencedRelation: "gate_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_redemptions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -970,26 +1199,46 @@ export type Database = {
           event_id: string | null
           tickets_sold: number | null
         }
-        Insert: never
-        Update: never
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ticket_categories_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
+      controls_event: { Args: { check_event_id: string }; Returns: boolean }
+      current_organization_role: {
+        Args: { check_organization_id: string }
+        Returns: Database["public"]["Enums"]["organization_role"]
+      }
       current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
       has_role: {
-        Args: {
-          roles: Database["public"]["Enums"]["user_role"][]
-        }
+        Args: { roles: Database["public"]["Enums"]["user_role"][] }
         Returns: boolean
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
+      is_admin: { Args: never; Returns: boolean }
+      is_event_published: { Args: { check_event_id: string }; Returns: boolean }
+      is_organization_admin: {
+        Args: { check_organization_id: string }
         Returns: boolean
       }
+      is_organization_controller: {
+        Args: { check_organization_id: string }
+        Returns: boolean
+      }
+      is_organization_member: {
+        Args: { check_organization_id: string }
+        Returns: boolean
+      }
+      organizes_event: { Args: { check_event_id: string }; Returns: boolean }
     }
     Enums: {
       currency: "EUR"
@@ -1008,6 +1257,8 @@ export type Database = {
         | "expired"
         | "transferring"
         | "repair_needed"
+      organization_role: "admin" | "controller"
+      organization_status: "active" | "suspended" | "deleted"
       purchase_status: "pending" | "paid" | "failed" | "refunded"
       redemption_result:
         | "valid"
@@ -1018,11 +1269,20 @@ export type Database = {
         | "expired"
         | "owner_mismatch"
         | "invalid_signature"
-        | "wrong_category"
         | "tx_failed"
         | "tx_pending"
         | "no_ticket"
         | "no_session"
+        | "wrong_category"
+      sales_channel:
+        | "mini_site"
+        | "qr"
+        | "marketplace"
+        | "widget"
+        | "ticket_office"
+        | "invitation"
+        | "import"
+      ticket_category_kind: "standard" | "club_table"
       ticket_status:
         | "available"
         | "reserved"
@@ -1036,7 +1296,6 @@ export type Database = {
         | "minting"
         | "transferring"
         | "repair_needed"
-      ticket_category_kind: "standard" | "club_table"
       user_role: "user" | "controller" | "admin" | "organizer"
     }
     CompositeTypes: {
@@ -1458,157 +1717,126 @@ export type Database = {
     }
     Functions: {
       allow_any_operation: {
-        Args: {
-          expected_operations: string[]
-        }
+        Args: { expected_operations: string[] }
         Returns: boolean
       }
       allow_only_operation: {
-        Args: {
-          expected_operation: string
-        }
+        Args: { expected_operation: string }
         Returns: boolean
       }
       can_insert_object: {
-        Args: {
-          bucketid: string
-          name: string
-          owner: string
-          metadata: Json
-        }
+        Args: { bucketid: string; metadata: Json; name: string; owner: string }
         Returns: undefined
       }
-      extension: {
-        Args: {
-          name: string
-        }
-        Returns: string
-      }
-      filename: {
-        Args: {
-          name: string
-        }
-        Returns: string
-      }
-      foldername: {
-        Args: {
-          name: string
-        }
-        Returns: string[]
-      }
+      extension: { Args: { name: string }; Returns: string }
+      filename: { Args: { name: string }; Returns: string }
+      foldername: { Args: { name: string }; Returns: string[] }
       get_common_prefix: {
-        Args: {
-          p_key: string
-          p_prefix: string
-          p_delimiter: string
-        }
+        Args: { p_delimiter: string; p_key: string; p_prefix: string }
         Returns: string
       }
       get_size_by_bucket: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
-          size: number
           bucket_id: string
+          size: number
         }[]
       }
       list_multipart_uploads_with_delimiter: {
         Args: {
           bucket_id: string
-          prefix_param: string
           delimiter_param: string
           max_keys?: number
           next_key_token?: string
           next_upload_token?: string
+          prefix_param: string
         }
         Returns: {
-          key: string
-          id: string
           created_at: string
+          id: string
+          key: string
         }[]
       }
       list_objects_with_delimiter: {
         Args: {
           _bucket_id: string
-          prefix_param: string
           delimiter_param: string
           max_keys?: number
-          start_after?: string
           next_token?: string
+          prefix_param: string
           sort_order?: string
+          start_after?: string
         }
         Returns: {
-          name: string
-          id: string
-          metadata: Json
-          updated_at: string
           created_at: string
+          id: string
           last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
         }[]
       }
-      operation: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      operation: { Args: never; Returns: string }
       search: {
         Args: {
-          prefix: string
           bucketname: string
-          limits?: number
           levels?: number
+          limits?: number
           offsets?: number
+          prefix: string
           search?: string
           sortcolumn?: string
           sortorder?: string
         }
         Returns: {
-          name: string
-          id: string
-          updated_at: string
           created_at: string
+          id: string
           last_accessed_at: string
           metadata: Json
+          name: string
+          updated_at: string
         }[]
       }
       search_by_timestamp: {
         Args: {
-          p_prefix: string
           p_bucket_id: string
-          p_limit: number
           p_level: number
-          p_start_after: string
-          p_sort_order: string
+          p_limit: number
+          p_prefix: string
           p_sort_column: string
           p_sort_column_after: string
+          p_sort_order: string
+          p_start_after: string
         }
         Returns: {
-          key: string
-          name: string
-          id: string
-          updated_at: string
           created_at: string
+          id: string
+          key: string
           last_accessed_at: string
           metadata: Json
+          name: string
+          updated_at: string
         }[]
       }
       search_v2: {
         Args: {
-          prefix: string
           bucket_name: string
-          limits?: number
           levels?: number
-          start_after?: string
-          sort_order?: string
+          limits?: number
+          prefix: string
           sort_column?: string
           sort_column_after?: string
+          sort_order?: string
+          start_after?: string
         }
         Returns: {
-          key: string
-          name: string
-          id: string
-          updated_at: string
           created_at: string
+          id: string
+          key: string
           last_accessed_at: string
           metadata: Json
+          name: string
+          updated_at: string
         }[]
       }
     }
@@ -1621,27 +1849,33 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1649,20 +1883,24 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -1670,20 +1908,24 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -1691,32 +1933,114 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      currency: ["EUR"],
+      event_genre: ["techno", "afro_house", "rap", "commercial", "live"],
+      event_status: ["draft", "published", "canceled", "completed"],
+      event_vibe: [
+        "club",
+        "festival",
+        "rooftop",
+        "student_party",
+        "private_event",
+      ],
+      listing_status: [
+        "active",
+        "sold",
+        "canceled",
+        "expired",
+        "transferring",
+        "repair_needed",
+      ],
+      organization_role: ["admin", "controller"],
+      organization_status: ["active", "suspended", "deleted"],
+      purchase_status: ["pending", "paid", "failed", "refunded"],
+      redemption_result: [
+        "valid",
+        "already_used",
+        "refunded",
+        "canceled",
+        "wrong_event",
+        "expired",
+        "owner_mismatch",
+        "invalid_signature",
+        "tx_failed",
+        "tx_pending",
+        "no_ticket",
+        "no_session",
+        "wrong_category",
+      ],
+      sales_channel: [
+        "mini_site",
+        "qr",
+        "marketplace",
+        "widget",
+        "ticket_office",
+        "invitation",
+        "import",
+      ],
+      ticket_category_kind: ["standard", "club_table"],
+      ticket_status: [
+        "available",
+        "reserved",
+        "sold",
+        "listed",
+        "used",
+        "refunded",
+        "canceled",
+        "expired",
+        "refund_pending",
+        "minting",
+        "transferring",
+        "repair_needed",
+      ],
+      user_role: ["user", "controller", "admin", "organizer"],
+    },
+  },
+  storage: {
+    Enums: {
+      buckettype: ["STANDARD", "ANALYTICS", "VECTOR"],
+    },
+  },
+} as const
 
 // ---- Convenience row aliases for app code ----
 // Generated types above are the source of truth. These aliases keep
@@ -1734,8 +2058,14 @@ export type GateSession = Tables<"gate_sessions">
 export type AuditLog = Tables<"audit_logs">
 export type EventController = Tables<"event_controllers">
 export type ChainOp = Tables<"chain_ops">
+export type Organization = Tables<"organizations">
+export type OrganizationMembership = Tables<"organization_memberships">
+export type OrganizationCustomer = Tables<"organization_customers">
 
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
+export type OrganizationRole = Enums<"organization_role">
+export type OrganizationStatus = Enums<"organization_status">
+export type SalesChannel = Enums<"sales_channel">
 export type RedemptionResult = Enums<"redemption_result">
 export type TicketCategoryKind = Enums<"ticket_category_kind">

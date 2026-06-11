@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createOrganizationForAdmin } from "@/lib/organizations/setup";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import type { OrganizerOnboardingAnswers } from "@/lib/payments/stripe-connect";
+import type { Json } from "@/types/db";
 
 const OrganizerSignupSchema = z.object({
   display_name: z.string().min(2).max(120),
@@ -60,9 +62,19 @@ export async function organizerSignupAction(formData: FormData) {
   const service = createServiceClient();
   const { error: profileError } = await service
     .from("profiles")
-    .update({ organizer_onboarding: onboarding, display_name: input.display_name })
+    .update({ display_name: input.display_name })
     .eq("id", userId);
   if (profileError) fail(profileError.message);
+
+  try {
+    await createOrganizationForAdmin({
+      name: input.organization_name,
+      adminUserId: userId,
+      onboarding: onboarding as unknown as Json,
+    });
+  } catch (err) {
+    fail(err instanceof Error ? err.message : "Organization could not be created.");
+  }
 
   try {
     await ensureUserWallet(userId, input.email);

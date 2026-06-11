@@ -116,6 +116,16 @@ function nextMonthDate(base: Date, dayOfMonth: number, hour: number, minute = 0)
   return new Date(base.getFullYear(), base.getMonth() + 1, dayOfMonth, hour, minute, 0, 0);
 }
 
+function slugify(value: string) {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "event"
+  );
+}
+
 function buildSeedEvents(): SeedEvent[] {
   const now = new Date();
   const tonight = atTime(now, 20, 30);
@@ -585,6 +595,46 @@ async function ensureUser(user: SeedUser): Promise<string> {
   return userId;
 }
 
+async function ensureMisoOrganization(): Promise<string> {
+  const { data, error } = await sb
+    .from("organizations")
+    .upsert(
+      {
+        name: "Miso",
+        slug: "miso",
+        default_currency: "EUR",
+        status: "active",
+        stripe_account_id: "acct_seed_miso",
+        stripe_charges_enabled: true,
+        stripe_details_submitted: true,
+        stripe_payouts_enabled: true,
+      },
+      { onConflict: "slug" },
+    )
+    .select("id")
+    .single<{ id: string }>();
+  if (error || !data) throw new Error(`Failed to ensure Miso organization: ${error?.message}`);
+  return data.id;
+}
+
+async function ensureOrganizationMembership(
+  organizationId: string,
+  userId: string,
+  role: "admin" | "controller",
+) {
+  const { error } = await sb
+    .from("organization_memberships")
+    .upsert(
+      {
+        organization_id: organizationId,
+        user_id: userId,
+        role,
+      },
+      { onConflict: "organization_id,user_id" },
+    );
+  if (error) throw new Error(`Failed to seed organization membership: ${error.message}`);
+}
+
 async function hideThrowawayTestEvents() {
   const fixturePrefixes = ["Authz Fixture", "ChainOps Fixture", "Invariant Cancel"];
   for (const prefix of fixturePrefixes) {
@@ -616,7 +666,12 @@ async function hideThrowawayTestEvents() {
   if (error) throw new Error(`Failed to hide legacy demo events: ${error.message}`);
 }
 
-async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<string> {
+async function ensureEvent(
+  event: SeedEvent,
+  organizerUserId: string,
+  organizationId: string,
+): Promise<string> {
+  const slug = slugify(event.name);
   const { data: existing } = await sb
     .from("events")
     .select("id")
@@ -639,6 +694,8 @@ async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<s
         resale_enabled: true,
         public_sales_counter_enabled: true,
         organizer_user_id: organizerUserId,
+        organization_id: organizationId,
+        slug,
         status: "published",
       })
       .eq("id", existing.id);
@@ -662,6 +719,8 @@ async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<s
       resale_enabled: true,
       public_sales_counter_enabled: true,
       organizer_user_id: organizerUserId,
+      organization_id: organizationId,
+      slug,
       status: "published",
     })
     .select("id")
@@ -835,6 +894,13 @@ async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) 
       .single<{ price: number; currency: "EUR"; sold_count: number }>();
     if (catErr || !cat) throw new Error(`Failed to read category for ticket ${ticket.id}: ${catErr?.message}`);
 
+    const { data: event, error: eventErr } = await sb
+      .from("events")
+      .select("organization_id")
+      .eq("id", ticket.event_id)
+      .single<{ organization_id: string | null }>();
+    if (eventErr || !event) throw new Error(`Failed to read event for ticket ${ticket.id}: ${eventErr?.message}`);
+
     const sessionKey = `seed_buyer_${ticket.id}`;
     const { data: purchase, error: purchaseErr } = await sb
       .from("purchases")
@@ -842,6 +908,7 @@ async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) 
         {
           buyer_user_id: buyerUserId,
           event_id: ticket.event_id,
+          organization_id: event.organization_id,
           ticket_id: ticket.id,
           provider_session_id: sessionKey,
           provider_payment_id: `seed_pi_${ticket.id}`,
@@ -885,6 +952,12 @@ async function main() {
     console.log(`  user ${user.email} → ${userIds[user.email]}`);
   }
 
+  const misoOrganizationId = await ensureMisoOrganization();
+  await ensureOrganizationMembership(misoOrganizationId, userIds["organizer@miso.local"], "admin");
+  await ensureOrganizationMembership(misoOrganizationId, userIds["admin@miso.local"], "admin");
+  await ensureOrganizationMembership(misoOrganizationId, userIds["controller@miso.local"], "controller");
+  console.log(`  organization miso → ${misoOrganizationId}`);
+
   await hideThrowawayTestEvents();
   console.log("  throwaway test events hidden");
 
@@ -892,7 +965,7 @@ async function main() {
   for (const [index, event] of events.entries()) {
     const organizerUserId =
       index === 0 ? userIds["organizer@miso.local"] : userIds["admin@miso.local"];
-    const eventId = await ensureEvent(event, organizerUserId);
+    const eventId = await ensureEvent(event, organizerUserId, misoOrganizationId);
     console.log(`  event ${eventId} — ${event.name} (${event.date.toLocaleString()})`);
     for (const category of event.categories) {
       await ensureCategoryWithTickets({

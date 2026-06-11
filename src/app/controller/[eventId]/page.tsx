@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getCurrentProfile } from "@/lib/auth";
+import { canOperateGateRole, getCurrentProfile } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { canOperateEventGate } from "@/lib/gates/operations";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -11,7 +11,7 @@ import { GatePanel } from "./gate-panel";
 
 export default async function ControllerEventPage({ params }: { params: Promise<{ eventId: string }> }) {
   const [{ eventId }, profile] = await Promise.all([params, getCurrentProfile()]);
-  if (!profile || !["controller", "admin"].includes(profile.role)) redirect("/");
+  if (!profile || !canOperateGateRole(profile)) redirect("/");
 
   const sb = createServiceClient();
   const { data: event } = await sb.from("events").select("*").eq("id", eventId).single<EventRow>();

@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { formatDateShort } from "@/lib/format";
+import { shouldUseLegacyOrganizerEventScope } from "@/lib/organizations/auth";
+import { getActiveAdminOrganization } from "@/lib/organizations/context";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow } from "@/types/db";
 
@@ -21,7 +23,10 @@ export default async function AdminEventsListPage({
     .from("events")
     .select("*")
     .order("created_at", { ascending: false });
-  if (profile.role === "organizer") {
+  const { activeOrganization } = await getActiveAdminOrganization(profile);
+  if (activeOrganization) {
+    query = query.eq("organization_id", activeOrganization.id);
+  } else if (shouldUseLegacyOrganizerEventScope(profile, Boolean(activeOrganization))) {
     query = query.eq("organizer_user_id", profile.id);
   }
   const { data: events } = await query.returns<EventRow[]>();
@@ -32,7 +37,9 @@ export default async function AdminEventsListPage({
         <div>
           <h1 className="text-3xl font-semibold">Events</h1>
           <p className="mt-2 text-muted-foreground">
-            Create events, manage inventory, invite controllers, and refund tickets.
+            {activeOrganization
+              ? `Create and manage events for ${activeOrganization.name}.`
+              : "Create events, manage inventory, invite controllers, and refund tickets."}
           </p>
         </div>
         <Button asChild>

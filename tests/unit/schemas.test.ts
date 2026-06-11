@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   CreateCategorySchema,
+  DeleteOrganizationSchema,
+  OrganizationBrandingSchema,
+  OrganizationMemberSchema,
+  OrganizationRoyaltySchema,
   PurchaseInitSchema,
+  RemoveOrganizationMemberSchema,
+  ResaleCheckoutSchema,
+  TransferOrganizationSchema,
   TransferToWalletSchema,
 } from "@/lib/schemas";
 
@@ -74,6 +81,150 @@ describe("PurchaseInitSchema", () => {
 
     expect(parsed.extra_guests_count).toBe(2);
     expect(parsed.gift_recipient_email).toBe("friend@example.com");
+  });
+
+  it("accepts only same-site return paths", () => {
+    expect(
+      PurchaseInitSchema.parse({
+        category_id: categoryId,
+        return_path: "/s/acme/events/drop?ticket=1",
+      }).return_path,
+    ).toBe("/s/acme/events/drop?ticket=1");
+
+    expect(
+      PurchaseInitSchema.safeParse({
+        category_id: categoryId,
+        return_path: "https://evil.example",
+      }).success,
+    ).toBe(false);
+    expect(
+      PurchaseInitSchema.safeParse({
+        category_id: categoryId,
+        return_path: "//evil.example",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("OrganizationBrandingSchema", () => {
+  it("accepts public branding fields", () => {
+    const parsed = OrganizationBrandingSchema.parse({
+      tagline: "Tickets for the basement.",
+      accent_color: "#33CC99",
+      logo_url: "https://assets.example/logo.png",
+      hero_image_url: "https://assets.example/hero.png",
+    });
+
+    expect(parsed.accent_color).toBe("#33CC99");
+  });
+
+  it("rejects invalid colors and image URLs", () => {
+    expect(
+      OrganizationBrandingSchema.safeParse({
+        accent_color: "green",
+      }).success,
+    ).toBe(false);
+    expect(
+      OrganizationBrandingSchema.safeParse({
+        hero_image_url: "/local-file.png",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("OrganizationRoyaltySchema", () => {
+  it("accepts buyer-paid royalty settings", () => {
+    const parsed = OrganizationRoyaltySchema.parse({
+      resale_royalty_enabled: "true",
+      resale_royalty_bps: "500",
+    });
+
+    expect(parsed).toEqual({
+      resale_royalty_enabled: true,
+      resale_royalty_bps: 500,
+    });
+  });
+
+  it("rejects royalty rates outside database bounds", () => {
+    expect(
+      OrganizationRoyaltySchema.safeParse({
+        resale_royalty_enabled: true,
+        resale_royalty_bps: 10_001,
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("OrganizationMemberSchema", () => {
+  it("normalizes member email and role", () => {
+    const parsed = OrganizationMemberSchema.parse({
+      email: "TEAM@EXAMPLE.COM",
+      role: "controller",
+    });
+
+    expect(parsed).toEqual({
+      email: "team@example.com",
+      role: "controller",
+    });
+  });
+
+  it("rejects unknown organization roles", () => {
+    expect(
+      OrganizationMemberSchema.safeParse({
+        email: "team@example.com",
+        role: "owner",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates member removal id", () => {
+    expect(
+      RemoveOrganizationMemberSchema.parse({
+        membership_id: "55555555-5555-4555-8555-555555555555",
+      }).membership_id,
+    ).toBe("55555555-5555-4555-8555-555555555555");
+  });
+});
+
+describe("Organization ownership schemas", () => {
+  it("normalizes transfer recipient email", () => {
+    const parsed = TransferOrganizationSchema.parse({
+      email: "OWNER@EXAMPLE.COM",
+    });
+
+    expect(parsed.email).toBe("owner@example.com");
+  });
+
+  it("validates delete confirmation payload", () => {
+    const parsed = DeleteOrganizationSchema.parse({
+      organization_id: "66666666-6666-4666-8666-666666666666",
+      confirm_name: "Boiler Room",
+    });
+
+    expect(parsed.confirm_name).toBe("Boiler Room");
+    expect(
+      DeleteOrganizationSchema.safeParse({
+        organization_id: "bad",
+        confirm_name: "Boiler Room",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("ResaleCheckoutSchema", () => {
+  it("validates listing checkout return path", () => {
+    expect(
+      ResaleCheckoutSchema.parse({
+        listing_id: "44444444-4444-4444-8444-444444444444",
+        return_path: "/s/acme/marketplace/44444444-4444-4444-8444-444444444444",
+      }).return_path,
+    ).toContain("/s/acme/marketplace/");
+    expect(
+      ResaleCheckoutSchema.safeParse({
+        listing_id: "44444444-4444-4444-8444-444444444444",
+        return_path: "/bad\\path",
+      }).success,
+    ).toBe(false);
   });
 });
 

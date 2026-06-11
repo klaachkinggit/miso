@@ -45,7 +45,7 @@ export function ListForResaleButton({
       });
       const payload = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(payload.error ?? "Could not list ticket.");
-      toast({ title: "Ticket listed", description: "Your NFT ticket is now on the official exchange." });
+      toast({ title: "Ticket listed", description: "Your digital ticket is now on the official exchange." });
       setOpen(false);
       router.refresh();
     } catch (error) {
@@ -164,7 +164,7 @@ export function TransferToWalletButton({ ticketId }: { ticketId: string }) {
       if (!res.ok) throw new Error(payload.error ?? "Could not transfer ticket.");
       toast({
         title: "Transfer submitted",
-        description: "The NFT ticket is moving to your personal wallet.",
+        description: "The digital ticket is moving to your personal wallet.",
       });
       setOpen(false);
       router.refresh();
@@ -191,7 +191,7 @@ export function TransferToWalletButton({ ticketId }: { ticketId: string }) {
         <DialogHeader>
           <DialogTitle>Transfer to personal wallet</DialogTitle>
           <DialogDescription>
-            This sends the NFT ticket out of MISO custody. MISO cannot recover it,
+            This sends the digital ticket out of MISO custody. MISO cannot recover it,
             relist it, or control it after transfer.
           </DialogDescription>
         </DialogHeader>

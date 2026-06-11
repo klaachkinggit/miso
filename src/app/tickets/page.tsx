@@ -2,14 +2,14 @@ import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/site/empty-state";
 import { PageHeader } from "@/components/site/page-header";
 import { TicketCard } from "@/components/tickets/ticket-card";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, Purchase, ResaleListing, Ticket, TicketCategory } from "@/types/db";
 
 export default async function TicketsPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const sb = createServiceClient();
   const { data: tickets } = await sb
@@ -61,7 +61,7 @@ export default async function TicketsPage() {
     <div className="container py-10">
       <PageHeader
         title="Wallet"
-        description="Your NFT tickets, QR access, resale status, and event ownership history."
+        description="Your digital tickets, QR access, resale status, and event history."
         className="mb-8"
       />
       {tickets?.length ? (
@@ -106,7 +106,7 @@ export default async function TicketsPage() {
           })}
         </div>
       ) : (
-        <EmptyState title="No tickets yet" description="After checkout completes, your NFT ticket appears here." />
+        <EmptyState title="No tickets yet" description="After checkout completes, your digital ticket appears here." />
       )}
     </div>
   );

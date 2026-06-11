@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { redirectToCheckout } from "@/lib/checkout/client";
 import { formatPrice } from "@/lib/format";
+import { primaryCheckoutFees } from "@/lib/payments/pricing";
 
 export interface BuyButtonCategory {
   id: string;
@@ -34,10 +35,12 @@ export function BuyButton({
   category,
   disabled,
   reason,
+  returnPath,
 }: {
   category: BuyButtonCategory;
   disabled?: boolean;
   reason?: string | null;
+  returnPath?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -57,6 +60,14 @@ export function BuyButton({
     if (isClub) return (advance + extras * extraPrice) * quantity;
     return basePrice * quantity;
   }, [advance, basePrice, extras, extraPrice, isClub, quantity]);
+  const checkoutFees = useMemo(
+    () =>
+      primaryCheckoutFees({
+        faceAmount: isClub ? advance + extras * extraPrice : basePrice,
+        quantity,
+      }),
+    [advance, basePrice, extras, extraPrice, isClub, quantity],
+  );
 
   async function submit() {
     if (isGift && !giftEmail) {
@@ -71,6 +82,7 @@ export function BuyButton({
         quantity,
         extra_guests_count: extras,
         gift_recipient_email: isGift ? giftEmail : null,
+        return_path: returnPath,
       },
     });
     if (!redirected) {
@@ -82,11 +94,7 @@ export function BuyButton({
     <div className="space-y-2">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button
-            type="button"
-            disabled={disabled}
-            className="w-full sm:w-auto"
-          >
+          <Button type="button" disabled={disabled} className="w-full sm:w-auto">
             <ShoppingCart className="h-4 w-4" />
             {isClub ? "Book table" : "Get ticket"}
           </Button>
@@ -191,7 +199,7 @@ export function BuyButton({
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Must match an existing MISO account. The NFT is minted directly into their wallet.
+                  Must match an existing MISO account. The digital ticket is issued directly to them.
                 </p>
               </div>
             ) : null}
@@ -199,9 +207,21 @@ export function BuyButton({
 
           <div className="rounded-md bg-secondary/40 p-3 text-sm">
             <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Tickets</span>
+              <span className="font-medium">{formatPrice(onlineTotal, category.currency)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+              <span>MISO service fee</span>
+              <span>{formatPrice(checkoutFees.platformFeeAmount, category.currency)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Payment processing</span>
+              <span>{formatPrice(checkoutFees.stripeFeeAmount, category.currency)}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2">
               <span className="text-muted-foreground">You pay online</span>
               <span className="text-lg font-semibold">
-                {formatPrice(onlineTotal, category.currency)}
+                {formatPrice(checkoutFees.buyerTotalAmount, category.currency)}
               </span>
             </div>
             {isClub ? (

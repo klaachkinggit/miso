@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/site/empty-state";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { loadOrganizerOverview } from "@/lib/analytics/organizer";
 import { formatDateShort, formatPrice } from "@/lib/format";
+import { getActiveAdminOrganization } from "@/lib/organizations/context";
 
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`;
@@ -27,13 +28,19 @@ export default async function OrganizerDashboardPage({
   searchParams?: Promise<{ error?: string; success?: string }>;
 }) {
   const [params, profile] = await Promise.all([searchParams, requireOrganizerWorkspace()]);
-  const { totals, events } = await loadOrganizerOverview({ profile });
+  const { activeOrganization } = await getActiveAdminOrganization(profile);
+  const { totals, events } = await loadOrganizerOverview({
+    profile,
+    organizationId: activeOrganization?.id ?? null,
+  });
 
   return (
     <div className="container py-10">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="mono-stub text-[#E6D8C9]/55">Organizer workspace</p>
+          <p className="mono-stub text-[#E6D8C9]/55">
+            {activeOrganization?.name ?? "Organizer workspace"}
+          </p>
           <h1 className="display mt-2 text-3xl md:text-4xl">Analytics dashboard</h1>
           <p className="mt-2 text-muted-foreground">
             Track ticket sales, revenue and door attendance across every event you run on MISO.

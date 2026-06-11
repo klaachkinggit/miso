@@ -2,6 +2,10 @@
 // All queries run with the service-role client (no RLS) because the
 // dashboard is gated before calling this loader.
 import { createServiceClient } from "@/lib/supabase/service";
+import {
+  getAdminOrganizationIds,
+  shouldUseLegacyOrganizerEventScope,
+} from "@/lib/organizations/auth";
 import type { Currency, Profile } from "@/types/db";
 
 export interface OrganizerTotals {
@@ -36,19 +40,29 @@ export interface OrganizerEventStat {
 // purchases for revenue. Redemptions = tickets.status = "used".
 export async function loadOrganizerOverview(params: {
   profile: Pick<Profile, "id" | "role">;
+  organizationId?: string | null;
 }): Promise<{
   totals: OrganizerTotals;
   events: OrganizerEventStat[];
 }> {
   const sb = createServiceClient();
-  const scopedToOrganizer = params.profile.role === "organizer";
+  const organizationIds = await getAdminOrganizationIds(params.profile.id);
+  const scopedToOrganization = params.organizationId && organizationIds.includes(params.organizationId);
+  const scopedToOrganizer = shouldUseLegacyOrganizerEventScope(
+    params.profile,
+    Boolean(scopedToOrganization || organizationIds.length),
+  );
 
   let eventsQuery = sb
     .from("events")
     .select("id, name, date, city, venue_name, status, capacity")
     .order("date", { ascending: false });
 
-  if (scopedToOrganizer) {
+  if (scopedToOrganization) {
+    eventsQuery = eventsQuery.eq("organization_id", params.organizationId!);
+  } else if (organizationIds.length) {
+    eventsQuery = eventsQuery.in("organization_id", organizationIds);
+  } else if (scopedToOrganizer) {
     eventsQuery = eventsQuery.eq("organizer_user_id", params.profile.id);
   }
 

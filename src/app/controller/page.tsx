@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/site/empty-state";
 import { getCurrentProfile } from "@/lib/auth";
 import { formatDateShort } from "@/lib/format";
+import { getAdminOrganizationIds } from "@/lib/organizations/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow } from "@/types/db";
 
@@ -13,10 +14,21 @@ export default async function ControllerPage() {
   const sb = createServiceClient();
 
   let events: EventRow[] = [];
-  if (profile?.role === "admin") {
+  const adminOrganizationIds = profile ? await getAdminOrganizationIds(profile.id) : [];
+  if (profile?.role === "admin" && !adminOrganizationIds.length) {
     const { data } = await sb.from("events").select("*").order("date", { ascending: true }).returns<EventRow[]>();
     events = data ?? [];
   } else if (profile) {
+    const byId = new Map<string, EventRow>();
+    if (adminOrganizationIds.length) {
+      const { data } = await sb
+        .from("events")
+        .select("*")
+        .in("organization_id", adminOrganizationIds)
+        .order("date", { ascending: true })
+        .returns<EventRow[]>();
+      for (const event of data ?? []) byId.set(event.id, event);
+    }
     const { data: links } = await sb
       .from("event_controllers")
       .select("event_id")
@@ -25,8 +37,9 @@ export default async function ControllerPage() {
     const ids = links?.map((link) => link.event_id) ?? [];
     if (ids.length) {
       const { data } = await sb.from("events").select("*").in("id", ids).order("date", { ascending: true }).returns<EventRow[]>();
-      events = data ?? [];
+      for (const event of data ?? []) byId.set(event.id, event);
     }
+    events = Array.from(byId.values()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   return (

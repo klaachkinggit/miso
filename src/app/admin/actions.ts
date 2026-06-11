@@ -14,14 +14,44 @@ import {
   unpublishEventSetup,
   updateEventDetails,
 } from "@/lib/events/setup";
+import {
+  canManageEvent,
+} from "@/lib/organizations/auth";
+import {
+  getActiveAdminOrganization,
+  setActiveAdminOrganization,
+} from "@/lib/organizations/context";
+import {
+  ensureOrganizationControllerMembership,
+  findOrInvitePlatformAccount,
+  removeOrganizationMembership,
+  upsertOrganizationMembership,
+} from "@/lib/organizations/members";
+import {
+  deleteEmptyOrganization,
+  transferOrganizationOwnership,
+} from "@/lib/organizations/ownership";
+import { createOrganizationForAdmin } from "@/lib/organizations/setup";
 import { refundTicket } from "@/lib/refunds/refund";
 import {
   CreateCategorySchema,
   CreateEventSchema,
+  CreateOrganizationSchema,
+  DeleteOrganizationSchema,
   InviteControllerSchema,
+  OrganizationMemberSchema,
+  OrganizationBrandingSchema,
+  OrganizationRoyaltySchema,
   RefundSchema,
+  RemoveOrganizationMemberSchema,
   SiteSettingsSchema,
+  SwitchOrganizationSchema,
+  TransferOrganizationSchema,
 } from "@/lib/schemas";
+import {
+  normalizeOrganizationBranding,
+  organizationBrandingJson,
+} from "@/lib/organizations/branding";
 import { updateSiteSettings as saveSiteSettings } from "@/lib/site/settings";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, Profile, Ticket } from "@/types/db";
@@ -89,14 +119,19 @@ async function assertCanManageEvent(
     .eq("id", eventId)
     .maybeSingle<EventRow>();
   if (!event) fail(path, "Event not found.");
-  if (profile.role === "organizer" && event.organizer_user_id !== profile.id) {
-    fail("/admin/events", "You can only manage your own events.");
+  if (!(await canManageEvent(profile, event))) {
+    fail("/admin/events", "You can only manage events for your organization.");
   }
   return event;
 }
 
 export async function createEvent(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
+  const { activeOrganization, organizations } = await getActiveAdminOrganization(admin);
+  const organizationId = activeOrganization?.id ?? null;
+  if (!organizationId && organizations.length) {
+    fail("/admin/events/new", "Select an organization before creating an event.");
+  }
   const parsed = CreateEventSchema.safeParse(eventFormPayload(formData));
 
   if (!parsed.success) fail("/admin/events/new", parsed.error.issues[0]?.message ?? "Invalid event.");
@@ -107,11 +142,260 @@ export async function createEvent(formData: FormData) {
       input: parsed.data,
       adminUserId: admin.id,
       organizerUserId: admin.id,
+      organizationId,
     });
   } catch (error) {
     fail("/admin/events/new", errorMessage(error, "Event could not be created."));
   }
   redirect(`/admin/events/${event.id}`);
+}
+
+export async function createOrganization(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const parsed = CreateOrganizationSchema.safeParse({
+    name: formData.get("name"),
+  });
+  if (!parsed.success) {
+    fail("/admin/organizations/new", parsed.error.issues[0]?.message ?? "Invalid organization.");
+  }
+
+  let organization: { id: string; name: string };
+  try {
+    organization = await createOrganizationForAdmin({
+      name: parsed.data.name,
+      adminUserId: admin.id,
+    });
+  } catch (error) {
+    fail("/admin/organizations/new", errorMessage(error, "Organization could not be created."));
+  }
+
+  await setActiveAdminOrganization(admin.id, organization.id);
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  redirect(`/admin?success=${encodeURIComponent(`${organization.name} selected.`)}`);
+}
+
+export async function switchOrganization(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const parsed = SwitchOrganizationSchema.safeParse({
+    organization_id: formData.get("organization_id"),
+  });
+  if (!parsed.success) fail("/admin", "Invalid organization.");
+
+  const switched = await setActiveAdminOrganization(admin.id, parsed.data.organization_id);
+  if (!switched) fail("/admin", "You can only switch to organizations you administer.");
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  redirect("/admin");
+}
+
+export async function updateOrganizationBranding(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = OrganizationBrandingSchema.safeParse({
+    tagline: optionalString(formData, "tagline"),
+    accent_color: optionalString(formData, "accent_color"),
+    logo_url: optionalString(formData, "logo_url"),
+    hero_image_url: optionalString(formData, "hero_image_url"),
+  });
+  if (!parsed.success) {
+    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid branding.");
+  }
+
+  const branding = normalizeOrganizationBranding(parsed.data);
+  const sb = createServiceClient();
+  const { error } = await sb
+    .from("organizations")
+    .update({ branding: organizationBrandingJson(branding) })
+    .eq("id", activeOrganization.id);
+  if (error) fail("/admin/settings", error.message);
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.branding.update",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: { organization_slug: activeOrganization.slug },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/settings");
+  revalidatePath(`/s/${activeOrganization.slug}`);
+  revalidatePath(`/s/${activeOrganization.slug}/marketplace`);
+  redirect("/admin/settings?success=Branding%20saved.");
+}
+
+export async function updateOrganizationRoyalty(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = OrganizationRoyaltySchema.safeParse({
+    resale_royalty_enabled: checkbox(formData, "resale_royalty_enabled"),
+    resale_royalty_bps: formData.get("resale_royalty_bps") || 0,
+  });
+  if (!parsed.success) {
+    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid royalty settings.");
+  }
+
+  const bps = parsed.data.resale_royalty_enabled ? parsed.data.resale_royalty_bps : 0;
+  const sb = createServiceClient();
+  const { error } = await sb
+    .from("organizations")
+    .update({
+      resale_royalty_enabled: parsed.data.resale_royalty_enabled,
+      resale_royalty_bps: bps,
+    })
+    .eq("id", activeOrganization.id);
+  if (error) fail("/admin/settings", error.message);
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.royalty.update",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: {
+      resale_royalty_enabled: parsed.data.resale_royalty_enabled,
+      resale_royalty_bps: bps,
+    },
+  });
+
+  revalidatePath("/admin/settings");
+  revalidatePath(`/s/${activeOrganization.slug}/marketplace`);
+  redirect("/admin/settings?success=Royalty%20settings%20saved.");
+}
+
+export async function addOrganizationMember(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = OrganizationMemberSchema.safeParse({
+    email: formData.get("email"),
+    role: formData.get("role"),
+  });
+  if (!parsed.success) {
+    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid team member.");
+  }
+
+  const { email, role } = parsed.data;
+  let userId: string;
+  try {
+    userId = await findOrInvitePlatformAccount(email);
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Invite could not be sent."));
+  }
+
+  try {
+    await upsertOrganizationMembership({
+      organizationId: activeOrganization.id,
+      userId,
+      role,
+    });
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Team member could not be saved."));
+  }
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.member.upsert",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: { email, user_id: userId, role },
+  });
+
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?success=Team%20member%20saved.");
+}
+
+export async function transferOrganization(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = TransferOrganizationSchema.safeParse({
+    email: formData.get("email"),
+  });
+  if (!parsed.success) {
+    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid transfer recipient.");
+  }
+
+  try {
+    await transferOrganizationOwnership({
+      actorUserId: admin.id,
+      organization: activeOrganization,
+      recipientEmail: parsed.data.email,
+    });
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Organization transfer could not be saved."));
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?success=Organization%20transfer%20saved.");
+}
+
+export async function deleteOrganization(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = DeleteOrganizationSchema.safeParse({
+    organization_id: formData.get("organization_id"),
+    confirm_name: formData.get("confirm_name"),
+  });
+  if (!parsed.success) fail("/admin/settings", "Invalid delete request.");
+
+  try {
+    await deleteEmptyOrganization({
+      actorUserId: admin.id,
+      organization: activeOrganization,
+      confirmedOrganizationId: parsed.data.organization_id,
+      confirmedName: parsed.data.confirm_name,
+    });
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Organization could not be deleted."));
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  revalidatePath("/admin/settings");
+  redirect("/admin?success=Organization%20deleted.");
+}
+
+export async function removeOrganizationMember(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
+  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+
+  const parsed = RemoveOrganizationMemberSchema.safeParse({
+    membership_id: formData.get("membership_id"),
+  });
+  if (!parsed.success) fail("/admin/settings", "Invalid team member.");
+
+  let removed;
+  try {
+    removed = await removeOrganizationMembership({
+      organizationId: activeOrganization.id,
+      membershipId: parsed.data.membership_id,
+    });
+  } catch (error) {
+    fail("/admin/settings", errorMessage(error, "Team member could not be removed."));
+  }
+
+  await audit({
+    actorUserId: admin.id,
+    action: "organization.member.remove",
+    entityType: "organization",
+    entityId: activeOrganization.id,
+    metadata: { user_id: removed.userId, role: removed.role },
+  });
+
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?success=Team%20member%20removed.");
 }
 
 export async function updateEvent(formData: FormData) {
@@ -288,6 +572,13 @@ export async function inviteController(formData: FormData) {
 
   const sb = createServiceClient();
   const email = parsed.data.email.toLowerCase();
+  const { data: event } = await sb
+    .from("events")
+    .select("organization_id")
+    .eq("id", parsed.data.event_id)
+    .single<{ organization_id: string | null }>();
+  if (!event) fail(`/admin/events/${parsed.data.event_id}`, "Event not found.");
+
   const { data: existingProfile } = await sb
     .from("profiles")
     .select("id, role")
@@ -296,19 +587,24 @@ export async function inviteController(formData: FormData) {
 
   let userId = existingProfile?.id;
   if (!userId) {
-    const invite = await sb.auth.admin.inviteUserByEmail(email);
-    if (invite.error || !invite.data.user) {
-      fail(`/admin/events/${parsed.data.event_id}`, invite.error?.message ?? "Invite could not be sent.");
+    try {
+      userId = await findOrInvitePlatformAccount(email);
+    } catch (error) {
+      fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Invite could not be sent."));
     }
-    userId = invite.data.user.id;
-    await sb.from("profiles").upsert({
-      id: userId,
-      email,
-      display_name: email.split("@")[0],
-      role: "controller",
-    });
-  } else if (existingProfile?.role !== "admin" && existingProfile?.role !== "organizer") {
+  } else if (!event.organization_id && existingProfile?.role !== "admin" && existingProfile?.role !== "organizer") {
     await sb.from("profiles").update({ role: "controller" }).eq("id", userId);
+  }
+
+  if (event.organization_id) {
+    try {
+      await ensureOrganizationControllerMembership({
+        organizationId: event.organization_id,
+        userId,
+      });
+    } catch (error) {
+      fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Controller could not be added to Organization."));
+    }
   }
 
   const { error } = await sb.from("event_controllers").upsert({

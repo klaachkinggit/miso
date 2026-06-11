@@ -56,7 +56,7 @@ export default async function MarketplaceSuccessPage({
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {sold
-                ? "The NFT ticket has been transferred to your account. Find it in Wallet."
+                ? "The digital ticket has been transferred to your account. Find it in Wallet."
                 : canceled
                   ? "This listing was canceled or expired. Browse other tickets on the exchange."
                   : "This page will update once the transfer completes."}

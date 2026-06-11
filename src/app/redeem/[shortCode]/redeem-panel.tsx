@@ -142,9 +142,7 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
         <div className="w-full rounded-md border border-white/10 bg-black/20 p-4">
           <p className="text-sm text-muted-foreground">Ticket #{ticket.serial_number}</p>
           <p className="mt-1 text-lg font-medium">{ticket.category_name}</p>
-          <p className="mt-2 font-mono text-xs text-muted-foreground">
-            {ticket.contract_address.slice(0, 10)}...#{ticket.token_id}
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">Verified digital ticket</p>
         </div>
       ) : null}
     </section>

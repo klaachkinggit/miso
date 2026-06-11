@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { redirect } from "next/navigation";
 import {
   ArrowUpRight,
   Compass,
@@ -16,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
 import { HeroSearch } from "@/components/site/hero-search";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatDateShort } from "@/lib/format";
 import { eventImage } from "@/lib/events/images";
@@ -28,7 +27,7 @@ const FALLBACK_CITIES = ["Paris", "Berlin", "London", "Amsterdam", "Lisbon", "Ba
 export default async function HomePage() {
   const sb = createServiceClient();
   const [profile, siteSettings] = await Promise.all([getCurrentProfile(), loadSiteSettings()]);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
   const { data: events } = await sb
     .from("events")
@@ -72,14 +71,14 @@ export default async function HomePage() {
         <div className="container grid items-center gap-12 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-28">
           <div className="space-y-7">
             <span className="mono-stub inline-flex items-center gap-2 rounded-full border border-[#E6D8C9]/20 bg-[#121212]/70 px-3 py-1 text-[#E6D8C9]/80">
-              <Sparkles className="h-3.5 w-3.5 text-accent" /> NFT ticketing · Base Sepolia
+              <Sparkles className="h-3.5 w-3.5 text-accent" /> Verified digital ticketing
             </span>
             <h1 className="display max-w-2xl text-5xl text-[#F5F3EE] md:text-7xl lg:text-[5.5rem]">
               Get your ticket.<br />
               <span className="gradient-text">Live the night.</span>
             </h1>
             <p className="max-w-xl text-lg text-[#E6D8C9]/75 md:text-xl">
-              Discover festivals, concerts and after-hours culture. Every MISO ticket is on-chain, verified at the door,
+              Discover festivals, concerts and after-hours culture. Every MISO ticket is verified at the door,
               and resellable inside a safe official exchange.
             </p>
             <HeroSearch />
@@ -209,15 +208,12 @@ export default async function HomePage() {
                 <span className="gradient-text">We&apos;ve got you covered.</span>
               </h2>
               <p className="max-w-md text-lg text-[#E6D8C9]/75">
-                One wallet for every ticket. Scan at the door, transfer to a friend, or resell at face value through
-                the official MISO exchange.
+                One account for every ticket. Scan at the door, transfer to a friend, or resell safely inside
+                each organizer&apos;s official exchange.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button asChild size="lg">
                   <Link href="/events">Explore events</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline">
-                  <Link href="/marketplace">Visit exchange</Link>
                 </Button>
               </div>
             </div>
@@ -231,8 +227,8 @@ export default async function HomePage() {
                 },
                 {
                   icon: WalletCards,
-                  title: "One wallet, every ticket",
-                  body: "Festival passes, VIP perks and rewards live in your MISO wallet.",
+                  title: "One account, every ticket",
+                  body: "Festival passes, VIP perks and rewards stay ready in MISO.",
                 },
                 {
                   icon: Repeat,
@@ -291,7 +287,7 @@ export default async function HomePage() {
                   {
                     icon: Megaphone,
                     title: "Reach the right crowd",
-                    body: "Segment by city, scene and past attendance - direct push to the wallet.",
+                    body: "Segment by city, scene and past attendance - direct push to buyer accounts.",
                   },
                   {
                     icon: Gem,

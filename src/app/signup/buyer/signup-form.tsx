@@ -12,7 +12,7 @@ export function BuyerSignupForm({ error }: { error?: string }) {
         <p className="mb-3 text-sm font-medium text-primary">Buyer signup</p>
         <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Buy premium event tickets and keep every NFT pass ready on your phone.
+          Buy premium event tickets and keep every digital pass ready on your phone.
         </p>
       </div>
       {error ? (

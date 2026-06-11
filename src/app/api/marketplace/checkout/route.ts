@@ -1,36 +1,55 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { z } from "zod";
-import { requireApiNonControllerProfile } from "@/lib/api/auth";
+import {
+  assertNotOrganizationController,
+  requireApiNonControllerProfile,
+} from "@/lib/api/auth";
 import { apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
+import {
+  checkoutSalesChannel,
+  checkoutTrackingOrigin,
+  sourcePathFromReturnPath,
+} from "@/lib/checkout/attribution";
 import {
   ChainOpInFlightError,
   ChainOpRepairError,
 } from "@/lib/chain/ops";
+import { resaleCheckoutCancelPath } from "@/lib/marketplace/public";
+import { getOrganizationIdForListing } from "@/lib/organizations/auth";
 import {
   checkoutResaleListing,
   ResaleCheckoutPreflightError,
   ResaleTransferPendingError,
 } from "@/lib/resale/listing";
+import { ResaleCheckoutSchema } from "@/lib/schemas";
 import { getRequestOrigin } from "@/lib/url";
-
-const Body = z.object({ listing_id: z.string().uuid() });
 
 export async function POST(request: NextRequest) {
   try {
     const profile = await requireApiNonControllerProfile(
       "Controllers cannot use the marketplace.",
     );
-    const body = await parseJsonBody(request, Body, "Invalid checkout request.");
+    const body = await parseJsonBody(request, ResaleCheckoutSchema, "Invalid checkout request.");
+    await assertNotOrganizationController({
+      profile,
+      organizationId: await getOrganizationIdForListing(body.listing_id),
+      deniedMessage: "Controllers cannot use this organization marketplace.",
+    });
 
     const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 128);
     const appUrl = getRequestOrigin(request);
+    const cancelPath = await resaleCheckoutCancelPath(body.listing_id);
     const { checkoutUrl } = await checkoutResaleListing({
       listingId: body.listing_id,
       buyerUserId: profile.id,
       successUrl: `${appUrl}/marketplace/success?session_id={CHECKOUT_SESSION_ID}&listing_id=${body.listing_id}`,
-      cancelUrl: `${appUrl}/marketplace/${body.listing_id}`,
+      cancelUrl: `${appUrl}${cancelPath}`,
       idempotencyKey,
+      salesChannel: checkoutSalesChannel("resale"),
+      trackingOrigin: checkoutTrackingOrigin(
+        request,
+        sourcePathFromReturnPath(body.return_path) ?? cancelPath,
+      ),
     });
 
     return NextResponse.json({ url: checkoutUrl });

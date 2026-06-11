@@ -1,8 +1,29 @@
-import { describe, expect, it } from "vitest";
-import { computeClubTablePricing } from "@/lib/payments/pricing";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  allocateMoney,
+  computeClubTablePricing,
+  primaryCheckoutFees,
+  primaryPlatformFee,
+  stripeProcessingFeeForBuyerTotal,
+} from "@/lib/payments/pricing";
 import { CreateCategorySchema, CreateEventSchema, SiteSettingsSchema } from "@/lib/schemas";
 
 const eventId = "11111111-1111-4111-8111-111111111111";
+const ORIGINAL_PRIMARY_PERCENT = process.env.MISO_PRIMARY_PLATFORM_FEE_PERCENT;
+const ORIGINAL_PRIMARY_FIXED = process.env.MISO_PRIMARY_PLATFORM_FEE_FIXED;
+const ORIGINAL_STRIPE_PERCENT = process.env.MISO_STRIPE_FEE_PERCENT;
+const ORIGINAL_STRIPE_FIXED = process.env.MISO_STRIPE_FEE_FIXED;
+
+afterEach(() => {
+  if (ORIGINAL_PRIMARY_PERCENT === undefined) delete process.env.MISO_PRIMARY_PLATFORM_FEE_PERCENT;
+  else process.env.MISO_PRIMARY_PLATFORM_FEE_PERCENT = ORIGINAL_PRIMARY_PERCENT;
+  if (ORIGINAL_PRIMARY_FIXED === undefined) delete process.env.MISO_PRIMARY_PLATFORM_FEE_FIXED;
+  else process.env.MISO_PRIMARY_PLATFORM_FEE_FIXED = ORIGINAL_PRIMARY_FIXED;
+  if (ORIGINAL_STRIPE_PERCENT === undefined) delete process.env.MISO_STRIPE_FEE_PERCENT;
+  else process.env.MISO_STRIPE_FEE_PERCENT = ORIGINAL_STRIPE_PERCENT;
+  if (ORIGINAL_STRIPE_FIXED === undefined) delete process.env.MISO_STRIPE_FEE_FIXED;
+  else process.env.MISO_STRIPE_FEE_FIXED = ORIGINAL_STRIPE_FIXED;
+});
 
 describe("club table: table price = minimum spending", () => {
   describe("CreateCategorySchema", () => {
@@ -129,6 +150,52 @@ describe("club table: table price = minimum spending", () => {
         );
         expect(out.minSpendingTotal).toBe(800);
       }
+    });
+  });
+});
+
+describe("primary checkout fees", () => {
+  it("uses buyer-paid MISO and Stripe fee defaults", () => {
+    delete process.env.MISO_PRIMARY_PLATFORM_FEE_PERCENT;
+    delete process.env.MISO_PRIMARY_PLATFORM_FEE_FIXED;
+    delete process.env.MISO_STRIPE_FEE_PERCENT;
+    delete process.env.MISO_STRIPE_FEE_FIXED;
+
+    expect(primaryPlatformFee(100)).toBe(4);
+    expect(stripeProcessingFeeForBuyerTotal(104)).toBe(1.84);
+    expect(primaryCheckoutFees({ faceAmount: 20, quantity: 2 })).toEqual({
+      faceTotal: 40,
+      platformFeeAmount: 1.6,
+      stripeFeeAmount: 0.89,
+      buyerTotalAmount: 42.49,
+    });
+  });
+
+  it("supports configured primary platform and Stripe fees", () => {
+    process.env.MISO_PRIMARY_PLATFORM_FEE_PERCENT = "5";
+    process.env.MISO_PRIMARY_PLATFORM_FEE_FIXED = "0.5";
+    process.env.MISO_STRIPE_FEE_PERCENT = "2";
+    process.env.MISO_STRIPE_FEE_FIXED = "0.3";
+
+    expect(primaryCheckoutFees({ faceAmount: 10, quantity: 3 })).toEqual({
+      faceTotal: 30,
+      platformFeeAmount: 2,
+      stripeFeeAmount: 0.96,
+      buyerTotalAmount: 32.96,
+    });
+  });
+
+  it("allocates rounded fee cents across purchases", () => {
+    expect(allocateMoney(1, 3)).toEqual([0.34, 0.33, 0.33]);
+    expect(allocateMoney(0.05, 2)).toEqual([0.03, 0.02]);
+  });
+
+  it("keeps free tickets free", () => {
+    expect(primaryCheckoutFees({ faceAmount: 0, quantity: 2 })).toEqual({
+      faceTotal: 0,
+      platformFeeAmount: 0,
+      stripeFeeAmount: 0,
+      buyerTotalAmount: 0,
     });
   });
 });

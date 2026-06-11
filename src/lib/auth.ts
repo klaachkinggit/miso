@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { hasAdminOrganization } from "@/lib/organizations/auth";
 import type { Profile, UserRole } from "@/types/db";
 
 export const getCurrentUser = cache(async (): Promise<{ id: string; email: string } | null> => {
@@ -39,15 +40,35 @@ export async function requireRole(role: UserRole | UserRole[]) {
 }
 
 export async function requireOrganizerWorkspace() {
-  return requireRole(["admin", "organizer"]);
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (canUseOrganizerWorkspace(profile)) return profile;
+  if (await hasAdminOrganization(profile.id)) return profile;
+  redirect("/");
 }
 
-export function canUseOrganizerWorkspace(profile: Pick<Profile, "role">): boolean {
+export function canUseLegacyOrganizerWorkspace(profile: Pick<Profile, "role">): boolean {
   return profile.role === "admin" || profile.role === "organizer";
+}
+
+// Transitional: prefer organization memberships in server code. This only
+// preserves old global-role navigation while the UI gets an org switcher.
+export function canUseOrganizerWorkspace(profile: Pick<Profile, "role">): boolean {
+  return canUseLegacyOrganizerWorkspace(profile);
 }
 
 export function canOperateGateRole(profile: Pick<Profile, "role">): boolean {
   return profile.role === "admin" || profile.role === "controller";
+}
+
+export function canUseBuyerSurface(profile: Pick<Profile, "role"> | null | undefined): boolean {
+  return profile?.role !== "controller";
+}
+
+export function redirectIfCannotUseBuyerSurface(
+  profile: Pick<Profile, "role"> | null | undefined,
+): void {
+  if (!canUseBuyerSurface(profile)) redirect("/controller");
 }
 
 // Where a signed-in user should land instead of seeing /login or /signup
