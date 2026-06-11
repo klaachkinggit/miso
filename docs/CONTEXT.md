@@ -63,6 +63,11 @@ Stripe Checkout Sessions directly.
 | Face value | Organizer-set ticket price before Miso service fees and Stripe processing fees. |
 | Buyer-paid fee | Fee model where the buyer pays the Face value plus Miso service fees and Stripe processing fees, so the organizer receives near the Face value. |
 | Resale royalty | Optional organizer-controlled fee on resale listings. When enabled, the buyer pays the royalty on top of the seller's listing price, and the seller still receives the listing price. |
+| Organization analytics dashboard | Admin-only surface at `/admin/analytics` scoped to the Active Organization. Surfaces revenue + sales metrics for a chosen Analytics range. |
+| Analytics range | Time window driving every dashboard metric. Preset values: `today`, `7d`, `30d`, `90d`, `ytd`, `all`, plus `custom` with explicit `from`/`to`. URL-synced via search params. |
+| Prior period comparison | Optional toggle that derives the immediately preceding window of the same span and renders a delta on every KPI. Disabled for the `all` preset since there is no prior window. |
+| Sales channel breakdown | Per-channel revenue + tickets + share of total for the current Analytics range. Channels come from `purchases.sales_channel`. |
+| Analytics CSV export | Multi-block CSV download (totals, prior totals, time series, sales channels, per-event performance) produced from the same loader as the dashboard. Available at `GET /api/analytics/export`. |
 
 ## Payment Model
 
