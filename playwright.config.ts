@@ -5,6 +5,7 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
   // Full-path tests drive a real Sepolia mint via /api/checkout; that
   // confirmation alone takes 10-25s and the test budget needs to
   // cover navigation + page render on top of that. 90s gives chain

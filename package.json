@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "demo:seed": "tsx scripts/seed.ts",
+    "e2e:cleanup": "tsx scripts/cleanup-e2e-events.ts",
     "contracts:compile": "tsx scripts/compile-contracts.ts",
     "live:flow": "tsx scripts/live-flow.ts",
     "live:resale": "tsx scripts/live-resale.ts",

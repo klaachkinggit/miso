@@ -11,10 +11,12 @@ export function EventDetail({
   event,
   categories,
   returnPath,
+  calendarHref,
 }: {
   event: EventRow;
   categories: PublicEventCategory[];
   returnPath?: string;
+  calendarHref?: string;
 }) {
   const cheapest = categories
     .filter((category) => category.remaining > 0 && category.sales_enabled)
@@ -53,6 +55,16 @@ export function EventDetail({
                 <Ticket className="h-3.5 w-3.5" />
                 {event.capacity.toLocaleString()} capacity
               </span>
+              {calendarHref ? (
+                <a
+                  href={calendarHref}
+                  download
+                  className="flex items-center gap-2 text-foreground/75 transition-colors hover:text-foreground"
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  Add to calendar
+                </a>
+              ) : null}
             </div>
           </div>
         </div>

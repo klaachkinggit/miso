@@ -1,16 +1,72 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { EventDetail } from "@/components/site/event-detail";
 import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
+import { eventImage } from "@/lib/events/images";
 import {
   getPublishedEventByOrganizationSlug,
   listPublicEventCategories,
 } from "@/lib/events/public";
+import { formatDate } from "@/lib/format";
 import {
   getActiveOrganizationBySlug,
   organizationEventPath,
 } from "@/lib/organizations/public";
 import { storefrontPathForHost } from "@/lib/organizations/hosts";
+
+const appUrl = (
+  process.env.NEXT_PUBLIC_APP_URL ??
+  process.env.APP_URL ??
+  "http://localhost:3002"
+).replace(/\/+$/, "");
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ organizationSlug: string; eventSlug: string }>;
+}): Promise<Metadata> {
+  const { organizationSlug, eventSlug } = await params;
+
+  const organization = await getActiveOrganizationBySlug(organizationSlug);
+  if (!organization) return { title: "Event — MISO", robots: { index: false } };
+
+  const event = await getPublishedEventByOrganizationSlug({
+    organizationId: organization.id,
+    eventSlug,
+  });
+  if (!event || event.status !== "published") {
+    return { title: "Event — MISO", robots: { index: false } };
+  }
+
+  const description = [
+    event.description,
+    `${event.venue_name}, ${event.city}`,
+    formatDate(event.date),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const image = eventImage(event, "hero") ?? eventImage(event, "thumbnail");
+  const url = `${appUrl}/s/${organizationSlug}/events/${eventSlug}`;
+
+  return {
+    title: `${event.name} — MISO`,
+    description,
+    openGraph: {
+      title: `${event.name} — MISO`,
+      description,
+      url,
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${event.name} — MISO`,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
+}
 
 export default async function OrganizationEventPage({
   params,
@@ -38,6 +94,7 @@ export default async function OrganizationEventPage({
     <EventDetail
       event={event}
       categories={categories}
+      calendarHref={`/api/events/${event.id}/calendar`}
       returnPath={
         event.slug
           ? storefrontPathForHost(

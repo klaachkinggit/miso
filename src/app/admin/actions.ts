@@ -54,7 +54,7 @@ import {
 } from "@/lib/organizations/branding";
 import { updateSiteSettings as saveSiteSettings } from "@/lib/site/settings";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, Profile, Ticket } from "@/types/db";
+import type { EventRow, Profile, Ticket, TicketCategory } from "@/types/db";
 
 function checkbox(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
@@ -646,4 +646,92 @@ export async function refundTicketAction(formData: FormData) {
     reason: parsed.data.reason,
   });
   revalidatePath("/admin");
+}
+
+export async function duplicateEventAction(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const eventId = String(formData.get("event_id") ?? "");
+  if (!eventId) fail("/admin/events", "Missing event id.");
+
+  const source = await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
+
+  const sb = createServiceClient();
+
+  const { data: newEvent, error: insertError } = await sb
+    .from("events")
+    .insert({
+      name: `${source.name} (copy)`,
+      date: source.date,
+      venue_name: source.venue_name,
+      city: source.city,
+      capacity: source.capacity,
+      description: source.description,
+      conditions: source.conditions,
+      floor_plan_url: source.floor_plan_url,
+      image_url: source.image_url,
+      thumbnail_url: source.thumbnail_url,
+      hero_url: source.hero_url,
+      ticket_visual_url: source.ticket_visual_url,
+      marketplace_url: source.marketplace_url,
+      genre: source.genre,
+      vibe: source.vibe,
+      is_festival: source.is_festival,
+      artists: source.artists,
+      organization_id: source.organization_id,
+      organizer_user_id: source.organizer_user_id,
+      status: "draft",
+    })
+    .select("id")
+    .single<{ id: string }>();
+
+  if (insertError || !newEvent) {
+    fail(`/admin/events/${eventId}`, insertError?.message ?? "Event could not be duplicated.");
+  }
+
+  const { data: sourceCategories } = await sb
+    .from("ticket_categories")
+    .select("*")
+    .eq("event_id", eventId)
+    .returns<TicketCategory[]>();
+
+  if (sourceCategories?.length) {
+    const categoryRows = sourceCategories.map((cat) => ({
+      event_id: newEvent.id,
+      name: cat.name,
+      description: cat.description,
+      kind: cat.kind,
+      price: cat.price,
+      currency: cat.currency,
+      supply: cat.supply,
+      sales_enabled: cat.sales_enabled,
+      resale_enabled: cat.resale_enabled,
+      public_sales_counter_enabled: cat.public_sales_counter_enabled,
+      max_resale_price: cat.max_resale_price,
+      benefits: cat.benefits,
+      image_url: cat.image_url,
+      online_advance: cat.online_advance,
+      base_capacity: cat.base_capacity,
+      extra_guests_enabled: cat.extra_guests_enabled,
+      price_per_extra_guest: cat.price_per_extra_guest,
+      max_extra_guests: cat.max_extra_guests,
+      color_hex: cat.color_hex,
+      min_spending: cat.min_spending,
+    }));
+    const { error: catError } = await sb.from("ticket_categories").insert(categoryRows);
+    if (catError) {
+      await sb.from("events").delete().eq("id", newEvent.id);
+      fail(`/admin/events/${eventId}`, catError.message);
+    }
+  }
+
+  await audit({
+    actorUserId: admin.id,
+    action: "event.duplicate",
+    entityType: "event",
+    entityId: newEvent.id,
+    metadata: { source_event_id: eventId, name: `${source.name} (copy)` },
+  });
+
+  revalidatePath("/admin/events");
+  redirect(`/admin/events/${newEvent.id}`);
 }
