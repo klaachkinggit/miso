@@ -69,17 +69,17 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
   const choosing = hasChoice && !ticket;
   const statusTone =
     choosing
-      ? "border-white/15 bg-white/[0.04]"
+      ? "border-hairline bg-ink-raised"
       : step === "redeeming"
-      ? "border-white/15 bg-white/[0.04]"
+      ? "border-hairline bg-ink-raised"
       : accepted
-        ? "border-emerald-300/30 bg-emerald-300/10"
-        : "border-red-300/30 bg-red-400/10";
+        ? "border-signal/40 bg-signal/10"
+        : "border-destructive/40 bg-destructive/10";
 
   return (
     <section
       className={cn(
-        "mx-auto grid min-h-[420px] max-w-sm content-center justify-items-center gap-5 rounded-lg border p-6 text-center",
+        "mx-auto grid min-h-[420px] max-w-sm content-center justify-items-center gap-5 rounded-md border p-6 text-center",
         statusTone,
       )}
       aria-live="polite"
@@ -87,20 +87,20 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
       {choosing ? (
         <Badge variant="secondary">choose ticket</Badge>
       ) : step === "redeeming" ? (
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <Loader2 className="h-12 w-12 animate-spin text-signal" />
       ) : accepted ? (
-        <CheckCircle2 className="h-14 w-14 text-emerald-200" />
+        <CheckCircle2 className="h-14 w-14 text-signal" />
       ) : (
-        <XCircle className="h-14 w-14 text-red-200" />
+        <XCircle className="h-14 w-14 text-destructive" />
       )}
 
       <div className="grid gap-2">
         {!choosing ? (
-          <Badge variant={accepted ? "success" : step === "redeeming" ? "secondary" : "destructive"}>
+          <Badge variant={accepted ? "signal" : step === "redeeming" ? "secondary" : "destructive"}>
             {accepted ? "consumed" : step === "redeeming" ? "scanning" : "not accepted"}
           </Badge>
         ) : null}
-        <h1 className="text-2xl font-semibold">
+        <h1 className="display text-2xl text-foreground">
           {choosing
             ? "Choose ticket"
             : accepted
@@ -131,17 +131,21 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
                 setStep("redeeming");
                 setOutcome(null);
               }}
-              className="min-h-16 rounded-md border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="min-h-16 rounded-md border border-hairline bg-ink px-4 py-3 text-left transition hover:border-hairline-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
             >
-              <span className="block text-sm text-muted-foreground">Ticket #{option.serial_number}</span>
-              <span className="block font-medium">{option.category_name}</span>
+              <span className="block text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Ticket #{option.serial_number}
+              </span>
+              <span className="block font-medium text-foreground">{option.category_name}</span>
             </button>
           ))}
         </div>
       ) : ticket ? (
-        <div className="w-full rounded-md border border-white/10 bg-black/20 p-4">
-          <p className="text-sm text-muted-foreground">Ticket #{ticket.serial_number}</p>
-          <p className="mt-1 text-lg font-medium">{ticket.category_name}</p>
+        <div className="w-full rounded-md border border-hairline bg-ink p-4">
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            Ticket #{ticket.serial_number}
+          </p>
+          <p className="mt-1 text-lg font-medium text-foreground">{ticket.category_name}</p>
           <p className="mt-2 text-xs text-muted-foreground">Verified digital ticket</p>
         </div>
       ) : null}
