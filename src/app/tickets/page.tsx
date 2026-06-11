@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/site/empty-state";
-import { PageHeader } from "@/components/site/page-header";
 import { TicketCard } from "@/components/tickets/ticket-card";
 import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -58,12 +57,16 @@ export default async function TicketsPage() {
   const purchaseById = new Map((purchases ?? []).map((purchase) => [purchase.id, purchase]));
 
   return (
-    <div className="container py-10">
-      <PageHeader
-        title="Wallet"
-        description="Your digital tickets, QR access, resale status, and event history."
-        className="mb-8"
-      />
+    <div className="container py-12">
+      <header className="mb-10 border-b border-hairline pb-8">
+        <p className="eyebrow-signal">Buyer · Wallet</p>
+        <h1 className="display mt-4 text-4xl text-foreground md:text-6xl">
+          Your tickets<span className="display-italic">.</span>
+        </h1>
+        <p className="mt-3 max-w-md text-muted-foreground">
+          QR access, resale status, and event history — all in one place.
+        </p>
+      </header>
       {tickets?.length ? (
         <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {tickets.map((ticket) => {
