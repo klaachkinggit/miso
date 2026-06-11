@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EventDetail } from "@/components/site/event-detail";
 import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
-import { eventImage } from "@/lib/events/images";
 import { getPublishedEventById, listPublicEventCategories } from "@/lib/events/public";
 import { formatDate } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -47,7 +46,6 @@ export async function generateMetadata({
     .filter(Boolean)
     .join(" · ");
 
-  const image = eventImage(event, "hero") ?? eventImage(event, "thumbnail");
   const url = `${appUrl}/events/${event.id}`;
 
   return {
@@ -57,13 +55,12 @@ export async function generateMetadata({
       title: `${event.name} — MISO`,
       description,
       url,
-      ...(image ? { images: [{ url: image }] } : {}),
+      // openGraph.images intentionally omitted — file-convention opengraph-image.tsx wins
     },
     twitter: {
       card: "summary_large_image",
       title: `${event.name} — MISO`,
       description,
-      ...(image ? { images: [image] } : {}),
     },
   };
 }
@@ -76,5 +73,50 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   if (!event) notFound();
 
   const categories = await listPublicEventCategories(event.id);
-  return <EventDetail event={event} categories={categories} calendarHref={`/api/events/${id}/calendar`} />;
+
+  const lowestCategory = categories.length > 0
+    ? categories.reduce((min, c) => (c.price < min.price ? c : min), categories[0])
+    : null;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.name,
+    startDate: event.date,
+    location: {
+      "@type": "Place",
+      name: event.venue_name,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: event.city,
+      },
+    },
+    ...(event.description ? { description: event.description } : {}),
+    url: `${appUrl}/events/${event.id}`,
+    ...(lowestCategory
+      ? {
+          offers: {
+            "@type": "Offer",
+            price: lowestCategory.price,
+            priceCurrency: lowestCategory.currency,
+            availability:
+              lowestCategory.remaining > 0
+                ? "https://schema.org/InStock"
+                : "https://schema.org/SoldOut",
+          },
+        }
+      : {}),
+  };
+
+  const jsonLdString = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString }}
+      />
+      <EventDetail event={event} categories={categories} calendarHref={`/api/events/${id}/calendar`} />
+    </>
+  );
 }
