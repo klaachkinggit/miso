@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { canManageEvent } from "@/lib/organizations/auth";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -8,6 +9,7 @@ import { CategoriesPanel } from "./categories-panel";
 import { ControllersPanel, type ControllerRow } from "./controllers-panel";
 import { DetailsForm } from "./details-form";
 import { RefundsPanel } from "./refunds-panel";
+import { duplicateEventAction } from "../../actions";
 
 export default async function AdminEventPage({
   params,
@@ -77,6 +79,17 @@ export default async function AdminEventPage({
         <p className="mt-3 max-w-md text-muted-foreground">
           Setup, inventory, scanners, refunds.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a href={`/api/admin/events/${event.id}/attendees`} download>
+              Export attendees CSV
+            </a>
+          </Button>
+          <form action={duplicateEventAction}>
+            <input type="hidden" name="event_id" value={event.id} />
+            <Button type="submit" variant="outline" size="sm">Duplicate</Button>
+          </form>
+        </div>
       </header>
       {notices?.error ? (
         <div className="mb-5 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
