@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CalendarDays, LayoutDashboard, Plus, RefreshCw, Settings } from "lucide-react";
+import { BarChart3, Building2, CalendarDays, LayoutDashboard, Plus, RefreshCw, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { getActiveAdminOrganization } from "@/lib/organizations/context";
@@ -19,6 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {hasOrganization ? (
               <>
                 <NavLink href="/admin/events" icon={CalendarDays} label="Events" />
+                <NavLink href="/admin/analytics" icon={BarChart3} label="Analytics" />
                 <NavLink href="/admin/settings" icon={Settings} label="Settings" />
               </>
             ) : null}
