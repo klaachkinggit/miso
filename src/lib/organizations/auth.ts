@@ -109,12 +109,6 @@ export async function canManageEvent(profile: AuthProfile, event: EventAuthScope
   return canManageEventWithRole(profile, event, role);
 }
 
-export async function canManageEventById(profile: AuthProfile, eventId: string): Promise<boolean> {
-  const event = await getEventAuthScope(eventId);
-  if (!event) return false;
-  return canManageEvent(profile, event);
-}
-
 async function hasEventControllerAssignment(userId: string, eventId: string): Promise<boolean> {
   const sb = createServiceClient();
   const { data } = await sb

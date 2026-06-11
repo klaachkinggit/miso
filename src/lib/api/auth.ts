@@ -36,13 +36,6 @@ export function requireApiAuthenticatedProfile(): Promise<Profile> {
   return requireApiProfile();
 }
 
-export function requireApiControllerProfile(): Promise<Profile> {
-  return requireApiProfile({
-    allowRoles: ["controller", "admin"],
-    roleMessage: "Controller role required.",
-  });
-}
-
 export function requireApiNonControllerProfile(deniedMessage: string): Promise<Profile> {
   return requireApiProfile({
     denyRoles: ["controller"],
