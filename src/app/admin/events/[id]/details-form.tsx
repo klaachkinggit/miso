@@ -34,10 +34,15 @@ export function DetailsForm({ event }: { event: EventRow }) {
     <div className="grid gap-5">
       <Card className="rounded-lg">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-3">
-            <span>Event details</span>
-            <Badge variant={event.status === "published" ? "success" : "secondary"}>{event.status}</Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="eyebrow">Event</p>
+              <CardTitle className="mt-2">Details.</CardTitle>
+            </div>
+            <Badge variant={event.status === "published" ? "signal" : "secondary"}>
+              {event.status}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <form action={updateEvent} className="grid gap-5">

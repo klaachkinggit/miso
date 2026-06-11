@@ -43,7 +43,8 @@ export function ControllersPanel({
 
       <Card className="h-fit rounded-lg">
         <CardHeader>
-          <CardTitle>Invite controller</CardTitle>
+          <p className="eyebrow">Door staff</p>
+          <CardTitle>Invite controller.</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={inviteController} className="grid gap-4">

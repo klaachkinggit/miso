@@ -56,12 +56,15 @@ export default async function AdminEventPage({
 
   return (
     <div className="container py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold">{event.name}</h1>
-        <p className="mt-2 text-muted-foreground">Manage event setup, inventory, scanners, and refunds.</p>
-      </div>
+      <header className="mb-10 border-b border-hairline pb-8">
+        <p className="eyebrow">Workspace · Event</p>
+        <h1 className="display mt-3 text-4xl text-foreground md:text-5xl">{event.name}</h1>
+        <p className="mt-3 max-w-md text-muted-foreground">
+          Setup, inventory, scanners, refunds.
+        </p>
+      </header>
       {notices?.error ? (
-        <div className="mb-5 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
+        <div className="mb-5 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {notices.error}
         </div>
       ) : null}
@@ -72,7 +75,7 @@ export default async function AdminEventPage({
       ) : null}
 
       <Tabs defaultValue="details">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start">
+        <TabsList className="flex w-full justify-start overflow-x-auto">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="controllers">Controllers</TabsTrigger>

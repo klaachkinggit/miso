@@ -33,7 +33,8 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
   return (
     <Card className="h-fit rounded-lg">
       <CardHeader>
-        <CardTitle>Add category</CardTitle>
+        <p className="eyebrow">Inventory</p>
+        <CardTitle>Add category.</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={createCategory} className="grid gap-4">
