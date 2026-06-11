@@ -13,6 +13,7 @@ const config = [
       ".next/**",
       ".agents/**",
       ".claude/**",
+      ".harness-archive/**",
       "node_modules/**",
       "next-env.d.ts",
       "supabase/**",

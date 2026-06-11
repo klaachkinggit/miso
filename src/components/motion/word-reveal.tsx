@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView } from "motion/react";
-import { Fragment, useRef, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useRef, type CSSProperties } from "react";
 
 type Segment = {
   text: string;
