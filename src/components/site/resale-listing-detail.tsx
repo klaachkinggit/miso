@@ -12,11 +12,9 @@ import type { SellableResaleListing } from "@/lib/marketplace/public";
 export function ResaleListingDetail({
   item,
   backHref,
-  returnPath,
 }: {
   item: SellableResaleListing;
   backHref: string;
-  returnPath?: string;
 }) {
   return (
     <div className="container grid gap-8 py-10 lg:grid-cols-[1fr_380px]">
@@ -151,7 +149,7 @@ export function ResaleListingDetail({
                 </p>
               ) : null}
             </div>
-            <BuyListingButton listingId={item.listing.id} returnPath={returnPath} />
+            <BuyListingButton listingId={item.listing.id} />
             <Link href={backHref} className="block text-center text-xs text-muted-foreground hover:text-foreground">
               Back to exchange
             </Link>
