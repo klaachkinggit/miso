@@ -44,7 +44,7 @@ export function constructWebhookEvent(
     return stripe.webhooks.constructEvent(
       rawBody,
       signatureHeader,
-      env.STRIPE_WEBHOOK_SECRET,
+      env.STRIPE_MARKETPLACE_WEBHOOK_SECRET ?? env.STRIPE_WEBHOOK_SECRET,
     );
   } catch {
     throw new WebhookSignatureError();
