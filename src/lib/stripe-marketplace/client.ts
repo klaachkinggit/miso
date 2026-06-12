@@ -53,7 +53,8 @@ export function stripeClient(): Stripe {
   cachedClient = new Stripe(env.STRIPE_SECRET_KEY, {
     // Pin an explicit API version so a future global Stripe upgrade
     // never silently changes payload shapes. Bump deliberately.
-    apiVersion: "2025-02-24.acacia",
+    // Keep in lockstep with src/lib/payments/stripe.ts.
+    apiVersion: "2026-04-22.dahlia",
     typescript: true,
     appInfo: {
       name: "miso-stripe-marketplace",

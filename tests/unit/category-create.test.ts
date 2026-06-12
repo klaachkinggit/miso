@@ -64,7 +64,7 @@ describe("createTicketCategory", () => {
   it("inserts a standard category with min_spending = null", async () => {
     const { createTicketCategory } = await import("@/lib/events/setup");
     const result = await createTicketCategory({
-      adminUserId: "admin-1",
+      actorUserId: "admin-1",
       input: {
         event_id: "event-1",
         kind: "standard",
@@ -91,7 +91,7 @@ describe("createTicketCategory", () => {
   it("populates min_spending from price for club_table (DB constraint)", async () => {
     const { createTicketCategory } = await import("@/lib/events/setup");
     await createTicketCategory({
-      adminUserId: "admin-1",
+      actorUserId: "admin-1",
       input: {
         event_id: "event-1",
         kind: "club_table",
@@ -120,7 +120,7 @@ describe("createTicketCategory", () => {
   it("carries extra-guest config through to the insert payload", async () => {
     const { createTicketCategory } = await import("@/lib/events/setup");
     await createTicketCategory({
-      adminUserId: "admin-1",
+      actorUserId: "admin-1",
       input: {
         event_id: "event-1",
         kind: "club_table",

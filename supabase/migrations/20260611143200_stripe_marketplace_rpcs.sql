@@ -1,4 +1,4 @@
--- Migration 0018 — atomic RPC helpers for Stripe marketplace state.
+-- Atomic RPC helpers for Stripe marketplace state.
 --
 -- Adds:
 --   * apply_stripe_account_snapshot: single-statement upsert that

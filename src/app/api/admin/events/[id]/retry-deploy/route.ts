@@ -33,7 +33,7 @@ export async function POST(
   }
 
   try {
-    await publishEventSetup({ eventId: event.id, adminUserId: admin.id });
+    await publishEventSetup({ eventId: event.id, actorUserId: admin.id });
   } catch (err) {
     target.searchParams.set(
       "error",

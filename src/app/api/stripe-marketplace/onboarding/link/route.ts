@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireApiProfile } from "@/lib/api/auth";
+import { requireApiNonControllerProfile } from "@/lib/api/auth";
 import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
 import { createOnboardingLink } from "@/lib/stripe-marketplace/seller-accounts";
@@ -9,10 +9,9 @@ import { getRequestOrigin } from "@/lib/url";
 export async function POST(request: NextRequest) {
   try {
     // Only sellers onboard. Controllers don't sell. Anonymous can't.
-    const profile = await requireApiProfile({
-      denyRoles: ["controller"],
-      deniedMessage: "Controllers cannot onboard as sellers.",
-    });
+    const profile = await requireApiNonControllerProfile(
+      "Controllers cannot onboard as sellers.",
+    );
     const body = await parseJsonBody(
       request,
       OnboardingLinkInitSchema,

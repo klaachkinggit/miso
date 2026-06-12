@@ -1,5 +1,5 @@
--- Migration 0017 — Stripe marketplace: seller accounts, marketplace
--- payments, marketplace transfers.
+-- Stripe marketplace: seller accounts, marketplace payments, marketplace
+-- transfers.
 --
 -- Implements ADR 0001 (separate charges and transfers): one card
 -- payment lands on the platform account; one or more connected-account
@@ -12,6 +12,8 @@
 -- components and API responses.
 
 -- ===== Events: organizer + resale royalty ==================================
+-- events.organizer_user_id and its index already exist (see
+-- 20260518100836_organizer_event_scoping); only the royalty column is new.
 alter table events
   add column if not exists organizer_user_id uuid
     references profiles(id) on delete set null,
@@ -21,8 +23,6 @@ alter table events
   drop constraint if exists events_organizer_resale_royalty_bps_range,
   add constraint events_organizer_resale_royalty_bps_range
     check (organizer_resale_royalty_bps between 0 and 5000);
-
-create index if not exists events_organizer_idx on events(organizer_user_id);
 
 -- ===== New enums ============================================================
 do $$ begin

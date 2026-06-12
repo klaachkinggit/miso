@@ -196,7 +196,7 @@ export class ResaleCheckoutPreflightError extends Error {
   }
 }
 
-async function getResaleCheckoutListing(params: {
+export async function getResaleCheckoutListing(params: {
   listingId: string;
   buyerUserId: string;
 }): Promise<ResaleListing> {
@@ -441,6 +441,11 @@ export async function checkoutResaleListing(params: {
 export async function fulfillResale(params: {
   listingId: string;
   buyerUserId: string;
+  // "legacy" (default): seller proceeds settle through
+  // resale_seller_settlements. "stripe": the marketplace payment path
+  // pays the seller via connected-account transfers, so the legacy
+  // settlement row must NOT be written (it would double-pay).
+  paymentMode?: "legacy" | "stripe";
 }) {
   const sb = createServiceClient();
 
@@ -735,13 +740,15 @@ export async function fulfillResale(params: {
       .eq("id", listing.id)
       .in("status", ["transferring", "active"]);
 
-    await sb.from("resale_seller_settlements").upsert({
-      listing_id: listing.id,
-      seller_user_id: listing.seller_user_id,
-      amount: listing.price,
-      currency: listing.currency,
-      status: "pending_payout",
-    }, { onConflict: "listing_id" });
+    if (params.paymentMode !== "stripe") {
+      await sb.from("resale_seller_settlements").upsert({
+        listing_id: listing.id,
+        seller_user_id: listing.seller_user_id,
+        amount: listing.price,
+        currency: listing.currency,
+        status: "pending_payout",
+      }, { onConflict: "listing_id" });
+    }
 
     await markChainOpMined(op.id, transferTxHash);
 

@@ -394,7 +394,7 @@ test.describe("Stripe marketplace: full real-app simulation", () => {
           data: { object: { id: paymentIntentId, latest_charge: chargeId } },
         } as unknown as Stripe.Event);
       } catch (e) {
-        // eslint-disable-next-line no-console
+         
         console.error("[webhook threw]", e instanceof Error ? e.stack : e);
         throw e;
       }
@@ -412,7 +412,7 @@ test.describe("Stripe marketplace: full real-app simulation", () => {
           failure_reason: string | null;
         }>();
       if (paymentAfterPaid!.status !== "paid") {
-        // eslint-disable-next-line no-console
+         
         console.error(
           `payment did not reach paid: status=${paymentAfterPaid!.status} reason=${paymentAfterPaid!.failure_reason}`,
         );

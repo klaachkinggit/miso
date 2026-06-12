@@ -1,4 +1,4 @@
--- Migration 0019 — self-serve organizer onboarding.
+-- Self-serve organizer onboarding.
 --
 -- Organizers now self-declare into a Sandbox profile, complete legal
 -- + Stripe Connect compliance, then become Live without platform-admin

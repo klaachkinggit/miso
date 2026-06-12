@@ -140,7 +140,7 @@ export async function createEvent(formData: FormData) {
   try {
     event = await createDraftEvent({
       input: parsed.data,
-      adminUserId: admin.id,
+      actorUserId: admin.id,
       organizerUserId: admin.id,
       organizationId,
     });
@@ -411,7 +411,7 @@ export async function updateEvent(formData: FormData) {
     await updateEventDetails({
       eventId,
       input: parsed.data,
-      adminUserId: admin.id,
+      actorUserId: admin.id,
     });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be updated."));
@@ -452,7 +452,7 @@ export async function cancelEvent(formData: FormData) {
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   try {
-    await cancelEventSetup({ eventId, adminUserId: admin.id });
+    await cancelEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be canceled."));
   }
@@ -470,7 +470,7 @@ export async function removeCategory(formData: FormData) {
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   try {
-    await removeEmptyCategory({ eventId, categoryId, adminUserId: admin.id });
+    await removeEmptyCategory({ eventId, categoryId, actorUserId: admin.id });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Category could not be removed."));
   }
@@ -489,7 +489,7 @@ export async function cancelUnsoldTickets(formData: FormData) {
     await cancelUnsoldInventory({
       eventId,
       categoryId: categoryId || null,
-      adminUserId: admin.id,
+      actorUserId: admin.id,
     });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Tickets could not be canceled."));
@@ -503,7 +503,7 @@ export async function publishEvent(formData: FormData) {
   const eventId = String(formData.get("event_id") ?? "");
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
   try {
-    await publishEventSetup({ eventId, adminUserId: admin.id });
+    await publishEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be published."));
   }
@@ -516,7 +516,7 @@ export async function unpublishEvent(formData: FormData) {
   const eventId = String(formData.get("event_id") ?? "");
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
   try {
-    await unpublishEventSetup({ eventId, adminUserId: admin.id });
+    await unpublishEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be unpublished."));
   }
@@ -553,7 +553,7 @@ export async function createCategory(formData: FormData) {
   try {
     await createTicketCategory({
       input: parsed.data,
-      adminUserId: admin.id,
+      actorUserId: admin.id,
     });
   } catch (error) {
     fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Category could not be created."));

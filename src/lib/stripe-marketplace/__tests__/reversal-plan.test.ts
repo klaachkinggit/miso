@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { planProRateReversals } from "../refunds";
 import type { MarketplaceTransferRow } from "../transfers";

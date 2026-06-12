@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireApiProfile } from "@/lib/api/auth";
+import { requireApiNonControllerProfile } from "@/lib/api/auth";
 import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { getSellerAccountByUserId } from "@/lib/stripe-marketplace/seller-accounts";
 import { syncSellerAccountFromStripe } from "@/lib/stripe-marketplace/seller-accounts";
@@ -10,10 +10,9 @@ import { getRequestOrigin } from "@/lib/url";
 // account state and bounce the browser back to the Smartboard banking tab.
 export async function GET(request: NextRequest) {
   try {
-    const profile = await requireApiProfile({
-      denyRoles: ["controller"],
-      deniedMessage: "Controllers cannot onboard as sellers.",
-    });
+    const profile = await requireApiNonControllerProfile(
+      "Controllers cannot onboard as sellers.",
+    );
     const seller = await getSellerAccountByUserId(profile.id);
     if (seller) {
       await syncSellerAccountFromStripe(seller.stripe_account_id);
