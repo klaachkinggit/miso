@@ -25,6 +25,11 @@ function checkbox(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
+function percentToBps(formData: FormData, key: string): number {
+  const raw = parseFloat(String(formData.get(key) ?? "0"));
+  return isNaN(raw) ? 0 : Math.round(raw * 100);
+}
+
 function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
@@ -113,6 +118,7 @@ export async function createOrganizerEvent(formData: FormData) {
     sales_enabled: checkbox(formData, "sales_enabled"),
     resale_enabled: checkbox(formData, "resale_enabled"),
     public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
+    organizer_resale_royalty_bps: percentToBps(formData, "organizer_resale_royalty_pct"),
   });
   if (!parsed.success) fail("/smartboard", parsed.error.issues[0]?.message ?? "Invalid event.");
 
@@ -146,6 +152,7 @@ export async function updateOrganizerEvent(formData: FormData) {
     sales_enabled: checkbox(formData, "sales_enabled"),
     resale_enabled: checkbox(formData, "resale_enabled"),
     public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
+    organizer_resale_royalty_bps: percentToBps(formData, "organizer_resale_royalty_pct"),
   });
   if (!parsed.success) fail(`/smartboard/events/${eventId}`, parsed.error.issues[0]?.message ?? "Invalid event.");
 

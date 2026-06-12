@@ -363,6 +363,10 @@ function CreateEventCard() {
             <Input id="image_url" name="image_url" type="url" />
           </div>
           <div className="grid gap-2">
+            <Label htmlFor="organizer_resale_royalty_pct">Resale royalty (%)</Label>
+            <Input id="organizer_resale_royalty_pct" name="organizer_resale_royalty_pct" type="number" step="0.5" min="0" max="50" defaultValue="0" />
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" name="description" rows={3} />
           </div>

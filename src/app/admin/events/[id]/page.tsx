@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { canManageEvent } from "@/lib/organizations/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, Profile, Ticket, TicketCategory } from "@/types/db";
+import type { EventRow, MarketplacePayment, Profile, Ticket, TicketCategory } from "@/types/db";
 import { CategoriesPanel } from "./categories-panel";
 import { ControllersPanel, type ControllerRow } from "./controllers-panel";
 import { DetailsForm } from "./details-form";
+import { MarketplacePaymentsPanel } from "./marketplace-payments-panel";
 import { RefundsPanel } from "./refunds-panel";
 import { duplicateEventAction } from "../../actions";
 
@@ -27,7 +28,7 @@ export default async function AdminEventPage({
   if (!event) notFound();
   if (!(await canManageEvent(profile, event))) notFound();
 
-  const [{ data: categories }, { data: controllerLinks }, { data: tickets }] = await Promise.all([
+  const [{ data: categories }, { data: controllerLinks }, { data: tickets }, { data: purchaseIds }, { data: ticketIds }] = await Promise.all([
     sb.from("ticket_categories").select("*").eq("event_id", id).order("created_at", { ascending: true }).returns<TicketCategory[]>(),
     sb.from("event_controllers").select("user_id").eq("event_id", id).returns<Array<{ user_id: string }>>(),
     sb
@@ -37,7 +38,56 @@ export default async function AdminEventPage({
       .in("status", ["sold", "listed", "used", "refund_pending", "refunded"])
       .order("serial_number", { ascending: true })
       .returns<Ticket[]>(),
+    sb.from("purchases").select("id").eq("event_id", id).returns<Array<{ id: string }>>(),
+    sb.from("tickets").select("id").eq("event_id", id).returns<Array<{ id: string }>>(),
   ]);
+
+  const pIds = (purchaseIds ?? []).map((r) => r.id);
+  const tIds = (ticketIds ?? []).map((r) => r.id);
+
+  const mpFromPurchases = pIds.length
+    ? sb
+        .from("marketplace_payments")
+        .select("*")
+        .in("purchase_id", pIds)
+        .order("created_at", { ascending: false })
+        .returns<MarketplacePayment[]>()
+    : Promise.resolve({ data: [] as MarketplacePayment[] });
+
+  const mpFromListings = tIds.length
+    ? sb
+        .from("resale_listings")
+        .select("id")
+        .in("ticket_id", tIds)
+        .returns<Array<{ id: string }>>()
+    : Promise.resolve({ data: [] as Array<{ id: string }> });
+
+  const [{ data: mpPrimary }, { data: listingLinks }] = await Promise.all([
+    mpFromPurchases,
+    mpFromListings,
+  ]);
+
+  const lIds = (listingLinks ?? []).map((r) => r.id);
+  const { data: mpResale } = lIds.length
+    ? await sb
+        .from("marketplace_payments")
+        .select("*")
+        .in("resale_listing_id", lIds)
+        .order("created_at", { ascending: false })
+        .returns<MarketplacePayment[]>()
+    : { data: [] as MarketplacePayment[] };
+
+  const seenIds = new Set<string>();
+  const marketplacePayments: MarketplacePayment[] = [];
+  for (const p of [...(mpPrimary ?? []), ...(mpResale ?? [])]) {
+    if (!seenIds.has(p.id)) {
+      seenIds.add(p.id);
+      marketplacePayments.push(p);
+    }
+  }
+  marketplacePayments.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
 
   const controllerIds = controllerLinks?.map((row) => row.user_id) ?? [];
   let controllers: ControllerRow[] = [];
@@ -68,6 +118,19 @@ export default async function AdminEventPage({
       .returns<Array<Pick<Profile, "id" | "display_name" | "email">>>();
     for (const owner of ownerProfiles ?? []) {
       ownerLabels.set(owner.id, owner.display_name || owner.email);
+    }
+  }
+
+  const buyerIds = Array.from(new Set(marketplacePayments.map((p) => p.buyer_user_id)));
+  const buyerLabels = new Map<string, string>();
+  if (buyerIds.length) {
+    const { data: buyerProfiles } = await sb
+      .from("profiles")
+      .select("id, display_name, email")
+      .in("id", buyerIds)
+      .returns<Array<Pick<Profile, "id" | "display_name" | "email">>>();
+    for (const buyer of buyerProfiles ?? []) {
+      buyerLabels.set(buyer.id, buyer.display_name || buyer.email);
     }
   }
 
@@ -108,6 +171,7 @@ export default async function AdminEventPage({
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="controllers">Controllers</TabsTrigger>
           <TabsTrigger value="refunds">Refunds</TabsTrigger>
+          <TabsTrigger value="marketplace">Marketplace Payments</TabsTrigger>
         </TabsList>
         <TabsContent value="details">
           <DetailsForm event={event} />
@@ -123,6 +187,13 @@ export default async function AdminEventPage({
             tickets={tickets ?? []}
             categories={categories ?? []}
             ownerLabels={Object.fromEntries(ownerLabels)}
+          />
+        </TabsContent>
+        <TabsContent value="marketplace">
+          <MarketplacePaymentsPanel
+            payments={marketplacePayments}
+            eventId={event.id}
+            buyerLabels={Object.fromEntries(buyerLabels)}
           />
         </TabsContent>
       </Tabs>

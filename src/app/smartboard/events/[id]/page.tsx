@@ -166,6 +166,18 @@ export default async function SmartboardEventPage({
                       <input name="public_sales_counter_enabled" type="checkbox" className="h-4 w-4" defaultChecked={event.public_sales_counter_enabled} />
                       Public sales counter
                     </label>
+                    <div className="grid gap-2 pt-1">
+                      <Label htmlFor="organizer_resale_royalty_pct">Resale royalty (%)</Label>
+                      <Input
+                        id="organizer_resale_royalty_pct"
+                        name="organizer_resale_royalty_pct"
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="50"
+                        defaultValue={(event.organizer_resale_royalty_bps ?? 0) / 100}
+                      />
+                    </div>
                   </div>
                   <Button type="submit">Save changes</Button>
                 </form>

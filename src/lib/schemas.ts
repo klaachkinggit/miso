@@ -35,6 +35,7 @@ export const CreateEventSchema = z.object({
   vibe: EventVibeSchema.optional().nullable(),
   is_festival: z.boolean().default(false),
   artists: z.array(z.string().min(1).max(80)).max(20).default([]),
+  organizer_resale_royalty_bps: z.coerce.number().int().min(0).max(5000).default(0),
 });
 
 export const SiteSettingsSchema = z.object({

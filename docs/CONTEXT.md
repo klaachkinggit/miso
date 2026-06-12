@@ -69,6 +69,10 @@ Stripe Checkout Sessions directly.
 | Sales channel breakdown | Per-channel revenue + tickets + share of total for the current Analytics range. Channels come from `purchases.sales_channel`. |
 | Analytics CSV export | Multi-block CSV download (totals, prior totals, time series, sales channels, per-event performance) produced from the same loader as the dashboard. Available at `GET /api/analytics/export`. |
 
+## Royalty Split
+
+`organizations.resale_royalty_bps` is the legacy resale path knob, set by platform admins via the admin UI; it controls the royalty charged on listings that go through the legacy `src/lib/resale/listing.ts` path and is scoped to all events under that organization. `events.organizer_resale_royalty_bps` is the marketplace path knob, set by organizers per event via the smartboard event form (0–5000 bps, i.e. 0–50%); it is read exclusively by the Stripe separate-charges-and-transfers payment path (`src/lib/stripe-marketplace/payments.ts`) and defaults to 0, meaning no royalty is collected on the marketplace path unless the organizer explicitly sets it.
+
 ## Payment Model
 
 Payments use Stripe Checkout Sessions (`mode: 'payment'`). The `purchases` and

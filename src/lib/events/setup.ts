@@ -39,6 +39,7 @@ export interface EventDetailsInput {
   vibe?: Database["public"]["Enums"]["event_vibe"] | null;
   is_festival: boolean;
   artists: string[];
+  organizer_resale_royalty_bps: number;
 }
 
 export interface CategoryInput {

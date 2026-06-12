@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CreateCategorySchema,
+  CreateEventSchema,
   DeleteOrganizationSchema,
   OrganizationBrandingSchema,
   OrganizationMemberSchema,
@@ -15,6 +16,43 @@ import {
 const eventId = "11111111-1111-4111-8111-111111111111";
 const categoryId = "22222222-2222-4222-8222-222222222222";
 const ticketId = "33333333-3333-4333-8333-333333333333";
+
+describe("CreateEventSchema – organizer_resale_royalty_bps", () => {
+  const base = {
+    name: "Night Out",
+    date: "2026-09-01T22:00",
+    venue_name: "Warehouse",
+    city: "Paris",
+    capacity: "500",
+  };
+
+  it("defaults to 0 when field is omitted", () => {
+    const parsed = CreateEventSchema.parse(base);
+    expect(parsed.organizer_resale_royalty_bps).toBe(0);
+  });
+
+  it("coerces a string bps value", () => {
+    const parsed = CreateEventSchema.parse({ ...base, organizer_resale_royalty_bps: "250" });
+    expect(parsed.organizer_resale_royalty_bps).toBe(250);
+  });
+
+  it("accepts the maximum allowed value of 5000", () => {
+    const parsed = CreateEventSchema.parse({ ...base, organizer_resale_royalty_bps: 5000 });
+    expect(parsed.organizer_resale_royalty_bps).toBe(5000);
+  });
+
+  it("rejects values above 5000", () => {
+    expect(
+      CreateEventSchema.safeParse({ ...base, organizer_resale_royalty_bps: 5001 }).success,
+    ).toBe(false);
+  });
+
+  it("rejects negative values", () => {
+    expect(
+      CreateEventSchema.safeParse({ ...base, organizer_resale_royalty_bps: -1 }).success,
+    ).toBe(false);
+  });
+});
 
 describe("CreateCategorySchema", () => {
   const base = {
