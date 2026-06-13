@@ -17,6 +17,7 @@ import {
   refreshOrganizerLiveStatus,
 } from "@/lib/organizers/profile";
 import { assertOwnEvent } from "@/lib/organizers/permissions";
+import { getDefaultAdminOrganizationId } from "@/lib/organizations/auth";
 import { CreateCategorySchema, CreateEventSchema, InviteControllerSchema } from "@/lib/schemas";
 import { createOnboardingLink } from "@/lib/stripe-marketplace/seller-accounts";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -122,12 +123,18 @@ export async function createOrganizerEvent(formData: FormData) {
   });
   if (!parsed.success) fail("/smartboard", parsed.error.issues[0]?.message ?? "Invalid event.");
 
+  const organizationId = await getDefaultAdminOrganizationId(profile.id);
+  if (!organizationId) {
+    fail("/smartboard", "Set up your organization before creating events.");
+  }
+
   let eventId = "";
   try {
     const event = await createDraftEvent({
       input: parsed.data,
       actorUserId: profile.id,
       organizerUserId: profile.id,
+      organizationId,
     });
     eventId = event.id;
   } catch (error) {
