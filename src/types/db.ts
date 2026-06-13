@@ -190,6 +190,48 @@ export type Database = {
           },
         ]
       }
+      event_waitlists: {
+        Row: {
+          claim_expires_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          notified_at: string | null
+          user_id: string
+        }
+        Insert: {
+          claim_expires_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          notified_at?: string | null
+          user_id: string
+        }
+        Update: {
+          claim_expires_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          notified_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_waitlists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_waitlists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           artists: string[]
@@ -2505,6 +2547,7 @@ export type OrganizerProfile = Tables<"organizer_profiles">
 export type MarketplacePayment = Tables<"marketplace_payments">
 export type MarketplaceTransfer = Tables<"marketplace_transfers">
 export type MarketplacePaymentItem = Tables<"marketplace_payment_items">
+export type EventWaitlist = Tables<"event_waitlists">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">

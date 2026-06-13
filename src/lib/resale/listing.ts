@@ -25,6 +25,7 @@ import {
   markTicketListed,
   markTicketResaleCanceled,
 } from "@/lib/tickets/lifecycle";
+import { notifyWaitlistHead } from "@/lib/waitlist";
 import type { Ticket, EventRow, TicketCategory, ResaleListing } from "@/types/db";
 
 const INVALID_FOR_RESALE = new Set([
@@ -117,6 +118,16 @@ export async function createResaleListing(params: {
     entityType: "resale_listing",
     entityId: listing.id,
     metadata: { ticket_id: ticket.id, price: params.price },
+  });
+
+  // A new listing means inventory just returned for this event — notify the
+  // waitlist head. The freed inventory is a marketplace listing, not a primary
+  // ticket, so point the email at the listing. notifyWaitlistHead is internally
+  // caught and never throws, so it cannot break listing creation.
+  await notifyWaitlistHead({
+    eventId: ticket.event_id,
+    source: "resale",
+    listingId: listing.id,
   });
 
   return listing;

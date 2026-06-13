@@ -11,6 +11,7 @@ import { markPurchaseRefunded } from "@/lib/payments/settlement";
 import { refundStripeSession } from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { markTicketRefunded } from "@/lib/tickets/lifecycle";
+import { eventHasAvailability, notifyWaitlistHead } from "@/lib/waitlist";
 import type { Purchase, ResaleListing, Ticket } from "@/types/db";
 
 export async function refundTicket(params: {
@@ -61,6 +62,14 @@ export async function refundTicket(params: {
 
   if (purchase && !resale) {
     await markPurchaseRefunded(purchase.id);
+  }
+
+  // A refund frees inventory — but only notify once markTicketRefunded has
+  // genuinely returned a purchasable seat. Gate on eventHasAvailability so a
+  // refund that did not actually free inventory (e.g. sold_count already 0)
+  // never sends a hollow "a ticket opened up" to a still-sold-out page.
+  if (await eventHasAvailability({ eventId: ticket.event_id })) {
+    await notifyWaitlistHead({ eventId: ticket.event_id, source: "refund" });
   }
 
   await audit({

@@ -10,6 +10,7 @@ import { ResaleBoughtNotice } from "./templates/ResaleBoughtNotice";
 import { RefundNotice } from "./templates/RefundNotice";
 import { PayoutReady } from "./templates/PayoutReady";
 import { EventPublished } from "./templates/EventPublished";
+import { WaitlistAvailable } from "./templates/WaitlistAvailable";
 
 // Every helper here is best-effort and fully internally caught: it never
 // throws and never rejects. Callers (settlement/refund/publish/onboarding)
@@ -157,6 +158,27 @@ export async function sendPayoutReadyEmail(input: {
     );
   } catch (err) {
     console.error("[email] sendPayoutReadyEmail failed", err);
+  }
+}
+
+export async function sendWaitlistAvailable(input: {
+  userId: string;
+  eventName: string;
+  eventUrl?: string;
+}): Promise<void> {
+  try {
+    if (!emailConfigured()) return;
+    const to = await lookupEmail(input.userId);
+    await safeSend(
+      to,
+      `A ticket for ${input.eventName} just opened up`,
+      React.createElement(WaitlistAvailable, {
+        eventName: input.eventName,
+        eventUrl: input.eventUrl ? `${appUrl()}${input.eventUrl}` : undefined,
+      }),
+    );
+  } catch (err) {
+    console.error("[email] sendWaitlistAvailable failed", err);
   }
 }
 

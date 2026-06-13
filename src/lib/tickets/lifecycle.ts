@@ -17,6 +17,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { uploadJson } from "@/lib/thirdweb/storage";
 import { backendWallet } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
+import { notifyWaitlistHead } from "@/lib/waitlist";
 import type { EventRow, Ticket, TicketCategory } from "@/types/db";
 
 async function buyerWalletAddress(userId: string): Promise<string> {
@@ -109,10 +110,12 @@ export async function reserveTicket(params: {
 
 // Releases a reservation to `available`. Refuses to touch tickets that
 // are `minting`, `sold`, or `repair_needed`: those have either an
-// in-flight chain op or a mined token attached.
+// in-flight chain op or a mined token attached. A genuine release frees
+// inventory, so notify the waitlist head — but only when a row was
+// actually flipped (a double-release matches zero rows → no double-notify).
 export async function releaseReservation(ticketId: string): Promise<void> {
   const sb = createServiceClient();
-  await sb
+  const { data: released } = await sb
     .from("tickets")
     .update({
       status: "available",
@@ -120,7 +123,10 @@ export async function releaseReservation(ticketId: string): Promise<void> {
       owner_user_id: null,
     })
     .eq("id", ticketId)
-    .eq("status", "reserved");
+    .eq("status", "reserved")
+    .select("event_id")
+    .maybeSingle<Pick<Ticket, "event_id">>();
+  if (released) await notifyWaitlistHead({ eventId: released.event_id, source: "release" });
 }
 
 export interface FulfillReceipt {
@@ -600,10 +606,43 @@ export async function markTicketRefunded(ticketId: string): Promise<void> {
       "reserved",
       "expired",
     ])
-    .select("id")
-    .maybeSingle();
+    .select("id, category_id, event_id")
+    .maybeSingle<Pick<Ticket, "id" | "category_id" | "event_id">>();
   if (error) throw error;
   if (!data) throw new DomainError("Cannot refund this ticket in its current state");
+
+  // A refund must genuinely return PURCHASABLE inventory, or the waitlist
+  // notification is hollow. The buy path needs BOTH: the availability gate
+  // (sold_count < supply) AND an `available` ticket row to reserve. The
+  // refunded row keeps its minted NFT (serial == tokenId is live on chain),
+  // so it cannot be re-offered — re-fulfilling it would re-mint the same
+  // tokenId. Instead decrement sold_count and seed one fresh `available` row
+  // with the next serial, mirroring createTicketCategory.
+  const { data: category } = await sb
+    .from("ticket_categories")
+    .select("sold_count")
+    .eq("id", data.category_id)
+    .maybeSingle<Pick<TicketCategory, "sold_count">>();
+  if (category && category.sold_count > 0) {
+    await sb
+      .from("ticket_categories")
+      .update({ sold_count: category.sold_count - 1 })
+      .eq("id", data.category_id);
+
+    const { data: lastTicket } = await sb
+      .from("tickets")
+      .select("serial_number")
+      .eq("event_id", data.event_id)
+      .order("serial_number", { ascending: false })
+      .limit(1)
+      .maybeSingle<Pick<Ticket, "serial_number">>();
+    await sb.from("tickets").insert({
+      event_id: data.event_id,
+      category_id: data.category_id,
+      serial_number: (lastTicket?.serial_number ?? 0) + 1,
+      status: "available",
+    });
+  }
 }
 
 // Cancels rows that have NOT touched chain yet. Tickets in `minting`,
