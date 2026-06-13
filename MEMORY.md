@@ -14,3 +14,8 @@
 ## 2026-06-12 - Checkout unification phase 0, PR #11 (stacked on #10)
 - Resale buy flow now uses marketplace rails (/checkout/card); B2 legacy-seller backfill migration `20260612221500` landed. Legacy /api/marketplace/checkout route kept until e2e specs are migrated (decommission step).
 - OPEN PRODUCT DECISION: primary BuyButton stays on legacy — plan pins marketplace v1 to one-item-per-checkout but storefront sells quantity 1-10 / gifts / club extras. Either extend marketplace to multi-item payments (ADR-worthy: schema junction + partial-fulfillment semantics) or simplify primary flow. Do not re-point buy-button before this is decided.
+
+## 2026-06-13 - Multi-item checkout merged (PR #12); final session prepped
+- development @ f62ba3e: backbone complete incl. multi-item primary (ADR 0002); 336 tests green; build env-independent.
+- THE PLAN for the final build session: docs/SAAS_V1_PLAN.md (P0 ship blockers -> P1 competitive -> P2 stretch, acceptance checklist included). Handoff: docs/handoffs/2026-06-13-fable5-session3.md.
+- First task next session: plan P0.1 legacy checkout decommission (verify free-ticket flow first).
