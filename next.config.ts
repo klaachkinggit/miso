@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const config: NextConfig = {
   outputFileTracingRoot: process.cwd(),
@@ -22,4 +23,12 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+// Source-map upload only runs when SENTRY_AUTH_TOKEN is set; otherwise
+// withSentryConfig passes through and the build stays green with no DSN.
+export default withSentryConfig(config, {
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});

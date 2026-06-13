@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 import { audit } from "@/lib/audit";
 import { ChainOpInFlightError, ChainOpRepairError } from "@/lib/chain/ops";
 import { fulfillReservedTicket } from "@/lib/tickets/lifecycle";
@@ -246,6 +248,10 @@ export async function settleSucceededPaymentIntent(input: {
       err instanceof ChainOpRepairError ||
       (err instanceof Error && err.name === "ChainOpRepairError");
     const terminal = !pending && !isRepair && isTerminalFulfillmentError(err);
+
+    // Payment is leaving the happy path into repair_needed / terminal /
+    // pending — surface it for on-call. Safe no-op without a DSN.
+    Sentry.captureException(err);
 
     await transitionPayment(payment.id, {
       type:
