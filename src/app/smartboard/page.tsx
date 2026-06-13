@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, CalendarPlus, ExternalLink, LockKeyhole, Settings, ShieldCheck, WalletCards } from "lucide-react";
+import { BarChart3, CalendarPlus, ExternalLink, LockKeyhole, Megaphone, Settings, ShieldCheck, Users, WalletCards } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +20,10 @@ import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, Ticket } from "@/types/db";
 import {
   createOrganizerEvent,
+  getActiveOrganizationFollowerCount,
   saveLegalCompliance,
   saveOrganizerPage,
+  sendAnnouncementAction,
   startStripeConnect,
 } from "./actions";
 
@@ -30,7 +32,7 @@ const TAB_VALUES = ["events", "marketing", "analyse", "banking", "page"] as cons
 export default async function SmartboardPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string; tab?: string }>;
+  searchParams?: Promise<{ error?: string; tab?: string; announced?: string }>;
 }) {
   const profile = await requireRole("organizer");
   await refreshOrganizerLiveStatus(profile.id);
@@ -60,6 +62,8 @@ export default async function SmartboardPage({
   const ticketRows = tickets ?? [];
   const soldCount = ticketRows.filter((ticket) => ["sold", "listed", "used"].includes(ticket.status)).length;
   const generatedCount = ticketRows.length;
+  const followerCount = await getActiveOrganizationFollowerCount(profile);
+  const announcedCount = params?.announced ? Number(params.announced) : null;
 
   return (
     <div className="container py-8">
@@ -145,7 +149,10 @@ export default async function SmartboardPage({
           <div className="grid gap-5 md:grid-cols-3">
             <MetricCard icon={CalendarPlus} label="Draft events" value={eventRows.filter((event) => event.status === "draft").length} />
             <MetricCard icon={ShieldCheck} label="Published events" value={eventRows.filter((event) => event.status === "published").length} />
-            <MetricCard icon={BarChart3} label="Tickets sold" value={soldCount} />
+            <MetricCard icon={Users} label="Followers" value={followerCount} />
+          </div>
+          <div className="mt-5">
+            <AnnounceComposer followerCount={followerCount} announcedCount={announcedCount} />
           </div>
         </TabsContent>
 
@@ -373,6 +380,50 @@ function CreateEventCard() {
           <input type="hidden" name="resale_enabled" value="true" />
           <input type="hidden" name="sales_enabled" value="true" />
           <Button type="submit">Create draft</Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnnounceComposer({
+  followerCount,
+  announcedCount,
+}: {
+  followerCount: number;
+  announcedCount: number | null;
+}) {
+  return (
+    <Card className="glass rounded-lg">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Megaphone className="h-5 w-5 text-primary" />
+          Announce to followers
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {announcedCount !== null ? (
+          <div className="mb-4 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm">
+            Announcement sent to {announcedCount} {announcedCount === 1 ? "follower" : "followers"}.
+          </div>
+        ) : null}
+        <form action={sendAnnouncementAction} className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="announce_subject">Subject</Label>
+            <Input id="announce_subject" name="subject" maxLength={150} required />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="announce_body">Message</Label>
+            <Textarea id="announce_body" name="body" rows={6} required />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              Reaches {followerCount} active {followerCount === 1 ? "follower" : "followers"}.
+            </p>
+            <Button type="submit" disabled={followerCount === 0}>
+              Send announcement
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

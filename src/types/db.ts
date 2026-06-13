@@ -702,6 +702,48 @@ export type Database = {
           },
         ]
       }
+      organization_followers: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          unsubscribe_token: string
+          unsubscribed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_followers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_followers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_memberships: {
         Row: {
           created_at: string
@@ -2548,6 +2590,7 @@ export type MarketplacePayment = Tables<"marketplace_payments">
 export type MarketplaceTransfer = Tables<"marketplace_transfers">
 export type MarketplacePaymentItem = Tables<"marketplace_payment_items">
 export type EventWaitlist = Tables<"event_waitlists">
+export type OrganizationFollower = Tables<"organization_followers">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">
