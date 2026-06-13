@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 // Mapping layer for user-facing API errors. Internal `Error.message`
 // values can leak DB column names, Thirdweb error payloads, etc. The
@@ -31,6 +32,9 @@ export class DomainError extends Error {
 function safeErrorMessage(err: unknown, opts: SafeErrorOptions = {}): string {
   const fallback = opts.fallback ?? "Request failed.";
   if (err instanceof DomainError) return err.message;
+  // Genuinely unexpected (5xx/unknown) — neither a routed ApiRouteError
+  // nor an expected DomainError. Capture before suppressing the message.
+  Sentry.captureException(err);
   // Log the full error server-side so on-call engineers can correlate
   // — never expose it to the client.
   console.error("[api] suppressed error:", err);
