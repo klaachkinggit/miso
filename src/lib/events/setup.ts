@@ -81,13 +81,13 @@ export async function createDraftEvent(params: {
   input: EventDetailsInput;
   actorUserId: string;
   organizerUserId: string;
-  organizationId?: string | null;
+  organizationId: string;
 }): Promise<EventRow> {
   const sb = createServiceClient();
   const eventPayload = {
     ...params.input,
     date: casablancaInputToIso(params.input.date),
-    organization_id: params.organizationId ?? null,
+    organization_id: params.organizationId,
     organizer_user_id: params.organizerUserId,
     slug: `${slugify(params.input.name)}-${randomUUID().slice(0, 8)}`,
     status: "draft" as const,

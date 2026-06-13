@@ -209,7 +209,7 @@ export type Database = {
           marketplace_url: string | null
           name: string
           nft_contract_address: string | null
-          organization_id: string | null
+          organization_id: string
           organizer_resale_royalty_bps: number
           organizer_user_id: string | null
           public_sales_counter_enabled: boolean
@@ -244,7 +244,7 @@ export type Database = {
           marketplace_url?: string | null
           name: string
           nft_contract_address?: string | null
-          organization_id?: string | null
+          organization_id: string
           organizer_resale_royalty_bps?: number
           organizer_user_id?: string | null
           public_sales_counter_enabled?: boolean
@@ -279,7 +279,7 @@ export type Database = {
           marketplace_url?: string | null
           name?: string
           nft_contract_address?: string | null
-          organization_id?: string | null
+          organization_id?: string
           organizer_resale_royalty_bps?: number
           organizer_user_id?: string | null
           public_sales_counter_enabled?: boolean

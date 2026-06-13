@@ -32,14 +32,10 @@ describe("organization auth decisions", () => {
     expect(canManageEventWithRole(userProfile(), eventRow(), "controller")).toBe(false);
   });
 
-  it("keeps legacy organizer ownership only for events without organization scope", () => {
-    expect(
-      canManageEventWithRole(
-        userProfile({ id: "legacy-organizer", role: "organizer" }),
-        eventRow({ organization_id: null }),
-        null,
-      ),
-    ).toBe(true);
+  it("requires organization-admin role to manage org-owned events", () => {
+    // events.organization_id is NOT NULL (P0.2) — the legacy organizer-owner
+    // fallback path can no longer be reached, so a non-admin organizer who
+    // does not hold an org admin role cannot manage the event.
     expect(
       canManageEventWithRole(
         userProfile({ id: "legacy-organizer", role: "organizer" }),

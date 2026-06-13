@@ -129,9 +129,9 @@ async function assertCanManageEvent(
 
 export async function createEvent(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
-  const { activeOrganization, organizations } = await getActiveAdminOrganization(admin);
+  const { activeOrganization } = await getActiveAdminOrganization(admin);
   const organizationId = activeOrganization?.id ?? null;
-  if (!organizationId && organizations.length) {
+  if (!organizationId) {
     fail("/admin/events/new", "Select an organization before creating an event.");
   }
   const parsed = CreateEventSchema.safeParse(eventFormPayload(formData));
