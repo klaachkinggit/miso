@@ -14,6 +14,7 @@ import {
   organizationEventPath,
 } from "@/lib/organizations/public";
 import { storefrontPathForHost } from "@/lib/organizations/hosts";
+import { isOnWaitlist } from "@/lib/waitlist";
 
 const appUrl = (
   process.env.NEXT_PUBLIC_APP_URL ??
@@ -90,11 +91,18 @@ export default async function OrganizationEventPage({
   if (!event) notFound();
 
   const categories = await listPublicEventCategories(event.id);
+  const onWaitlist = profile
+    ? await isOnWaitlist({ eventId: event.id, userId: profile.id })
+    : false;
   return (
     <EventDetail
       event={event}
       categories={categories}
       calendarHref={`/api/events/${event.id}/calendar`}
+      isOnWaitlist={onWaitlist}
+      waitlistPath={organizationEventPath(organization.slug, eventSlug)}
+      organizationSlug={organization.slug}
+      eventSlug={eventSlug}
       returnPath={
         event.slug
           ? storefrontPathForHost(

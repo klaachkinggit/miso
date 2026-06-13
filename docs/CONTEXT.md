@@ -63,6 +63,7 @@ Stripe Checkout Sessions directly.
 | Face value | Organizer-set ticket price before Miso service fees and Stripe processing fees. |
 | Buyer-paid fee | Fee model where the buyer pays the Face value plus Miso service fees and Stripe processing fees, so the organizer receives near the Face value. |
 | Resale royalty | Optional organizer-controlled fee on resale listings. When enabled, the buyer pays the royalty on top of the seller's listing price, and the seller still receives the listing price. |
+| Waitlist | Ordered queue (`event_waitlists`) a buyer joins when an Event is sold out. When availability returns (refund/release or a new resale listing), the oldest un-notified entry is emailed and given a 24h claim window before the next in line is offered. |
 | Organization analytics dashboard | Admin-only surface at `/admin/analytics` scoped to the Active Organization. Surfaces revenue + sales metrics for a chosen Analytics range. |
 | Analytics range | Time window driving every dashboard metric. Preset values: `today`, `7d`, `30d`, `90d`, `ytd`, `all`, plus `custom` with explicit `from`/`to`. URL-synced via search params. |
 | Prior period comparison | Optional toggle that derives the immediately preceding window of the same span and renders a delta on every KPI. Disabled for the `all` preset since there is no prior window. |

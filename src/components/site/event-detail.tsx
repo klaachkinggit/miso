@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Calendar, MapPin, ShieldCheck, Ticket, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { BuyButton } from "@/components/site/buy-button";
+import { WaitlistButton } from "@/components/site/waitlist-button";
 import { eventImage } from "@/lib/events/images";
 import type { PublicEventCategory } from "@/lib/events/public";
 import { formatDate, formatDateShort, formatPrice } from "@/lib/format";
@@ -12,15 +13,28 @@ export function EventDetail({
   categories,
   returnPath,
   calendarHref,
+  isOnWaitlist,
+  waitlistPath,
+  organizationSlug,
+  eventSlug,
 }: {
   event: EventRow;
   categories: PublicEventCategory[];
   returnPath?: string;
   calendarHref?: string;
+  isOnWaitlist?: boolean;
+  waitlistPath?: string;
+  organizationSlug?: string;
+  eventSlug?: string;
 }) {
   const cheapest = categories
     .filter((category) => category.remaining > 0 && category.sales_enabled)
     .sort((a, b) => Number(a.price) - Number(b.price))[0];
+  const eventSoldOut =
+    categories.length > 0 &&
+    !categories.some((category) => category.remaining > 0 && category.sales_enabled);
+  const showWaitlist =
+    eventSoldOut && Boolean(waitlistPath) && Boolean(organizationSlug) && Boolean(eventSlug);
   const hero = eventImage(event, "hero");
 
   return (
@@ -224,6 +238,20 @@ export function EventDetail({
               No ticket tiers are available.
             </div>
           )}
+          {showWaitlist && waitlistPath && organizationSlug && eventSlug ? (
+            <div className="rounded-md border border-hairline bg-ink-raised p-5">
+              <p className="eyebrow mb-1">Sold out</p>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Join the waitlist and we&apos;ll email you the moment a ticket frees up.
+              </p>
+              <WaitlistButton
+                organizationSlug={organizationSlug}
+                eventSlug={eventSlug}
+                path={waitlistPath}
+                onWaitlist={Boolean(isOnWaitlist)}
+              />
+            </div>
+          ) : null}
         </aside>
       </div>
 
