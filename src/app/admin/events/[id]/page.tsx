@@ -45,14 +45,13 @@ export default async function AdminEventPage({
   const pIds = (purchaseIds ?? []).map((r) => r.id);
   const tIds = (ticketIds ?? []).map((r) => r.id);
 
-  const mpFromPurchases = pIds.length
+  const mpFromItems = pIds.length
     ? sb
-        .from("marketplace_payments")
-        .select("*")
+        .from("marketplace_payment_items")
+        .select("marketplace_payment_id")
         .in("purchase_id", pIds)
-        .order("created_at", { ascending: false })
-        .returns<MarketplacePayment[]>()
-    : Promise.resolve({ data: [] as MarketplacePayment[] });
+        .returns<Array<{ marketplace_payment_id: string }>>()
+    : Promise.resolve({ data: [] as Array<{ marketplace_payment_id: string }> });
 
   const mpFromListings = tIds.length
     ? sb
@@ -62,10 +61,22 @@ export default async function AdminEventPage({
         .returns<Array<{ id: string }>>()
     : Promise.resolve({ data: [] as Array<{ id: string }> });
 
-  const [{ data: mpPrimary }, { data: listingLinks }] = await Promise.all([
-    mpFromPurchases,
+  const [{ data: itemLinks }, { data: listingLinks }] = await Promise.all([
+    mpFromItems,
     mpFromListings,
   ]);
+
+  const primaryPaymentIds = Array.from(
+    new Set((itemLinks ?? []).map((r) => r.marketplace_payment_id)),
+  );
+  const { data: mpPrimary } = primaryPaymentIds.length
+    ? await sb
+        .from("marketplace_payments")
+        .select("*")
+        .in("id", primaryPaymentIds)
+        .order("created_at", { ascending: false })
+        .returns<MarketplacePayment[]>()
+    : { data: [] as MarketplacePayment[] };
 
   const lIds = (listingLinks ?? []).map((r) => r.id);
   const { data: mpResale } = lIds.length

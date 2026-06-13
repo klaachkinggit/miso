@@ -5,7 +5,14 @@ import { CardCheckoutForm } from "./payment-form";
 export default async function CardCheckoutPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ category_id?: string; listing_id?: string }>;
+  searchParams?: Promise<{
+    category_id?: string;
+    listing_id?: string;
+    quantity?: string;
+    extra_guests?: string;
+    gift_email?: string;
+    return_path?: string;
+  }>;
 }) {
   await requireUser();
   const params = await searchParams;
@@ -20,7 +27,14 @@ export default async function CardCheckoutPage({
 
   return (
     <div className="container flex min-h-[calc(100vh-4rem)] items-center py-10">
-      <CardCheckoutForm mode="primary" id={params.category_id} />
+      <CardCheckoutForm
+        mode="primary"
+        id={params.category_id}
+        quantity={params.quantity ? Number(params.quantity) : undefined}
+        extraGuests={params.extra_guests ? Number(params.extra_guests) : undefined}
+        giftEmail={params.gift_email}
+        returnPath={params.return_path}
+      />
     </div>
   );
 }

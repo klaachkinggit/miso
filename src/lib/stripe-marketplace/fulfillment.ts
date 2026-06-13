@@ -78,6 +78,73 @@ function isPendingFulfillmentError(err: unknown): boolean {
   return false;
 }
 
+interface ItemPurchase {
+  purchase_id: string;
+  ticket_id: string;
+  buyer_user_id: string;
+  status: string;
+}
+
+type ServiceClient = ReturnType<typeof createServiceClient>;
+
+// Resolves the per-ticket purchases a primary payment must fulfill. New
+// multi-item payments carry purchase_id = null and link via
+// marketplace_payment_items; pre-backfill legacy payments carry a single
+// purchase_id and no items — fall back to that for replay safety.
+async function loadPrimaryItemPurchases(
+  sb: ServiceClient,
+  payment: MarketplacePaymentRow,
+): Promise<ItemPurchase[]> {
+  const { data: items } = await sb
+    .from("marketplace_payment_items")
+    .select("purchase_id, purchases(id, ticket_id, buyer_user_id, status)")
+    .eq("marketplace_payment_id", payment.id)
+    .returns<
+      Array<{
+        purchase_id: string;
+        purchases: {
+          id: string;
+          ticket_id: string;
+          buyer_user_id: string;
+          status: string;
+        } | null;
+      }>
+    >();
+
+  if (items && items.length > 0) {
+    return items.map((item) => {
+      if (!item.purchases) {
+        throw new Error(`purchase ${item.purchase_id} missing`);
+      }
+      return {
+        purchase_id: item.purchases.id,
+        ticket_id: item.purchases.ticket_id,
+        buyer_user_id: item.purchases.buyer_user_id,
+        status: item.purchases.status,
+      };
+    });
+  }
+
+  if (payment.purchase_id) {
+    const { data: purchase } = await sb
+      .from("purchases")
+      .select("ticket_id, buyer_user_id, status")
+      .eq("id", payment.purchase_id)
+      .single<{ ticket_id: string; buyer_user_id: string; status: string }>();
+    if (!purchase) throw new Error(`purchase ${payment.purchase_id} missing`);
+    return [
+      {
+        purchase_id: payment.purchase_id,
+        ticket_id: purchase.ticket_id,
+        buyer_user_id: purchase.buyer_user_id,
+        status: purchase.status,
+      },
+    ];
+  }
+
+  return [];
+}
+
 export async function settleSucceededPaymentIntent(input: {
   paymentIntentId: string;
   chargeId: string;
@@ -138,20 +205,32 @@ export async function settleSucceededPaymentIntent(input: {
   // --- 1. Fulfill on chain --------------------------------------------------
   try {
     if (stamped.kind === "primary") {
-      if (!stamped.purchase_id) {
-        throw new Error(`primary payment ${stamped.id} missing purchase_id`);
+      const items = await loadPrimaryItemPurchases(sb, stamped);
+      if (items.length === 0) {
+        throw new Error(`primary payment ${stamped.id} has no items`);
       }
-      const { data: purchase } = await sb
+      // All-or-nothing at the payment level (ADR 0002): every item must
+      // mint before transfers fire. fulfillReservedTicket is idempotent
+      // (already-sold-for-this-purchase fast-path) so replaying the webhook
+      // after a partial mint re-fulfills only the unminted tickets.
+      for (const item of items) {
+        await fulfillReservedTicket({
+          ticketId: item.ticket_id,
+          buyerUserId: item.buyer_user_id,
+          purchaseId: item.purchase_id,
+        });
+      }
+      // purchase_id is null on multi-item payments, so the state machine's
+      // markPurchasePaid side-effect never fires; mark each item purchase
+      // paid here (mirrors the legacy single-purchase semantics).
+      await sb
         .from("purchases")
-        .select("ticket_id, buyer_user_id, status")
-        .eq("id", stamped.purchase_id)
-        .single<{ ticket_id: string; buyer_user_id: string; status: string }>();
-      if (!purchase) throw new Error(`purchase ${stamped.purchase_id} missing`);
-      await fulfillReservedTicket({
-        ticketId: purchase.ticket_id,
-        buyerUserId: purchase.buyer_user_id,
-        purchaseId: stamped.purchase_id,
-      });
+        .update({ status: "paid", paid_at: nowIso })
+        .in(
+          "id",
+          items.map((i) => i.purchase_id),
+        )
+        .neq("status", "refunded");
     } else {
       if (!stamped.resale_listing_id) {
         throw new Error(`resale payment ${stamped.id} missing listing_id`);

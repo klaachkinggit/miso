@@ -35,9 +35,17 @@ interface CheckoutPayload {
 export function CardCheckoutForm({
   mode,
   id,
+  quantity,
+  extraGuests,
+  giftEmail,
+  returnPath,
 }: {
   mode: "primary" | "resale";
   id: string;
+  quantity?: number;
+  extraGuests?: number;
+  giftEmail?: string;
+  returnPath?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,13 +69,20 @@ export function CardCheckoutForm({
           mode === "primary"
             ? "/api/stripe-marketplace/checkout/primary"
             : "/api/stripe-marketplace/checkout/resale";
+
+        const primaryBody: Record<string, unknown> = { category_id: id };
+        if (quantity !== undefined) primaryBody.quantity = quantity;
+        if (extraGuests !== undefined) primaryBody.extra_guests_count = extraGuests;
+        if (giftEmail) primaryBody.gift_recipient_email = giftEmail;
+        if (returnPath) primaryBody.return_path = returnPath;
+
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
             "content-type": "application/json",
             "idempotency-key": crypto.randomUUID(),
           },
-          body: JSON.stringify(mode === "primary" ? { category_id: id } : { listing_id: id }),
+          body: JSON.stringify(mode === "primary" ? primaryBody : { listing_id: id }),
         });
         const payload = (await response.json()) as CheckoutPayload;
         if (!response.ok) throw new Error(payload.error ?? "Card checkout could not start.");
@@ -93,7 +108,7 @@ export function CardCheckoutForm({
     return () => {
       canceled = true;
     };
-  }, [id, mode]);
+  }, [id, mode, quantity, extraGuests, giftEmail, returnPath]);
 
   async function submit() {
     if (!stripeRef.current || !elementsRef.current || !paymentIdRef.current) return;

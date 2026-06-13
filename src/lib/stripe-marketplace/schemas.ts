@@ -2,6 +2,10 @@ import { z } from "zod";
 
 export const PrimaryCheckoutInitSchema = z.object({
   category_id: z.string().uuid(),
+  quantity: z.number().int().min(1).max(10).default(1),
+  extra_guests_count: z.number().int().min(0).default(0),
+  gift_recipient_email: z.string().email().optional().nullable(),
+  return_path: z.string().startsWith("/").max(200).optional(),
 });
 
 export const ResaleCheckoutInitSchema = z.object({

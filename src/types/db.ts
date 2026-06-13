@@ -393,6 +393,45 @@ export type Database = {
           },
         ]
       }
+      marketplace_payment_items: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          marketplace_payment_id: string
+          purchase_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          id?: string
+          marketplace_payment_id: string
+          purchase_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          marketplace_payment_id?: string
+          purchase_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_payment_items_marketplace_payment_id_fkey"
+            columns: ["marketplace_payment_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_payment_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: true
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_payments: {
         Row: {
           amount_total_cents: number
@@ -2444,6 +2483,7 @@ export const Constants = {
 } as const
 
 
+
 // ---- Convenience aliases (preserved across `npm run supabase:types` regens) ----
 export type EventRow = Tables<"events">
 export type Profile = Tables<"profiles">
@@ -2464,6 +2504,7 @@ export type StripeSellerAccount = Tables<"stripe_seller_accounts">
 export type OrganizerProfile = Tables<"organizer_profiles">
 export type MarketplacePayment = Tables<"marketplace_payments">
 export type MarketplaceTransfer = Tables<"marketplace_transfers">
+export type MarketplacePaymentItem = Tables<"marketplace_payment_items">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">

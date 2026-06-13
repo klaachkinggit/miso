@@ -8,8 +8,22 @@ import {
   createResaleListing,
   getResaleCheckoutListing,
 } from "@/lib/resale/listing";
-import { reserveTicket } from "@/lib/tickets/lifecycle";
-import type { Purchase, ResaleListing } from "@/types/db";
+import { reserveTicket, releaseReservation } from "@/lib/tickets/lifecycle";
+import {
+  checkoutPricing,
+  normalizeExtras,
+  normalizeQuantity,
+  resolveGiftRecipientUserId,
+  validateExtraGuests,
+} from "@/lib/payments/checkout";
+import { allocateMoney } from "@/lib/payments/pricing";
+import type {
+  Purchase,
+  ResaleListing,
+  SalesChannel,
+  Ticket,
+  TicketCategory,
+} from "@/types/db";
 
 import { stripeClient, stripeEnv } from "./client";
 import type { EventRowWithOrganizer } from "./types";
@@ -61,7 +75,16 @@ export interface MarketplacePaymentRow {
   updated_at: string;
 }
 
+export interface MarketplacePaymentItemRow {
+  id: string;
+  marketplace_payment_id: string;
+  purchase_id: string;
+  amount_cents: number;
+  created_at: string;
+}
+
 const PAYMENT_TABLE = "marketplace_payments" as const;
+const ITEM_TABLE = "marketplace_payment_items" as const;
 
 export async function insertMarketplacePayment(
   row: Omit<
@@ -133,6 +156,41 @@ export async function getMarketplacePaymentByPurchase(
   return (data as MarketplacePaymentRow | null) ?? null;
 }
 
+export async function getMarketplacePaymentByPurchaseViaItems(
+  purchaseId: string,
+): Promise<MarketplacePaymentRow | null> {
+  const sb = createServiceClient();
+  const { data: item, error: itemError } = await sb
+    .from(ITEM_TABLE)
+    .select("marketplace_payment_id")
+    .eq("purchase_id", purchaseId)
+    .maybeSingle<{ marketplace_payment_id: string }>();
+  if (itemError) throw itemError;
+  if (!item) return null;
+
+  const { data, error } = await sb
+    .from(PAYMENT_TABLE)
+    .select("*")
+    .eq("id", item.marketplace_payment_id)
+    .in("status", LIVE_PAYMENT_STATUSES)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as MarketplacePaymentRow | null) ?? null;
+}
+
+export async function listMarketplacePaymentItems(
+  marketplacePaymentId: string,
+): Promise<MarketplacePaymentItemRow[]> {
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from(ITEM_TABLE)
+    .select("*")
+    .eq("marketplace_payment_id", marketplacePaymentId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as MarketplacePaymentItemRow[];
+}
+
 export async function getMarketplacePaymentByListing(
   listingId: string,
 ): Promise<MarketplacePaymentRow | null> {
@@ -171,10 +229,19 @@ function assertEur(currency: string): asserts currency is "EUR" {
 export async function createPrimaryCheckout(input: {
   buyerUserId: string;
   categoryId: string;
+  quantity?: number;
+  extraGuestsCount?: number;
+  giftRecipientEmail?: string | null;
   idempotencyKey?: string;
+  salesChannel?: SalesChannel;
+  trackingOrigin?: string | null;
 }): Promise<CheckoutResult> {
   const sb = createServiceClient();
+  const quantity = normalizeQuantity(input.quantity);
+  const extras = normalizeExtras(input.extraGuestsCount);
   let pendingPaymentId: string | undefined;
+  const reservedTicketIds: string[] = [];
+  const purchaseIds: string[] = [];
 
   if (input.idempotencyKey) {
     const { data: prior } = await sb
@@ -182,9 +249,10 @@ export async function createPrimaryCheckout(input: {
       .select("id")
       .eq("buyer_user_id", input.buyerUserId)
       .eq("provider_session_id", input.idempotencyKey)
+      .limit(1)
       .maybeSingle<{ id: string }>();
     if (prior) {
-      const existing = await getMarketplacePaymentByPurchase(prior.id);
+      const existing = await getMarketplacePaymentByPurchaseViaItems(prior.id);
       if (existing && existing.stripe_payment_intent_id) {
         const reused = await stripeClient().paymentIntents.retrieve(
           existing.stripe_payment_intent_id,
@@ -200,12 +268,26 @@ export async function createPrimaryCheckout(input: {
     }
   }
 
-  const { ticket, category } = await reserveTicket({
-    categoryId: input.categoryId,
-    buyerUserId: input.buyerUserId,
-  });
+  const releaseReservedTickets = async () => {
+    await Promise.all(reservedTicketIds.map((id) => releaseReservation(id)));
+  };
 
   try {
+    const reservedTickets: Ticket[] = [];
+    let category: TicketCategory | null = null;
+    for (let i = 0; i < quantity; i++) {
+      const reservation = await reserveTicket({
+        categoryId: input.categoryId,
+        buyerUserId: input.buyerUserId,
+      });
+      category = reservation.category;
+      reservedTickets.push(reservation.ticket);
+      reservedTicketIds.push(reservation.ticket.id);
+    }
+    if (!category || reservedTickets.length === 0) {
+      throw new Error("Ticket could not be reserved.");
+    }
+
     assertEur(category.currency);
     if (Number(category.price) <= 0) {
       throw new StripeMarketplaceError(
@@ -214,10 +296,18 @@ export async function createPrimaryCheckout(input: {
       );
     }
 
+    validateExtraGuests(category, extras);
+    const giftRecipientUserId = await resolveGiftRecipientUserId(
+      sb,
+      input.giftRecipientEmail,
+    );
+    const pricing = checkoutPricing(category, extras);
+    const perTicketCents = toCents(pricing.amount);
+
     const { data: event } = await sb
       .from("events")
       .select("*")
-      .eq("id", ticket.event_id)
+      .eq("id", reservedTickets[0].event_id)
       .single<EventRowWithOrganizer>();
     if (!event) throw new StripeMarketplaceError("Event not found.", 404);
 
@@ -227,26 +317,38 @@ export async function createPrimaryCheckout(input: {
     }
     const seller = await assertPayoutReady(organizerUserId, "organizer");
 
-    const { data: purchase, error: purchaseError } = await sb
-      .from("purchases")
-      .insert({
-        buyer_user_id: input.buyerUserId,
-        event_id: event.id,
-        ticket_id: ticket.id,
-        amount: category.price,
-        currency: category.currency,
-        status: "pending",
-        provider_session_id: input.idempotencyKey ?? null,
-      })
-      .select("*")
-      .single<Purchase>();
-    if (purchaseError || !purchase) {
-      throw purchaseError ?? new Error("Purchase could not be created.");
+    const salesChannel = input.salesChannel ?? "marketplace";
+    const trackingOrigin = input.trackingOrigin ?? null;
+    for (const ticket of reservedTickets) {
+      const { data: purchase, error: purchaseError } = await sb
+        .from("purchases")
+        .insert({
+          buyer_user_id: input.buyerUserId,
+          event_id: event.id,
+          ticket_id: ticket.id,
+          amount: pricing.amount,
+          currency: category.currency,
+          status: "pending",
+          provider_session_id: input.idempotencyKey ?? null,
+          gift_recipient_user_id: giftRecipientUserId,
+          extra_guests_count: extras,
+          online_advance_amount: pricing.onlineAdvanceAmount,
+          min_spending_total: pricing.minSpendingTotal,
+          sales_channel: salesChannel,
+          tracking_origin: trackingOrigin,
+        })
+        .select("*")
+        .single<Purchase>();
+      if (purchaseError || !purchase) {
+        throw purchaseError ?? new Error("Purchase could not be created.");
+      }
+      purchaseIds.push(purchase.id);
     }
 
     const env = stripeEnv();
+    const grossTotalCents = perTicketCents * quantity;
     const breakdown = computePrimaryBreakdown({
-      grossCents: toCents(category.price),
+      grossCents: grossTotalCents,
       marketplaceFeeBps: env.MISO_MARKETPLACE_FEE_BPS,
     });
     const transferGroup = newTransferGroup("miso_p");
@@ -256,7 +358,7 @@ export async function createPrimaryCheckout(input: {
       buyer_user_id: input.buyerUserId,
       primary_seller_user_id: organizerUserId,
       organizer_user_id: organizerUserId,
-      purchase_id: purchase.id,
+      purchase_id: null,
       resale_listing_id: null,
       amount_total_cents: breakdown.amountTotalCents,
       currency: "EUR",
@@ -272,6 +374,18 @@ export async function createPrimaryCheckout(input: {
     });
     pendingPaymentId = payment.id;
 
+    const itemCents = allocateMoney(fromCents(grossTotalCents), quantity).map(
+      toCents,
+    );
+    const { error: itemsError } = await sb.from(ITEM_TABLE).insert(
+      purchaseIds.map((purchaseId, index) => ({
+        marketplace_payment_id: payment.id,
+        purchase_id: purchaseId,
+        amount_cents: itemCents[index] ?? 0,
+      })),
+    );
+    if (itemsError) throw itemsError;
+
     const intent = await createPaymentIntent({
       amountCents: breakdown.amountTotalCents,
       transferGroup,
@@ -281,8 +395,7 @@ export async function createPrimaryCheckout(input: {
       metadata: {
         marketplace_payment_id: payment.id,
         kind: "primary",
-        purchase_id: purchase.id,
-        ticket_id: ticket.id,
+        quantity: String(quantity),
         organizer_user_id: organizerUserId,
         organizer_stripe_account: seller.stripe_account_id,
       },
@@ -293,14 +406,22 @@ export async function createPrimaryCheckout(input: {
       intentId: intent.id,
     });
 
+    // purchase_id is null on multi-item payments, so the state machine
+    // cannot mirror the intent onto the per-ticket purchases — do it here.
+    await sb
+      .from("purchases")
+      .update({ provider_payment_id: intent.id, payment_provider: "stripe" })
+      .in("id", purchaseIds);
+
     await audit({
       actorUserId: input.buyerUserId,
       action: "marketplace.primary.checkout_created",
       entityType: "marketplace_payment",
       entityId: payment.id,
       metadata: {
-        purchase_id: purchase.id,
-        ticket_id: ticket.id,
+        purchase_ids: purchaseIds,
+        ticket_ids: reservedTicketIds,
+        quantity,
         amount_total_cents: breakdown.amountTotalCents,
         transfer_group: transferGroup,
       },
@@ -314,32 +435,23 @@ export async function createPrimaryCheckout(input: {
       currency: "EUR",
     };
   } catch (error) {
-    let canReleaseInventory = true;
     if (pendingPaymentId) {
       await transitionPayment(pendingPaymentId, {
         type: "CHECKOUT_ABORTED",
         reason: error instanceof Error ? error.message : "checkout aborted",
       });
-      canReleaseInventory = false; // State machine handles release
     }
-    if (canReleaseInventory) {
+    // purchase_id is null on the payment, so releaseInventory in the state
+    // machine is a no-op; release the N reserved tickets + fail their
+    // pending purchases here regardless of how far the checkout progressed.
+    if (purchaseIds.length) {
       await sb
         .from("purchases")
         .update({ status: "failed" })
-        .eq("buyer_user_id", input.buyerUserId)
-        .eq("ticket_id", ticket.id)
+        .in("id", purchaseIds)
         .eq("status", "pending");
-      await sb
-        .from("tickets")
-        .update({
-          status: "available",
-          reserved_until: null,
-          owner_user_id: null,
-        })
-        .eq("id", ticket.id)
-        .eq("status", "reserved")
-        .eq("owner_user_id", input.buyerUserId);
     }
+    await releaseReservedTickets();
     throw error;
   }
 }
