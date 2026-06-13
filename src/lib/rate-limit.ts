@@ -15,6 +15,10 @@ const RATE_LIMITS = {
   checkout: { limit: 12, window: "60 s" },
   onboarding: { limit: 6, window: "60 s" },
   listing: { limit: 20, window: "60 s" },
+  // Per-organizer: outbound-email amplifier (1 request -> up to N sends).
+  announce: { limit: 3, window: "3600 s" },
+  // Per-user: follow/unfollow churn.
+  follow: { limit: 30, window: "60 s" },
   // Unauthenticated, per-IP: credential stuffing / signup spam.
   auth: { limit: 10, window: "60 s" },
 } as const;

@@ -17,7 +17,12 @@ import {
   refreshOrganizerLiveStatus,
 } from "@/lib/organizers/profile";
 import { assertOwnEvent } from "@/lib/organizers/permissions";
+import { sendOrganizationAnnouncement } from "@/lib/email/send";
+import { listActiveFollowerEmails } from "@/lib/followers";
 import { getDefaultAdminOrganizationId } from "@/lib/organizations/auth";
+import { getActiveAdminOrganization, requireActiveAdminOrganization } from "@/lib/organizations/context";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import type { Profile } from "@/types/db";
 import { CreateCategorySchema, CreateEventSchema, InviteControllerSchema } from "@/lib/schemas";
 import { createOnboardingLink } from "@/lib/stripe-marketplace/seller-accounts";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -216,6 +221,42 @@ export async function publishOrganizerEvent(formData: FormData) {
   revalidatePath(`/smartboard/events/${eventId}`);
   revalidatePath("/events");
   redirect(`/smartboard/events/${eventId}`);
+}
+
+export async function sendAnnouncementAction(formData: FormData) {
+  const profile = await requireOrganizer();
+  const { activeOrganization } = await requireActiveAdminOrganization(profile);
+
+  const { allowed } = await enforceRateLimit("announce", profile.id);
+  if (!allowed) fail("/smartboard?tab=marketing", "Too many announcements. Try again later.");
+
+  const subject = String(formData.get("subject") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!subject) fail("/smartboard?tab=marketing", "Subject is required.");
+  if (!body) fail("/smartboard?tab=marketing", "Message body is required.");
+
+  let sent = 0;
+  try {
+    const result = await sendOrganizationAnnouncement({
+      organizationId: activeOrganization.id,
+      subject,
+      body,
+    });
+    sent = result.sent;
+  } catch (error) {
+    fail("/smartboard?tab=marketing", errorMessage(error, "Announcement could not be sent."));
+  }
+  revalidatePath("/smartboard");
+  redirect(`/smartboard?tab=marketing&announced=${sent}`);
+}
+
+export async function getActiveOrganizationFollowerCount(
+  profile: Pick<Profile, "id" | "role">,
+): Promise<number> {
+  const { activeOrganization } = await getActiveAdminOrganization(profile);
+  if (!activeOrganization) return 0;
+  const followers = await listActiveFollowerEmails({ organizationId: activeOrganization.id });
+  return followers.length;
 }
 
 export async function inviteOrganizerController(formData: FormData) {

@@ -14,6 +14,7 @@ import {
   sendResaleBoughtNotice,
   sendResaleSoldNotice,
 } from "@/lib/email/send";
+import { ensureAutoFollow } from "@/lib/followers";
 
 import {
   getMarketplacePaymentByIntent,
@@ -311,7 +312,58 @@ export async function settleSucceededPaymentIntent(input: {
   // outcome — `paid` is already committed above.
   await sendSettlementEmails(sb, stamped);
 
+  // Best-effort auto-follow: the buyer follows the purchased event's
+  // Organization so it can reach them with announcements. ensureAutoFollow is
+  // fully internally caught and the org lookup is guarded below, so this can
+  // never throw into settlement — `paid` is already committed above.
+  await autoFollowBuyer(sb, stamped);
+
   return paid;
+}
+
+// Resolves the purchased event's organization and follows the buyer to it.
+// Never throws: the lookup is wrapped and ensureAutoFollow is itself fully
+// internally caught. Called only after a payment is PAID.
+async function autoFollowBuyer(
+  sb: ServiceClient,
+  payment: MarketplacePaymentRow,
+): Promise<void> {
+  try {
+    let ticketId: string | undefined;
+    if (payment.kind === "primary") {
+      const items = await loadPrimaryItemPurchases(sb, payment);
+      ticketId = items[0]?.ticket_id;
+    } else if (payment.resale_listing_id) {
+      const { data: listing } = await sb
+        .from("resale_listings")
+        .select("ticket_id")
+        .eq("id", payment.resale_listing_id)
+        .maybeSingle<{ ticket_id: string }>();
+      ticketId = listing?.ticket_id;
+    }
+    if (!ticketId) return;
+
+    const { data: ticket } = await sb
+      .from("tickets")
+      .select("event_id")
+      .eq("id", ticketId)
+      .maybeSingle<{ event_id: string }>();
+    if (!ticket?.event_id) return;
+
+    const { data: event } = await sb
+      .from("events")
+      .select("organization_id")
+      .eq("id", ticket.event_id)
+      .maybeSingle<{ organization_id: string | null }>();
+    if (!event?.organization_id) return;
+
+    await ensureAutoFollow({
+      organizationId: event.organization_id,
+      userId: payment.buyer_user_id,
+    });
+  } catch (err) {
+    console.error("[followers] autoFollowBuyer failed", err);
+  }
 }
 
 function formatEur(cents: number): string {

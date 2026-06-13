@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
 import { EventsFilterPanel } from "@/components/site/events-filter-panel";
+import { FollowOrganizationButton } from "@/components/site/follow-organization-button";
 import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
+import { isFollowing } from "@/lib/followers";
 import {
   EVENT_QUICK_FILTERS,
   eventDiscoveryDescription,
@@ -73,6 +75,9 @@ export default async function OrganizationStorefrontPage({
   });
   const branding = normalizeOrganizationBranding(organization.branding);
   const accent = branding.accent_color ?? DEFAULT_ORGANIZATION_ACCENT;
+  const following = profile
+    ? await isFollowing({ organizationId: organization.id, userId: profile.id })
+    : false;
 
   return (
     <div className="container py-10 pb-20 md:py-14">
@@ -111,6 +116,16 @@ export default async function OrganizationStorefrontPage({
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
               {branding.tagline ?? eventDiscoveryDescription(events.length, discovery)}
             </p>
+            {profile ? (
+              <div className="mt-6">
+                <FollowOrganizationButton
+                  organizationSlug={organization.slug}
+                  organizationName={organization.name}
+                  following={following}
+                  accent={accent}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

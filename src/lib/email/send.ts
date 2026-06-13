@@ -3,7 +3,10 @@ import * as React from "react";
 
 import { createServiceClient } from "@/lib/supabase/service";
 
-import { sendTransactionalEmail } from "./client";
+import { listActiveFollowerEmails } from "@/lib/followers";
+
+import { sendBatchEmail, sendTransactionalEmail } from "./client";
+import { AnnouncementEmail } from "./templates/AnnouncementEmail";
 import { PurchaseReceipt } from "./templates/PurchaseReceipt";
 import { ResaleSoldNotice } from "./templates/ResaleSoldNotice";
 import { ResaleBoughtNotice } from "./templates/ResaleBoughtNotice";
@@ -179,6 +182,48 @@ export async function sendWaitlistAvailable(input: {
     );
   } catch (err) {
     console.error("[email] sendWaitlistAvailable failed", err);
+  }
+}
+
+// Bulk announcement to an Organization's active followers. Internally safe and
+// a complete no-op without email env configured. Each recipient gets a
+// per-follower unsubscribe link keyed on their unguessable token. Returns the
+// number of emails accepted by Resend.
+export async function sendOrganizationAnnouncement(input: {
+  organizationId: string;
+  subject: string;
+  body: string;
+}): Promise<{ sent: number }> {
+  try {
+    if (!emailConfigured()) return { sent: 0 };
+    const sb = createServiceClient();
+    const { data: organization } = await sb
+      .from("organizations")
+      .select("name")
+      .eq("id", input.organizationId)
+      .maybeSingle<{ name: string }>();
+    const organizationName = organization?.name ?? "Miso";
+
+    const followers = await listActiveFollowerEmails({
+      organizationId: input.organizationId,
+    });
+    if (followers.length === 0) return { sent: 0 };
+
+    return await sendBatchEmail(
+      followers.map((follower) => ({
+        to: follower.email,
+        subject: input.subject,
+        react: React.createElement(AnnouncementEmail, {
+          organizationName,
+          subject: input.subject,
+          body: input.body,
+          unsubscribeUrl: `${appUrl()}/unsubscribe/${follower.unsubscribeToken}`,
+        }),
+      })),
+    );
+  } catch (err) {
+    console.error("[email] sendOrganizationAnnouncement failed", err);
+    return { sent: 0 };
   }
 }
 

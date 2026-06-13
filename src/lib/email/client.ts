@@ -49,3 +49,47 @@ export async function sendTransactionalEmail(input: {
     return { sent: false };
   }
 }
+
+export interface BatchEmail {
+  to: string;
+  subject: string;
+  react: ReactElement;
+}
+
+// Best-effort batch send (Resend caps a batch at 100). Like the single send,
+// it is fully internally caught and a complete no-op when email is
+// unconfigured. Returns the count actually accepted by Resend.
+export async function sendBatchEmail(emails: BatchEmail[]): Promise<{ sent: number }> {
+  const from = process.env.EMAIL_FROM;
+  const resend = getResend();
+  if (!resend || !from || emails.length === 0) return { sent: 0 };
+
+  const replyTo = process.env.EMAIL_REPLY_TO;
+  let sent = 0;
+  for (let i = 0; i < emails.length; i += 100) {
+    const chunk = emails.slice(i, i + 100);
+    try {
+      // permissive: one invalid address must not fail the whole chunk. Valid
+      // entries still send; invalid ones land in `data.errors[]` and are
+      // excluded from `data.data[]`, so the accepted count is data.data.length.
+      const { data, error } = await resend.batch.send(
+        chunk.map((email) => ({
+          from,
+          to: email.to,
+          subject: email.subject,
+          react: email.react,
+          ...(replyTo ? { replyTo } : {}),
+        })),
+        { batchValidation: "permissive" },
+      );
+      if (error) {
+        console.error("[email] resend batch error", error);
+        continue;
+      }
+      sent += data?.data.length ?? 0;
+    } catch (err) {
+      console.error("[email] batch send failed", err);
+    }
+  }
+  return { sent };
+}
