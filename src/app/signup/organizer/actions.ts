@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { clientIp, enforceRateLimit } from "@/lib/rate-limit";
 import { createOrganizationForAdmin } from "@/lib/organizations/setup";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import type { OrganizerOnboardingAnswers } from "@/lib/payments/stripe-connect";
@@ -37,6 +38,10 @@ export async function organizerSignupAction(formData: FormData) {
   });
   if (!parsed.success) fail(parsed.error.issues[0]?.message ?? "Invalid organizer details.");
   const input = parsed.data;
+
+  if (!(await enforceRateLimit("auth", await clientIp())).allowed) {
+    fail("Too many attempts. Please wait a minute and try again.");
+  }
 
   const sb = await createClient();
   const { data, error } = await sb.auth.signUp({

@@ -5,6 +5,7 @@ import { parseJsonBody } from "@/lib/api/request";
 import { createOnboardingLink } from "@/lib/stripe-marketplace/seller-accounts";
 import { OnboardingLinkInitSchema } from "@/lib/stripe-marketplace/schemas";
 import { getRequestOrigin } from "@/lib/url";
+import { enforceRateLimit, rateLimitedResponseBody } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +13,9 @@ export async function POST(request: NextRequest) {
     const profile = await requireApiNonControllerProfile(
       "Controllers cannot onboard as sellers.",
     );
+    if (!(await enforceRateLimit("onboarding", profile.id)).allowed) {
+      return NextResponse.json(rateLimitedResponseBody(), { status: 429 });
+    }
     const body = await parseJsonBody(
       request,
       OnboardingLinkInitSchema,

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { defaultRoleDestination } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
+import { clientIp, enforceRateLimit } from "@/lib/rate-limit";
 import type { UserRole } from "@/types/db";
 
 function withError(path: string, message: string) {
@@ -15,6 +16,10 @@ export async function loginAction(formData: FormData) {
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) withError("/login", "Email and password are required.");
+
+  if (!(await enforceRateLimit("auth", await clientIp())).allowed) {
+    withError("/login", "Too many attempts. Please wait a minute and try again.");
+  }
 
   const sb = await createClient();
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
