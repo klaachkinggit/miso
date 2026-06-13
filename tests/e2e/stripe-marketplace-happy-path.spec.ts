@@ -323,6 +323,7 @@ test.describe("Stripe marketplace: full real-app simulation", () => {
         buyerUserId: f.buyer,
         categoryId: f.categoryId,
       });
+      if ("free" in checkout) throw new Error("expected a paid checkout");
       expect(checkout.paymentIntentId).toBe(paymentIntentId);
       expect(checkout.clientSecret).toBe(`${paymentIntentId}_secret_test`);
       expect(checkout.currency).toBe("EUR");

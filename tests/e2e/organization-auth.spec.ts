@@ -123,7 +123,7 @@ test.describe("Organization auth app boundary", () => {
     const staleGatePollRes = await page.request.get(`/api/controller/gates/${gate.id}`);
     expect(staleGatePollRes.status()).toBe(403);
 
-    const checkoutRes = await page.request.post("/api/checkout", {
+    const checkoutRes = await page.request.post("/api/stripe-marketplace/checkout/primary", {
       data: { category_id: category!.id, quantity: 1 },
     });
     expect(checkoutRes.status()).toBe(403);
@@ -133,7 +133,7 @@ test.describe("Organization auth app boundary", () => {
     });
     expect(listRes.status()).toBe(403);
 
-    const resaleCheckoutRes = await page.request.post("/api/marketplace/checkout", {
+    const resaleCheckoutRes = await page.request.post("/api/stripe-marketplace/checkout/resale", {
       data: { listing_id: listing!.id },
     });
     expect(resaleCheckoutRes.status()).toBe(403);

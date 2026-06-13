@@ -29,6 +29,9 @@ interface CheckoutPayload {
   clientSecret: string;
   amountTotalCents: number;
   currency: "EUR";
+  // Set when a zero-amount (free) primary checkout fulfilled inline — no
+  // Stripe step; the tickets are already minted.
+  free?: boolean;
   error?: string;
 }
 
@@ -87,6 +90,11 @@ export function CardCheckoutForm({
         const payload = (await response.json()) as CheckoutPayload;
         if (!response.ok) throw new Error(payload.error ?? "Card checkout could not start.");
         if (canceled) return;
+
+        if (payload.free) {
+          window.location.assign("/tickets?claimed=1");
+          return;
+        }
 
         const stripe = window.Stripe(publishableKey);
         const elements = stripe.elements({ clientSecret: payload.clientSecret });

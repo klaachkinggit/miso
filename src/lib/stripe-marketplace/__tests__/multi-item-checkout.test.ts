@@ -55,6 +55,7 @@ describe("createPrimaryCheckout multi-item", () => {
       categoryId: "cat-1",
       quantity: 3,
     });
+    if ("free" in result) throw new Error("expected a paid checkout");
 
     const purchases = [...fakeDb.purchases.values()];
     assert.equal(purchases.length, 3);
@@ -119,6 +120,7 @@ describe("createPrimaryCheckout multi-item", () => {
       quantity: 2,
       idempotencyKey: "idem-1",
     });
+    if ("free" in first) throw new Error("expected a paid checkout");
 
     const purchaseCount = fakeDb.purchases.size;
     const ticketsReserved = [...fakeDb.tickets.values()].filter(
@@ -132,6 +134,7 @@ describe("createPrimaryCheckout multi-item", () => {
       quantity: 2,
       idempotencyKey: "idem-1",
     });
+    if ("free" in replay) throw new Error("expected a paid checkout");
 
     assert.equal(replay.paymentIntentId, first.paymentIntentId);
     assert.equal(replay.marketplacePaymentId, first.marketplacePaymentId);

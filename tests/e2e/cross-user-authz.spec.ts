@@ -148,7 +148,7 @@ test.describe("Cross-user authz", () => {
     const fixture = await seedListingFixture(client, DEMO_BUYER.email);
 
     await login(page, DEMO_BUYER);
-    const res = await page.request.post("/api/marketplace/checkout", {
+    const res = await page.request.post("/api/stripe-marketplace/checkout/resale", {
       data: { listing_id: fixture.listingId },
     });
     expect(res.status()).toBe(400);
@@ -172,7 +172,7 @@ test.describe("Cross-user authz", () => {
     });
     expect(listRes.status()).toBe(403);
 
-    const checkoutRes = await page.request.post("/api/marketplace/checkout", {
+    const checkoutRes = await page.request.post("/api/stripe-marketplace/checkout/resale", {
       data: { listing_id: "00000000-0000-0000-0000-000000000000" },
     });
     expect(checkoutRes.status()).toBe(403);
@@ -183,12 +183,12 @@ test.describe("Cross-user authz", () => {
     expect(delRes.status()).toBe(403);
   });
 
-  test("controller cannot drive /api/checkout", async ({ page }) => {
+  test("controller cannot drive /api/stripe-marketplace/checkout/primary", async ({ page }) => {
     await login(page, {
       email: process.env.DEMO_CONTROLLER_EMAIL ?? "controller@miso.local",
       password: process.env.DEMO_CONTROLLER_PASSWORD ?? "misocontroller",
     });
-    const res = await page.request.post("/api/checkout", {
+    const res = await page.request.post("/api/stripe-marketplace/checkout/primary", {
       data: { category_id: "00000000-0000-0000-0000-000000000000" },
     });
     expect(res.status()).toBe(403);

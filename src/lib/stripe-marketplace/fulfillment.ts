@@ -238,7 +238,6 @@ export async function settleSucceededPaymentIntent(input: {
       await fulfillResale({
         listingId: stamped.resale_listing_id,
         buyerUserId: stamped.buyer_user_id,
-        paymentMode: "stripe",
       });
     }
   } catch (err) {

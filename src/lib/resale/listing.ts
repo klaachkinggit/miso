@@ -9,12 +9,6 @@ import type { Address } from "viem";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { DomainError } from "@/lib/api/errors";
-import { assertOrganizationPaymentReadiness } from "@/lib/organizations/payments";
-import {
-  createResaleStripeCheckoutSession,
-  expireStripeCheckoutSession,
-  stripe,
-} from "@/lib/payments/stripe";
 import {
   ChainOpRepairError,
   markChainOpMined,
@@ -28,15 +22,10 @@ import { backendWallet } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { audit } from "@/lib/audit";
 import {
-  resalePlatformFee,
-  resaleRoyaltyAmount,
-  resaleStripeFeeAmount,
-} from "@/lib/resale/pricing";
-import {
   markTicketListed,
   markTicketResaleCanceled,
 } from "@/lib/tickets/lifecycle";
-import type { Ticket, EventRow, TicketCategory, ResaleListing, SalesChannel } from "@/types/db";
+import type { Ticket, EventRow, TicketCategory, ResaleListing } from "@/types/db";
 
 const INVALID_FOR_RESALE = new Set([
   "used",
@@ -228,224 +217,9 @@ export async function getResaleCheckoutListing(params: {
   return listing;
 }
 
-async function resaleRoyaltyForListing(
-  sb: ReturnType<typeof createServiceClient>,
-  listing: ResaleListing,
-  sellerAmount: number,
-): Promise<number> {
-  let organizationId = listing.organization_id;
-  if (!organizationId) {
-    const { data: ticket, error: ticketError } = await sb
-      .from("tickets")
-      .select("event_id")
-      .eq("id", listing.ticket_id)
-      .maybeSingle<Pick<Ticket, "event_id">>();
-    if (ticketError) throw ticketError;
-    if (ticket?.event_id) {
-      const { data: event, error: eventError } = await sb
-        .from("events")
-        .select("organization_id")
-        .eq("id", ticket.event_id)
-        .maybeSingle<Pick<EventRow, "organization_id">>();
-      if (eventError) throw eventError;
-      organizationId = event?.organization_id ?? null;
-    }
-  }
-  if (!organizationId) return 0;
-
-  const { data: organization, error: organizationError } = await sb
-    .from("organizations")
-    .select("resale_royalty_enabled, resale_royalty_bps")
-    .eq("id", organizationId)
-    .maybeSingle<{ resale_royalty_enabled: boolean; resale_royalty_bps: number }>();
-  if (organizationError) throw organizationError;
-
-  return resaleRoyaltyAmount({
-    sellerAmount,
-    enabled: organization?.resale_royalty_enabled ?? false,
-    bps: organization?.resale_royalty_bps ?? 0,
-  });
-}
-
-async function organizationIdForListing(
-  sb: ReturnType<typeof createServiceClient>,
-  listing: ResaleListing,
-): Promise<string | null> {
-  if (listing.organization_id) return listing.organization_id;
-  const { data: ticket, error: ticketError } = await sb
-    .from("tickets")
-    .select("event_id")
-    .eq("id", listing.ticket_id)
-    .maybeSingle<Pick<Ticket, "event_id">>();
-  if (ticketError) throw ticketError;
-  if (!ticket?.event_id) return null;
-  const { data: event, error: eventError } = await sb
-    .from("events")
-    .select("organization_id")
-    .eq("id", ticket.event_id)
-    .maybeSingle<Pick<EventRow, "organization_id">>();
-  if (eventError) throw eventError;
-  return event?.organization_id ?? null;
-}
-
-async function assertListingPaymentReadiness(
-  sb: ReturnType<typeof createServiceClient>,
-  listing: ResaleListing,
-  buyerTotalAmount: number,
-): Promise<void> {
-  if (buyerTotalAmount <= 0) return;
-  const organizationId = await organizationIdForListing(sb, listing);
-  await assertOrganizationPaymentReadiness({
-    organizationId,
-    amount: buyerTotalAmount,
-    sb,
-  });
-}
-
-export async function checkoutResaleListing(params: {
-  listingId: string;
-  buyerUserId: string;
-  successUrl: string;
-  cancelUrl: string;
-  idempotencyKey?: string;
-  salesChannel?: SalesChannel;
-  trackingOrigin?: string | null;
-}): Promise<{ listing: ResaleListing; checkoutUrl: string }> {
-  const sb = createServiceClient();
-  if (params.idempotencyKey) {
-    const { data: prior } = await sb
-      .from("resale_listings")
-      .select("*")
-      .eq("buyer_user_id", params.buyerUserId)
-      .eq("checkout_idempotency_key", params.idempotencyKey)
-      .maybeSingle<ResaleListing>();
-    if (prior?.provider_session_id) {
-      const session = await stripe.checkout.sessions.retrieve(prior.provider_session_id);
-      return {
-        listing: prior,
-        checkoutUrl: session.url ?? params.cancelUrl,
-      };
-    }
-    if (prior) {
-      throw new ResaleCheckoutPreflightError("Checkout is still being prepared.", 409);
-    }
-  }
-
-  const listing = await getResaleCheckoutListing(params);
-  const sellerAmount = Number(listing.price);
-  const platformFeeAmount = resalePlatformFee(sellerAmount);
-  const royaltyAmount = await resaleRoyaltyForListing(sb, listing, sellerAmount);
-  const stripeFeeAmount = resaleStripeFeeAmount({
-    sellerAmount,
-    platformFeeAmount,
-    royaltyAmount,
-  });
-  const buyerTotalAmount = sellerAmount + platformFeeAmount + royaltyAmount + stripeFeeAmount;
-  await assertListingPaymentReadiness(sb, listing, buyerTotalAmount);
-
-  // Atomically claim listing before creating Stripe session so no concurrent
-  // buyer can claim the same listing during payment.
-  const { data: claimed } = await sb
-    .from("resale_listings")
-    .update({
-      status: "transferring",
-      buyer_user_id: params.buyerUserId,
-      checkout_idempotency_key: params.idempotencyKey ?? null,
-      sales_channel: params.salesChannel ?? "marketplace",
-      tracking_origin: params.trackingOrigin ?? null,
-    })
-    .eq("id", listing.id)
-    .eq("status", "active")
-    .select("id")
-    .maybeSingle();
-  if (!claimed) {
-    throw new ResaleCheckoutPreflightError("Listing was claimed by another buyer.");
-  }
-
-  const { data: ticket } = await sb
-    .from("tickets")
-    .select("event_id, category_id")
-    .eq("id", listing.ticket_id)
-    .single<{ event_id: string; category_id: string }>();
-
-  const [{ data: event }, { data: category }] = await Promise.all([
-    sb.from("events").select("name").eq("id", ticket?.event_id ?? "").maybeSingle<{ name: string }>(),
-    sb.from("ticket_categories").select("name").eq("id", ticket?.category_id ?? "").maybeSingle<{ name: string }>(),
-  ]);
-
-  let session: import("stripe").Stripe.Checkout.Session;
-  try {
-    session = await createResaleStripeCheckoutSession({
-      listingId: listing.id,
-      buyerUserId: params.buyerUserId,
-      amount: sellerAmount,
-      platformFeeAmount,
-      royaltyAmount,
-      stripeFeeAmount,
-      currency: listing.currency,
-      eventName: event?.name ?? "Event",
-      categoryName: category?.name ?? "Ticket",
-      successUrl: params.successUrl,
-      cancelUrl: params.cancelUrl,
-      idempotencyKey: params.idempotencyKey,
-    });
-    if (!session.url) {
-      await expireStripeCheckoutSession(session.id);
-      throw new Error("Stripe Checkout session did not include a URL.");
-    }
-  } catch (err) {
-    // Release claim if Stripe session creation fails.
-    await sb
-      .from("resale_listings")
-      .update({
-        status: "active",
-        buyer_user_id: null,
-        checkout_idempotency_key: null,
-      })
-      .eq("id", listing.id)
-      .eq("status", "transferring");
-    throw err;
-  }
-
-  const { error: providerUpdateError } = await sb
-    .from("resale_listings")
-    .update({
-      provider_session_id: session.id,
-      payment_provider: "stripe",
-      platform_fee_amount: platformFeeAmount,
-      royalty_amount: royaltyAmount,
-      stripe_fee_amount: stripeFeeAmount,
-      buyer_total_amount: buyerTotalAmount,
-      checkout_idempotency_key: params.idempotencyKey ?? null,
-      sales_channel: params.salesChannel ?? "marketplace",
-      tracking_origin: params.trackingOrigin ?? null,
-    })
-    .eq("id", listing.id);
-  if (providerUpdateError) {
-    await sb
-      .from("resale_listings")
-      .update({
-        status: "active",
-        buyer_user_id: null,
-        checkout_idempotency_key: null,
-      })
-      .eq("id", listing.id)
-      .eq("status", "transferring");
-    await expireStripeCheckoutSession(session.id);
-    throw providerUpdateError;
-  }
-
-  return { listing, checkoutUrl: session.url };
-}
-
 export async function fulfillResale(params: {
   listingId: string;
   buyerUserId: string;
-  // "legacy" (default): seller proceeds settle through
-  // resale_seller_settlements. "stripe": the marketplace payment path
-  // pays the seller via connected-account transfers, so the legacy
-  // settlement row must NOT be written (it would double-pay).
-  paymentMode?: "legacy" | "stripe";
 }) {
   const sb = createServiceClient();
 
@@ -739,16 +513,6 @@ export async function fulfillResale(params: {
       })
       .eq("id", listing.id)
       .in("status", ["transferring", "active"]);
-
-    if (params.paymentMode !== "stripe") {
-      await sb.from("resale_seller_settlements").upsert({
-        listing_id: listing.id,
-        seller_user_id: listing.seller_user_id,
-        amount: listing.price,
-        currency: listing.currency,
-        status: "pending_payout",
-      }, { onConflict: "listing_id" });
-    }
 
     await markChainOpMined(op.id, transferTxHash);
 
