@@ -4,6 +4,7 @@ import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
 import { casablancaInputToIso } from "@/lib/format";
+import { assertEventPublishable } from "@/lib/organizers/permissions";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cancelUnsoldTickets, markSoldTicketsRefundPending } from "@/lib/tickets/lifecycle";
 import {
@@ -38,6 +39,7 @@ export interface EventDetailsInput {
   vibe?: Database["public"]["Enums"]["event_vibe"] | null;
   is_festival: boolean;
   artists: string[];
+  organizer_resale_royalty_bps: number;
 }
 
 export interface CategoryInput {
@@ -77,7 +79,7 @@ function slugify(value: string) {
 
 export async function createDraftEvent(params: {
   input: EventDetailsInput;
-  adminUserId: string;
+  actorUserId: string;
   organizerUserId: string;
   organizationId?: string | null;
 }): Promise<EventRow> {
@@ -99,7 +101,7 @@ export async function createDraftEvent(params: {
   if (error || !event) throw error ?? new Error("Event could not be created.");
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.create",
     entityType: "event",
     entityId: event.id,
@@ -112,7 +114,7 @@ export async function createDraftEvent(params: {
 export async function updateEventDetails(params: {
   eventId: string;
   input: EventDetailsInput;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { error } = await sb
@@ -122,7 +124,7 @@ export async function updateEventDetails(params: {
   if (error) throw error;
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.update",
     entityType: "event",
     entityId: params.eventId,
@@ -131,7 +133,7 @@ export async function updateEventDetails(params: {
 
 export async function cancelEventSetup(params: {
   eventId: string;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { data: event } = await sb
@@ -151,7 +153,7 @@ export async function cancelEventSetup(params: {
   await markSoldTicketsRefundPending(params.eventId);
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.cancel",
     entityType: "event",
     entityId: params.eventId,
@@ -161,7 +163,7 @@ export async function cancelEventSetup(params: {
 export async function removeEmptyCategory(params: {
   eventId: string;
   categoryId: string;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { data: category } = await sb
@@ -188,7 +190,7 @@ export async function removeEmptyCategory(params: {
   if (categoryError) throw categoryError;
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "category.remove",
     entityType: "ticket_category",
     entityId: params.categoryId,
@@ -199,7 +201,7 @@ export async function removeEmptyCategory(params: {
 export async function cancelUnsoldInventory(params: {
   eventId: string;
   categoryId?: string | null;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   await cancelUnsoldTickets({
     eventId: params.eventId,
@@ -207,7 +209,7 @@ export async function cancelUnsoldInventory(params: {
   });
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "tickets.cancel_unsold",
     entityType: "event",
     entityId: params.eventId,
@@ -223,8 +225,21 @@ export async function cancelUnsoldInventory(params: {
 // Idempotent: re-running after partial failure resumes from the missing step.
 export async function publishEventSetup(params: {
   eventId: string;
-  adminUserId: string;
+  actorUserId: string;
+  requireOrganizerLive?: boolean;
 }): Promise<void> {
+  // Self-serve organizer publishes go through the full publishability
+  // gate (inventory, MAD rejection, organizer live, payout readiness).
+  // The admin workspace keeps its legacy organization-level gating:
+  // admin-created events carry organizer_user_id = admin.id, and admins
+  // have no organizer_profile/seller account to be "live" with.
+  if (params.requireOrganizerLive) {
+    await assertEventPublishable({
+      eventId: params.eventId,
+      requireOrganizerLive: true,
+    });
+  }
+
   const sb = createServiceClient();
   const { data: event } = await sb
     .from("events")
@@ -242,7 +257,7 @@ export async function publishEventSetup(params: {
     if (imageError) throw imageError;
     event.image_ipfs_uri = imageUri;
     await audit({
-      actorUserId: params.adminUserId,
+      actorUserId: params.actorUserId,
       action: "event.image_pinned",
       entityType: "event",
       entityId: params.eventId,
@@ -271,7 +286,7 @@ export async function publishEventSetup(params: {
     event.nft_contract_address = contractAddress;
     event.role_admin_address = admin;
     await audit({
-      actorUserId: params.adminUserId,
+      actorUserId: params.actorUserId,
       action: "event.contract_deployed",
       entityType: "event",
       entityId: params.eventId,
@@ -291,7 +306,7 @@ export async function publishEventSetup(params: {
   if (error) throw error;
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.publish",
     entityType: "event",
     entityId: params.eventId,
@@ -300,7 +315,7 @@ export async function publishEventSetup(params: {
 
 export async function unpublishEventSetup(params: {
   eventId: string;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { error } = await sb
@@ -310,7 +325,7 @@ export async function unpublishEventSetup(params: {
   if (error) throw error;
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.unpublish",
     entityType: "event",
     entityId: params.eventId,
@@ -319,7 +334,7 @@ export async function unpublishEventSetup(params: {
 
 export async function createTicketCategory(params: {
   input: CategoryInput;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<{ id: string; event_id: string; supply: number }> {
   const sb = createServiceClient();
   // Pin a category-specific image to IPFS up front so the metadata
@@ -372,7 +387,7 @@ export async function createTicketCategory(params: {
   }
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "category.create",
     entityType: "ticket_category",
     entityId: category.id,

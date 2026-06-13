@@ -33,6 +33,8 @@ import {
 } from "@/lib/organizations/ownership";
 import { createOrganizationForAdmin } from "@/lib/organizations/setup";
 import { refundTicket } from "@/lib/refunds/refund";
+import { manuallyRefundPayment } from "@/lib/stripe-marketplace/refunds";
+import type { MarketplacePaymentRow } from "@/lib/stripe-marketplace/payments";
 import {
   CreateCategorySchema,
   CreateEventSchema,
@@ -140,7 +142,7 @@ export async function createEvent(formData: FormData) {
   try {
     event = await createDraftEvent({
       input: parsed.data,
-      adminUserId: admin.id,
+      actorUserId: admin.id,
       organizerUserId: admin.id,
       organizationId,
     });
@@ -411,7 +413,7 @@ export async function updateEvent(formData: FormData) {
     await updateEventDetails({
       eventId,
       input: parsed.data,
-      adminUserId: admin.id,
+      actorUserId: admin.id,
     });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be updated."));
@@ -452,7 +454,7 @@ export async function cancelEvent(formData: FormData) {
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   try {
-    await cancelEventSetup({ eventId, adminUserId: admin.id });
+    await cancelEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be canceled."));
   }
@@ -470,7 +472,7 @@ export async function removeCategory(formData: FormData) {
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   try {
-    await removeEmptyCategory({ eventId, categoryId, adminUserId: admin.id });
+    await removeEmptyCategory({ eventId, categoryId, actorUserId: admin.id });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Category could not be removed."));
   }
@@ -489,7 +491,7 @@ export async function cancelUnsoldTickets(formData: FormData) {
     await cancelUnsoldInventory({
       eventId,
       categoryId: categoryId || null,
-      adminUserId: admin.id,
+      actorUserId: admin.id,
     });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Tickets could not be canceled."));
@@ -503,7 +505,7 @@ export async function publishEvent(formData: FormData) {
   const eventId = String(formData.get("event_id") ?? "");
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
   try {
-    await publishEventSetup({ eventId, adminUserId: admin.id });
+    await publishEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be published."));
   }
@@ -516,7 +518,7 @@ export async function unpublishEvent(formData: FormData) {
   const eventId = String(formData.get("event_id") ?? "");
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
   try {
-    await unpublishEventSetup({ eventId, adminUserId: admin.id });
+    await unpublishEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
     fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be unpublished."));
   }
@@ -553,7 +555,7 @@ export async function createCategory(formData: FormData) {
   try {
     await createTicketCategory({
       input: parsed.data,
-      adminUserId: admin.id,
+      actorUserId: admin.id,
     });
   } catch (error) {
     fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Category could not be created."));
@@ -734,4 +736,60 @@ export async function duplicateEventAction(formData: FormData) {
 
   revalidatePath("/admin/events");
   redirect(`/admin/events/${newEvent.id}`);
+}
+
+export async function refundMarketplacePaymentAction(formData: FormData) {
+  const admin = await requireOrganizerWorkspace();
+  const paymentId = String(formData.get("payment_id") ?? "");
+  const eventId = String(formData.get("event_id") ?? "");
+  if (!paymentId) fail("/admin", "Missing payment id.");
+  if (!eventId) fail("/admin", "Missing event id.");
+
+  const sb = createServiceClient();
+  const { data: payment } = await sb
+    .from("marketplace_payments")
+    .select("*")
+    .eq("id", paymentId)
+    .maybeSingle<MarketplacePaymentRow>();
+  if (!payment) fail(`/admin/events/${eventId}`, "Marketplace payment not found.");
+
+  // Authorize against the event the payment actually belongs to, derived
+  // server-side — never against the form's event_id, which any organizer
+  // could point at an event they manage while refunding someone else's payment.
+  let paymentEventId: string | null = null;
+  if (payment.purchase_id) {
+    const { data: purchase } = await sb
+      .from("purchases")
+      .select("event_id")
+      .eq("id", payment.purchase_id)
+      .maybeSingle<{ event_id: string }>();
+    paymentEventId = purchase?.event_id ?? null;
+  } else if (payment.resale_listing_id) {
+    const { data: listing } = await sb
+      .from("resale_listings")
+      .select("ticket_id")
+      .eq("id", payment.resale_listing_id)
+      .maybeSingle<{ ticket_id: string }>();
+    if (listing) {
+      const { data: ticket } = await sb
+        .from("tickets")
+        .select("event_id")
+        .eq("id", listing.ticket_id)
+        .maybeSingle<{ event_id: string }>();
+      paymentEventId = ticket?.event_id ?? null;
+    }
+  }
+  if (!paymentEventId || paymentEventId !== eventId) {
+    fail(`/admin/events/${eventId}`, "Payment does not belong to this event.");
+  }
+
+  await assertCanManageEvent(admin, paymentEventId, `/admin/events/${eventId}`);
+
+  try {
+    await manuallyRefundPayment({ payment });
+  } catch (error) {
+    fail(`/admin/events/${eventId}`, errorMessage(error, "Refund could not be processed."));
+  }
+
+  revalidatePath(`/admin/events/${eventId}`);
 }

@@ -210,6 +210,7 @@ export type Database = {
           name: string
           nft_contract_address: string | null
           organization_id: string | null
+          organizer_resale_royalty_bps: number
           organizer_user_id: string | null
           public_sales_counter_enabled: boolean
           resale_enabled: boolean
@@ -244,6 +245,7 @@ export type Database = {
           name: string
           nft_contract_address?: string | null
           organization_id?: string | null
+          organizer_resale_royalty_bps?: number
           organizer_user_id?: string | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
@@ -278,6 +280,7 @@ export type Database = {
           name?: string
           nft_contract_address?: string | null
           organization_id?: string | null
+          organizer_resale_royalty_bps?: number
           organizer_user_id?: string | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
@@ -386,6 +389,195 @@ export type Database = {
             columns: ["last_ticket_id"]
             isOneToOne: false
             referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_payments: {
+        Row: {
+          amount_total_cents: number
+          buyer_user_id: string
+          created_at: string
+          currency: Database["public"]["Enums"]["currency"]
+          disputed_at: string | null
+          failure_reason: string | null
+          fulfilled_at: string | null
+          id: string
+          kind: Database["public"]["Enums"]["marketplace_payment_kind"]
+          last_webhook_at: string | null
+          marketplace_fee_bps: number
+          marketplace_fee_cents: number
+          organizer_royalty_bps: number
+          organizer_royalty_cents: number
+          organizer_user_id: string | null
+          primary_seller_cents: number
+          primary_seller_user_id: string
+          purchase_id: string | null
+          refunded_at: string | null
+          resale_listing_id: string | null
+          status: Database["public"]["Enums"]["marketplace_payment_status"]
+          stripe_charge_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_transfer_group: string | null
+          succeeded_at: string | null
+          transferred_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_total_cents: number
+          buyer_user_id: string
+          created_at?: string
+          currency: Database["public"]["Enums"]["currency"]
+          disputed_at?: string | null
+          failure_reason?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["marketplace_payment_kind"]
+          last_webhook_at?: string | null
+          marketplace_fee_bps: number
+          marketplace_fee_cents: number
+          organizer_royalty_bps?: number
+          organizer_royalty_cents?: number
+          organizer_user_id?: string | null
+          primary_seller_cents: number
+          primary_seller_user_id: string
+          purchase_id?: string | null
+          refunded_at?: string | null
+          resale_listing_id?: string | null
+          status?: Database["public"]["Enums"]["marketplace_payment_status"]
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_group?: string | null
+          succeeded_at?: string | null
+          transferred_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_total_cents?: number
+          buyer_user_id?: string
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency"]
+          disputed_at?: string | null
+          failure_reason?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["marketplace_payment_kind"]
+          last_webhook_at?: string | null
+          marketplace_fee_bps?: number
+          marketplace_fee_cents?: number
+          organizer_royalty_bps?: number
+          organizer_royalty_cents?: number
+          organizer_user_id?: string | null
+          primary_seller_cents?: number
+          primary_seller_user_id?: string
+          purchase_id?: string | null
+          refunded_at?: string | null
+          resale_listing_id?: string | null
+          status?: Database["public"]["Enums"]["marketplace_payment_status"]
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_group?: string | null
+          succeeded_at?: string | null
+          transferred_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_payments_buyer_user_id_fkey"
+            columns: ["buyer_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_payments_organizer_user_id_fkey"
+            columns: ["organizer_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_payments_primary_seller_user_id_fkey"
+            columns: ["primary_seller_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_payments_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_payments_resale_listing_id_fkey"
+            columns: ["resale_listing_id"]
+            isOneToOne: false
+            referencedRelation: "resale_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_transfers: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: Database["public"]["Enums"]["currency"]
+          failure_reason: string | null
+          id: string
+          marketplace_payment_id: string
+          recipient_role: Database["public"]["Enums"]["marketplace_transfer_recipient_role"]
+          recipient_user_id: string
+          status: Database["public"]["Enums"]["marketplace_transfer_status"]
+          stripe_connected_account_id: string
+          stripe_transfer_id: string | null
+          stripe_transfer_reversal_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency: Database["public"]["Enums"]["currency"]
+          failure_reason?: string | null
+          id?: string
+          marketplace_payment_id: string
+          recipient_role: Database["public"]["Enums"]["marketplace_transfer_recipient_role"]
+          recipient_user_id: string
+          status?: Database["public"]["Enums"]["marketplace_transfer_status"]
+          stripe_connected_account_id: string
+          stripe_transfer_id?: string | null
+          stripe_transfer_reversal_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency"]
+          failure_reason?: string | null
+          id?: string
+          marketplace_payment_id?: string
+          recipient_role?: Database["public"]["Enums"]["marketplace_transfer_recipient_role"]
+          recipient_user_id?: string
+          status?: Database["public"]["Enums"]["marketplace_transfer_status"]
+          stripe_connected_account_id?: string
+          stripe_transfer_id?: string | null
+          stripe_transfer_reversal_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_transfers_marketplace_payment_id_fkey"
+            columns: ["marketplace_payment_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_transfers_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -534,6 +726,71 @@ export type Database = {
             foreignKeyName: "organizations_created_by_user_id_fkey"
             columns: ["created_by_user_id"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizer_profiles: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          event_typology: string
+          legal_verified_at: string | null
+          no_siret: boolean
+          page_description: string | null
+          page_name: string | null
+          page_slug: string | null
+          siret: string | null
+          status: string
+          stripe_verified_at: string | null
+          ticketing_footprint: string
+          updated_at: string
+          user_id: string
+          volume_estimation: string
+          widget_accent_color: string
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          event_typology: string
+          legal_verified_at?: string | null
+          no_siret?: boolean
+          page_description?: string | null
+          page_name?: string | null
+          page_slug?: string | null
+          siret?: string | null
+          status?: string
+          stripe_verified_at?: string | null
+          ticketing_footprint: string
+          updated_at?: string
+          user_id: string
+          volume_estimation: string
+          widget_accent_color?: string
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          event_typology?: string
+          legal_verified_at?: string | null
+          no_siret?: boolean
+          page_description?: string | null
+          page_name?: string | null
+          page_slug?: string | null
+          siret?: string | null
+          status?: string
+          stripe_verified_at?: string | null
+          ticketing_footprint?: string
+          updated_at?: string
+          user_id?: string
+          volume_estimation?: string
+          widget_accent_color?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizer_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -861,6 +1118,59 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      stripe_seller_accounts: {
+        Row: {
+          charges_enabled: boolean
+          created_at: string
+          details_submitted: boolean
+          disabled_reason: string | null
+          id: string
+          last_webhook_at: string | null
+          payouts_enabled: boolean
+          requirements_json: Json | null
+          seller_risk_status: Database["public"]["Enums"]["seller_risk_status"]
+          stripe_account_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          created_at?: string
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          id?: string
+          last_webhook_at?: string | null
+          payouts_enabled?: boolean
+          requirements_json?: Json | null
+          seller_risk_status?: Database["public"]["Enums"]["seller_risk_status"]
+          stripe_account_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          created_at?: string
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          id?: string
+          last_webhook_at?: string | null
+          payouts_enabled?: boolean
+          requirements_json?: Json | null
+          seller_risk_status?: Database["public"]["Enums"]["seller_risk_status"]
+          stripe_account_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_seller_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_categories: {
         Row: {
@@ -1211,6 +1521,37 @@ export type Database = {
       }
     }
     Functions: {
+      apply_stripe_account_snapshot: {
+        Args: {
+          p_charges_enabled: boolean
+          p_details_submitted: boolean
+          p_disabled_reason: string
+          p_payouts_enabled: boolean
+          p_requirements_json: Json
+          p_stripe_account_id: string
+          p_user_id: string
+        }
+        Returns: {
+          charges_enabled: boolean
+          created_at: string
+          details_submitted: boolean
+          disabled_reason: string | null
+          id: string
+          last_webhook_at: string | null
+          payouts_enabled: boolean
+          requirements_json: Json | null
+          seller_risk_status: Database["public"]["Enums"]["seller_risk_status"]
+          stripe_account_id: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stripe_seller_accounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       controls_event: { Args: { check_event_id: string }; Returns: boolean }
       current_organization_role: {
         Args: { check_organization_id: string }
@@ -1239,6 +1580,33 @@ export type Database = {
         Returns: boolean
       }
       organizes_event: { Args: { check_event_id: string }; Returns: boolean }
+      refresh_organizer_live_status: {
+        Args: { p_user_id: string }
+        Returns: {
+          activated_at: string | null
+          created_at: string
+          event_typology: string
+          legal_verified_at: string | null
+          no_siret: boolean
+          page_description: string | null
+          page_name: string | null
+          page_slug: string | null
+          siret: string | null
+          status: string
+          stripe_verified_at: string | null
+          ticketing_footprint: string
+          updated_at: string
+          user_id: string
+          volume_estimation: string
+          widget_accent_color: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "organizer_profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       currency: "EUR"
@@ -1257,6 +1625,21 @@ export type Database = {
         | "expired"
         | "transferring"
         | "repair_needed"
+      marketplace_payment_kind: "primary" | "resale"
+      marketplace_payment_status:
+        | "requires_payment"
+        | "processing"
+        | "succeeded"
+        | "fulfillment_pending"
+        | "transfers_pending"
+        | "paid"
+        | "failed"
+        | "refund_pending"
+        | "refunded"
+        | "disputed"
+        | "repair_needed"
+      marketplace_transfer_recipient_role: "organizer" | "resale_seller"
+      marketplace_transfer_status: "pending" | "created" | "reversed" | "failed"
       organization_role: "admin" | "controller"
       organization_status: "active" | "suspended" | "deleted"
       purchase_status: "pending" | "paid" | "failed" | "refunded"
@@ -1282,6 +1665,7 @@ export type Database = {
         | "ticket_office"
         | "invitation"
         | "import"
+      seller_risk_status: "clear" | "restricted" | "owes_recovery" | "blocked"
       ticket_category_kind: "standard" | "club_table"
       ticket_status:
         | "available"
@@ -1990,6 +2374,22 @@ export const Constants = {
         "transferring",
         "repair_needed",
       ],
+      marketplace_payment_kind: ["primary", "resale"],
+      marketplace_payment_status: [
+        "requires_payment",
+        "processing",
+        "succeeded",
+        "fulfillment_pending",
+        "transfers_pending",
+        "paid",
+        "failed",
+        "refund_pending",
+        "refunded",
+        "disputed",
+        "repair_needed",
+      ],
+      marketplace_transfer_recipient_role: ["organizer", "resale_seller"],
+      marketplace_transfer_status: ["pending", "created", "reversed", "failed"],
       organization_role: ["admin", "controller"],
       organization_status: ["active", "suspended", "deleted"],
       purchase_status: ["pending", "paid", "failed", "refunded"],
@@ -2017,6 +2417,7 @@ export const Constants = {
         "invitation",
         "import",
       ],
+      seller_risk_status: ["clear", "restricted", "owes_recovery", "blocked"],
       ticket_category_kind: ["standard", "club_table"],
       ticket_status: [
         "available",
@@ -2042,10 +2443,8 @@ export const Constants = {
   },
 } as const
 
-// ---- Convenience row aliases for app code ----
-// Generated types above are the source of truth. These aliases keep
-// imports stable across the codebase and survive regeneration.
 
+// ---- Convenience aliases (preserved across `npm run supabase:types` regens) ----
 export type EventRow = Tables<"events">
 export type Profile = Tables<"profiles">
 export type Ticket = Tables<"tickets">
@@ -2061,7 +2460,10 @@ export type ChainOp = Tables<"chain_ops">
 export type Organization = Tables<"organizations">
 export type OrganizationMembership = Tables<"organization_memberships">
 export type OrganizationCustomer = Tables<"organization_customers">
-
+export type StripeSellerAccount = Tables<"stripe_seller_accounts">
+export type OrganizerProfile = Tables<"organizer_profiles">
+export type MarketplacePayment = Tables<"marketplace_payments">
+export type MarketplaceTransfer = Tables<"marketplace_transfers">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">
@@ -2069,3 +2471,8 @@ export type OrganizationStatus = Enums<"organization_status">
 export type SalesChannel = Enums<"sales_channel">
 export type RedemptionResult = Enums<"redemption_result">
 export type TicketCategoryKind = Enums<"ticket_category_kind">
+export type SellerRiskStatus = Enums<"seller_risk_status">
+export type MarketplacePaymentKind = Enums<"marketplace_payment_kind">
+export type MarketplacePaymentStatus = Enums<"marketplace_payment_status">
+export type MarketplaceTransferRecipientRole = Enums<"marketplace_transfer_recipient_role">
+export type MarketplaceTransferStatus = Enums<"marketplace_transfer_status">

@@ -19,10 +19,10 @@
       ]
     },
     "git": {
-      "command": "npx",
+      "command": "uvx",
       "args": [
-        "-y",
-        "@modelcontextprotocol/server-git",
+        "mcp-server-git",
+        "--repository",
         "."
       ]
     },

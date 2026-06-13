@@ -48,7 +48,7 @@ async function main() {
   console.log(`event ${event.id} — "${event.name}"`);
 
   console.log("→ publish (deploys MisoTicket on chain if needed)…");
-  await publishEventSetup({ eventId: event.id, adminUserId: adminId });
+  await publishEventSetup({ eventId: event.id, actorUserId: adminId });
   const { data: published } = await sb
     .from("events")
     .select("nft_contract_address")
