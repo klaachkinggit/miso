@@ -1,6 +1,8 @@
 import type Stripe from "stripe";
 
 import { audit } from "@/lib/audit";
+import { createServiceClient } from "@/lib/supabase/service";
+import { sendRefundNotice } from "@/lib/email/send";
 import { stripeClient } from "./client";
 import { WebhookSignatureError } from "./errors";
 import type { MarketplacePaymentRow } from "./payments";
@@ -91,6 +93,8 @@ export async function manuallyRefundPayment(
     },
   });
 
+  await notifyRefund(payment, refundCents, "Refund processed by Miso support.");
+
   return {
     refundId: refund.id,
     refundCents,
@@ -159,6 +163,77 @@ export async function recordExternalChargeRefund(input: {
       reversed_transfer_ids: reversedTransferIds,
     },
   });
+
+  await notifyRefund(payment, refundAmountCents, refund.reason ?? null);
+}
+
+function formatEur(cents: number): string {
+  return new Intl.NumberFormat("en-IE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(cents / 100);
+}
+
+// Best-effort refund email. Fully internally caught — never throws — so it
+// cannot affect the refund result already committed by the caller.
+async function notifyRefund(
+  payment: MarketplacePaymentRow,
+  refundCents: number,
+  reason: string | null,
+): Promise<void> {
+  try {
+    const sb = createServiceClient();
+    let ticketId: string | undefined;
+    if (payment.purchase_id) {
+      const { data: purchase } = await sb
+        .from("purchases")
+        .select("ticket_id")
+        .eq("id", payment.purchase_id)
+        .maybeSingle<{ ticket_id: string }>();
+      ticketId = purchase?.ticket_id;
+    } else if (payment.resale_listing_id) {
+      const { data: listing } = await sb
+        .from("resale_listings")
+        .select("ticket_id")
+        .eq("id", payment.resale_listing_id)
+        .maybeSingle<{ ticket_id: string }>();
+      ticketId = listing?.ticket_id;
+    } else {
+      const { data: item } = await sb
+        .from("marketplace_payment_items")
+        .select("purchases(ticket_id)")
+        .eq("marketplace_payment_id", payment.id)
+        .limit(1)
+        .maybeSingle<{ purchases: { ticket_id: string } | null }>();
+      ticketId = item?.purchases?.ticket_id;
+    }
+
+    let eventName = "your event";
+    if (ticketId) {
+      const { data: ticket } = await sb
+        .from("tickets")
+        .select("event_id")
+        .eq("id", ticketId)
+        .maybeSingle<{ event_id: string }>();
+      if (ticket?.event_id) {
+        const { data: event } = await sb
+          .from("events")
+          .select("name")
+          .eq("id", ticket.event_id)
+          .maybeSingle<{ name: string }>();
+        eventName = event?.name ?? eventName;
+      }
+    }
+
+    await sendRefundNotice({
+      buyerUserId: payment.buyer_user_id,
+      eventName,
+      amount: formatEur(refundCents),
+      reason,
+    });
+  } catch (err) {
+    console.error("[email] refund notification failed", err);
+  }
 }
 
 // Re-export so api routes import refund helpers from one file.

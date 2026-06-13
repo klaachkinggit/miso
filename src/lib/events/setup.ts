@@ -5,6 +5,7 @@ import type { Address } from "viem";
 import { audit } from "@/lib/audit";
 import { casablancaInputToIso } from "@/lib/format";
 import { assertEventPublishable } from "@/lib/organizers/permissions";
+import { sendEventPublishedEmail } from "@/lib/email/send";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cancelUnsoldTickets, markSoldTicketsRefundPending } from "@/lib/tickets/lifecycle";
 import {
@@ -311,6 +312,16 @@ export async function publishEventSetup(params: {
     entityType: "event",
     entityId: params.eventId,
   });
+
+  // Best-effort organizer notification. sendEventPublishedEmail never throws
+  // and is a no-op without email env, so it cannot affect the publish result.
+  if (event.organizer_user_id) {
+    await sendEventPublishedEmail({
+      organizerUserId: event.organizer_user_id,
+      eventName: event.name,
+      storefrontPath: `/events/${event.slug ?? params.eventId}`,
+    });
+  }
 }
 
 export async function unpublishEventSetup(params: {

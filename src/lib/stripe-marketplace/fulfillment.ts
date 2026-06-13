@@ -9,6 +9,11 @@ import {
 } from "@/lib/resale/listing";
 import { TransactionTimeoutError } from "@/lib/thirdweb/transactions";
 import { createServiceClient } from "@/lib/supabase/service";
+import {
+  sendPurchaseReceipt,
+  sendResaleBoughtNotice,
+  sendResaleSoldNotice,
+} from "@/lib/email/send";
 
 import {
   getMarketplacePaymentByIntent,
@@ -300,7 +305,97 @@ export async function settleSucceededPaymentIntent(input: {
 
   // --- 3. Mark paid + sync legacy purchases row -----------------------------
   const paid = await transitionPayment(payment.id, { type: "PAID" });
+
+  // Best-effort delivery emails. The send-* helpers never throw and are a
+  // no-op without email env configured, so this cannot change settlement's
+  // outcome — `paid` is already committed above.
+  await sendSettlementEmails(sb, stamped);
+
   return paid;
+}
+
+function formatEur(cents: number): string {
+  return new Intl.NumberFormat("en-IE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(cents / 100);
+}
+
+// Resolves event/category display strings for the receipt emails. Returns
+// safe fallbacks rather than throwing — never blocks settlement.
+async function sendSettlementEmails(
+  sb: ServiceClient,
+  payment: MarketplacePaymentRow,
+): Promise<void> {
+  // Fully internally caught: gathering display data hits tables the send
+  // helpers don't own, so any lookup error must be swallowed here too. This
+  // function never throws — settlement is already committed by the caller.
+  try {
+    if (payment.kind === "primary") {
+      const items = await loadPrimaryItemPurchases(sb, payment);
+      const firstTicketId = items[0]?.ticket_id;
+      const { eventName, category } = await loadTicketDisplay(sb, firstTicketId);
+      await sendPurchaseReceipt({
+        buyerUserId: payment.buyer_user_id,
+        eventName,
+        category,
+        quantity: items.length,
+        amount: formatEur(payment.amount_total_cents),
+      });
+      return;
+    }
+
+    let ticketId: string | undefined;
+    if (payment.resale_listing_id) {
+      const { data: listing } = await sb
+        .from("resale_listings")
+        .select("ticket_id")
+        .eq("id", payment.resale_listing_id)
+        .maybeSingle<{ ticket_id: string }>();
+      ticketId = listing?.ticket_id;
+    }
+    const { eventName } = await loadTicketDisplay(sb, ticketId);
+    await sendResaleBoughtNotice({
+      buyerUserId: payment.buyer_user_id,
+      eventName,
+      amount: formatEur(payment.amount_total_cents),
+    });
+    await sendResaleSoldNotice({
+      sellerUserId: payment.primary_seller_user_id,
+      eventName,
+      listingPrice: formatEur(payment.amount_total_cents),
+    });
+  } catch (err) {
+    console.error("[email] settlement notifications failed", err);
+  }
+}
+
+async function loadTicketDisplay(
+  sb: ServiceClient,
+  ticketId: string | undefined,
+): Promise<{ eventName: string; category: string }> {
+  if (!ticketId) return { eventName: "your event", category: "Ticket" };
+  const { data: ticket } = await sb
+    .from("tickets")
+    .select("event_id, category_id")
+    .eq("id", ticketId)
+    .maybeSingle<{ event_id: string; category_id: string | null }>();
+  if (!ticket) return { eventName: "your event", category: "Ticket" };
+  const { data: event } = await sb
+    .from("events")
+    .select("name")
+    .eq("id", ticket.event_id)
+    .maybeSingle<{ name: string }>();
+  let category = "Ticket";
+  if (ticket.category_id) {
+    const { data: cat } = await sb
+      .from("ticket_categories")
+      .select("name")
+      .eq("id", ticket.category_id)
+      .maybeSingle<{ name: string }>();
+    if (cat?.name) category = cat.name;
+  }
+  return { eventName: event?.name ?? "your event", category };
 }
 
 export async function settleFailedPaymentIntent(input: {
