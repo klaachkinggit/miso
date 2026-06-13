@@ -4,12 +4,16 @@ import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
 import { createResaleCheckout } from "@/lib/stripe-marketplace/payments";
 import { ResaleCheckoutInitSchema } from "@/lib/stripe-marketplace/schemas";
+import { enforceRateLimit, rateLimitedResponseBody } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const profile = await requireApiNonControllerProfile(
       "Controllers cannot purchase tickets.",
     );
+    if (!(await enforceRateLimit("checkout", profile.id)).allowed) {
+      return NextResponse.json(rateLimitedResponseBody(), { status: 429 });
+    }
     const body = await parseJsonBody(
       request,
       ResaleCheckoutInitSchema,

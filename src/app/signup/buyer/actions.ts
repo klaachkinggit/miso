@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { clientIp, enforceRateLimit } from "@/lib/rate-limit";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 
 function withError(message: string) {
@@ -15,6 +16,10 @@ export async function buyerSignupAction(formData: FormData) {
 
   if (!email || !password) withError("Email and password are required.");
   if (password.length < 6) withError("Password must be at least 6 characters.");
+
+  if (!(await enforceRateLimit("auth", await clientIp())).allowed) {
+    withError("Too many attempts. Please wait a minute and try again.");
+  }
 
   const sb = await createClient();
   const { data, error } = await sb.auth.signUp({
