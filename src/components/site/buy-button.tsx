@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Gift, Loader2, Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,9 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
-import { redirectToCheckout } from "@/lib/checkout/client";
 import { formatPrice } from "@/lib/format";
-import { primaryCheckoutFees } from "@/lib/payments/pricing";
 
 export interface BuyButtonCategory {
   id: string;
@@ -42,6 +41,7 @@ export function BuyButton({
   reason?: string | null;
   returnPath?: string;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -60,34 +60,19 @@ export function BuyButton({
     if (isClub) return (advance + extras * extraPrice) * quantity;
     return basePrice * quantity;
   }, [advance, basePrice, extras, extraPrice, isClub, quantity]);
-  const checkoutFees = useMemo(
-    () =>
-      primaryCheckoutFees({
-        faceAmount: isClub ? advance + extras * extraPrice : basePrice,
-        quantity,
-      }),
-    [advance, basePrice, extras, extraPrice, isClub, quantity],
-  );
 
-  async function submit() {
+  function submit() {
     if (isGift && !giftEmail) {
       toast({ title: "Friend's email required", variant: "destructive" });
       return;
     }
     setLoading(true);
-    const redirected = await redirectToCheckout({
-      endpoint: "/api/checkout",
-      body: {
-        category_id: category.id,
-        quantity,
-        extra_guests_count: extras,
-        gift_recipient_email: isGift ? giftEmail : null,
-        return_path: returnPath,
-      },
-    });
-    if (!redirected) {
-      setLoading(false);
-    }
+    const params = new URLSearchParams({ category_id: category.id });
+    if (quantity !== 1) params.set("quantity", String(quantity));
+    if (extras > 0) params.set("extra_guests", String(extras));
+    if (isGift && giftEmail) params.set("gift_email", giftEmail);
+    if (returnPath) params.set("return_path", returnPath);
+    router.push(`/checkout/card?${params.toString()}`);
   }
 
   return (
@@ -206,26 +191,14 @@ export function BuyButton({
           </div>
 
           <div className="rounded-md bg-secondary/40 p-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Tickets</span>
-              <span className="font-medium">{formatPrice(onlineTotal, category.currency)}</span>
-            </div>
-            <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-              <span>MISO service fee</span>
-              <span>{formatPrice(checkoutFees.platformFeeAmount, category.currency)}</span>
-            </div>
-            <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Payment processing</span>
-              <span>{formatPrice(checkoutFees.stripeFeeAmount, category.currency)}</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2">
               <span className="text-muted-foreground">You pay online</span>
               <span className="text-lg font-semibold">
-                {formatPrice(checkoutFees.buyerTotalAmount, category.currency)}
+                {formatPrice(onlineTotal, category.currency)}
               </span>
             </div>
             {isClub ? (
-              <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <span>Remaining minimum spending due at the venue</span>
                 <span>
                   {formatPrice(

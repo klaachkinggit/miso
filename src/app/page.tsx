@@ -9,6 +9,11 @@ import { PricingPaper } from "@/components/landing/pricing-paper";
 import { Storefronts, type StorefrontRow } from "@/components/landing/storefronts";
 import { FinalCta } from "@/components/landing/final-cta";
 
+// Already runtime-dynamic via cookies (getCurrentProfile), but the service
+// client is constructed before Next can detect that, so build-time prerender
+// dies without Supabase env. Declare it dynamic so builds are env-independent.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const sb = createServiceClient();
   const profile = await getCurrentProfile();

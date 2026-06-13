@@ -757,13 +757,27 @@ export async function refundMarketplacePaymentAction(formData: FormData) {
   // server-side — never against the form's event_id, which any organizer
   // could point at an event they manage while refunding someone else's payment.
   let paymentEventId: string | null = null;
-  if (payment.purchase_id) {
-    const { data: purchase } = await sb
-      .from("purchases")
-      .select("event_id")
-      .eq("id", payment.purchase_id)
-      .maybeSingle<{ event_id: string }>();
-    paymentEventId = purchase?.event_id ?? null;
+  if (payment.kind === "primary") {
+    // Multi-item primary payments carry purchase_id = null and link via
+    // marketplace_payment_items; legacy rows still carry a single purchase_id.
+    let purchaseId = payment.purchase_id;
+    if (!purchaseId) {
+      const { data: item } = await sb
+        .from("marketplace_payment_items")
+        .select("purchase_id")
+        .eq("marketplace_payment_id", payment.id)
+        .limit(1)
+        .maybeSingle<{ purchase_id: string }>();
+      purchaseId = item?.purchase_id ?? null;
+    }
+    if (purchaseId) {
+      const { data: purchase } = await sb
+        .from("purchases")
+        .select("event_id")
+        .eq("id", purchaseId)
+        .maybeSingle<{ event_id: string }>();
+      paymentEventId = purchase?.event_id ?? null;
+    }
   } else if (payment.resale_listing_id) {
     const { data: listing } = await sb
       .from("resale_listings")

@@ -36,21 +36,21 @@ class ExtraGuestsInvalidError extends DomainError {
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
-interface CheckoutPricing {
+export interface CheckoutPricing {
   amount: number;
   onlineAdvanceAmount: number | null;
   minSpendingTotal: number | null;
 }
 
-function normalizeQuantity(quantity: number | undefined): number {
+export function normalizeQuantity(quantity: number | undefined): number {
   return Math.max(1, Math.min(10, Math.floor(quantity ?? 1)));
 }
 
-function normalizeExtras(extras: number | undefined): number {
+export function normalizeExtras(extras: number | undefined): number {
   return Math.max(0, Math.floor(extras ?? 0));
 }
 
-function validateExtraGuests(category: TicketCategory, extras: number): void {
+export function validateExtraGuests(category: TicketCategory, extras: number): void {
   if (extras === 0) return;
 
   if (category.kind !== "club_table" || !category.extra_guests_enabled) {
@@ -69,7 +69,7 @@ function validateExtraGuests(category: TicketCategory, extras: number): void {
   }
 }
 
-function checkoutPricing(category: TicketCategory, extras: number): CheckoutPricing {
+export function checkoutPricing(category: TicketCategory, extras: number): CheckoutPricing {
   if (category.kind !== "club_table") {
     return {
       amount: Number(category.price),
@@ -86,7 +86,7 @@ function checkoutPricing(category: TicketCategory, extras: number): CheckoutPric
   };
 }
 
-async function resolveGiftRecipientUserId(
+export async function resolveGiftRecipientUserId(
   sb: ServiceClient,
   email: string | null | undefined,
 ): Promise<string | null> {
