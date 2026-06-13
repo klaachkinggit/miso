@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { setTimeout as sleep } from "node:timers/promises";
 import { createServiceClient } from "@/lib/supabase/service";
 import { refreshOrganizerLiveStatus } from "@/lib/organizers/profile";
+import { sendPayoutReadyEmail } from "@/lib/email/send";
 import { stripeClient } from "./client";
 import { SellerNotPayoutReadyError, SellerRiskBlockedError } from "./errors";
 
@@ -212,7 +213,16 @@ export async function syncSellerAccountFromStripe(
       `Received account.updated for unknown Stripe account ${stripeAccountId}`,
     );
   }
-  return applyAccountSnapshot(existing.user_id, account);
+  const updated = await applyAccountSnapshot(existing.user_id, account);
+
+  // Fire the payout-ready email only on the false→true charges transition
+  // (newly able to charge), not on every account.updated sync. Best-effort:
+  // sendPayoutReadyEmail never throws, so this cannot affect the sync.
+  if (!existing.charges_enabled && updated.charges_enabled) {
+    await sendPayoutReadyEmail({ sellerUserId: updated.user_id });
+  }
+
+  return updated;
 }
 
 export async function applyAccountSnapshot(
