@@ -8,7 +8,11 @@ import {
   createResaleListing,
   getResaleCheckoutListing,
 } from "@/lib/resale/listing";
-import { reserveTicket, releaseReservation } from "@/lib/tickets/lifecycle";
+import {
+  reserveTicket,
+  releaseReservation,
+  fulfillReservedTicket,
+} from "@/lib/tickets/lifecycle";
 import {
   checkoutPricing,
   normalizeExtras,
@@ -215,6 +219,18 @@ export interface CheckoutResult {
   currency: "EUR";
 }
 
+// A zero-amount primary checkout (free events / RSVP tickets). No Stripe
+// charge and therefore no marketplace_payment row — the ticket(s) are minted
+// and the purchase(s) marked paid synchronously. See ADR 0003.
+export interface FreeClaimResult {
+  free: true;
+  purchaseIds: string[];
+  amountTotalCents: 0;
+  currency: "EUR";
+}
+
+export type PrimaryCheckoutResult = CheckoutResult | FreeClaimResult;
+
 function newTransferGroup(prefix: "miso_p" | "miso_r"): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
@@ -235,7 +251,7 @@ export async function createPrimaryCheckout(input: {
   idempotencyKey?: string;
   salesChannel?: SalesChannel;
   trackingOrigin?: string | null;
-}): Promise<CheckoutResult> {
+}): Promise<PrimaryCheckoutResult> {
   const sb = createServiceClient();
   const quantity = normalizeQuantity(input.quantity);
   const extras = normalizeExtras(input.extraGuestsCount);
@@ -265,6 +281,25 @@ export async function createPrimaryCheckout(input: {
           currency: "EUR",
         };
       }
+      // Free claims create no marketplace_payment, so the prior lookup above
+      // returns null. Replay returns the already-minted purchases as-is.
+      if (!existing) {
+        const { data: priorFree } = await sb
+          .from("purchases")
+          .select("id")
+          .eq("buyer_user_id", input.buyerUserId)
+          .eq("provider_session_id", input.idempotencyKey)
+          .returns<{ id: string }[]>();
+        const ids = (priorFree ?? []).map((p) => p.id);
+        if (ids.length > 0) {
+          return {
+            free: true,
+            purchaseIds: ids,
+            amountTotalCents: 0,
+            currency: "EUR",
+          };
+        }
+      }
     }
   }
 
@@ -273,6 +308,13 @@ export async function createPrimaryCheckout(input: {
   };
 
   try {
+    // Resolve the gift recipient before reserving inventory so an unknown
+    // recipient fails fast without reserve/release churn.
+    const giftRecipientUserId = await resolveGiftRecipientUserId(
+      sb,
+      input.giftRecipientEmail,
+    );
+
     const reservedTickets: Ticket[] = [];
     let category: TicketCategory | null = null;
     for (let i = 0; i < quantity; i++) {
@@ -288,21 +330,10 @@ export async function createPrimaryCheckout(input: {
       throw new Error("Ticket could not be reserved.");
     }
 
-    assertEur(category.currency);
-    if (Number(category.price) <= 0) {
-      throw new StripeMarketplaceError(
-        "Free storefront checkout is unavailable.",
-        400,
-      );
-    }
-
     validateExtraGuests(category, extras);
-    const giftRecipientUserId = await resolveGiftRecipientUserId(
-      sb,
-      input.giftRecipientEmail,
-    );
     const pricing = checkoutPricing(category, extras);
     const perTicketCents = toCents(pricing.amount);
+    const grossTotalCents = perTicketCents * quantity;
 
     const { data: event } = await sb
       .from("events")
@@ -311,14 +342,80 @@ export async function createPrimaryCheckout(input: {
       .single<EventRowWithOrganizer>();
     if (!event) throw new StripeMarketplaceError("Event not found.", 404);
 
+    const salesChannel = input.salesChannel ?? "marketplace";
+    const trackingOrigin = input.trackingOrigin ?? null;
+
+    // Zero-amount checkout (free / RSVP tickets — a price-0 general category;
+    // a club table priced 0 still charges its online advance, so it lands on
+    // the paid path below via grossTotalCents). No Stripe charge, no
+    // transfers, no marketplace_payment (ADR 0003): reserve, record the
+    // purchase, mint, mark paid. The outer catch releases tickets + fails
+    // pending purchases on any error (minted/paid rows are left intact).
+    if (grossTotalCents <= 0) {
+      for (const ticket of reservedTickets) {
+        const { data: purchase, error: purchaseError } = await sb
+          .from("purchases")
+          .insert({
+            buyer_user_id: input.buyerUserId,
+            event_id: event.id,
+            ticket_id: ticket.id,
+            amount: pricing.amount,
+            currency: category.currency,
+            status: "pending",
+            provider_session_id: input.idempotencyKey ?? null,
+            gift_recipient_user_id: giftRecipientUserId,
+            extra_guests_count: extras,
+            online_advance_amount: pricing.onlineAdvanceAmount,
+            min_spending_total: pricing.minSpendingTotal,
+            sales_channel: salesChannel,
+            tracking_origin: trackingOrigin,
+          })
+          .select("*")
+          .single<Purchase>();
+        if (purchaseError || !purchase) {
+          throw purchaseError ?? new Error("Purchase could not be created.");
+        }
+        purchaseIds.push(purchase.id);
+      }
+      const nowIso = new Date().toISOString();
+      for (let i = 0; i < reservedTickets.length; i++) {
+        await fulfillReservedTicket({
+          ticketId: reservedTickets[i].id,
+          buyerUserId: input.buyerUserId,
+          purchaseId: purchaseIds[i],
+        });
+        await sb
+          .from("purchases")
+          .update({ status: "paid", paid_at: nowIso })
+          .eq("id", purchaseIds[i])
+          .neq("status", "refunded");
+      }
+      await audit({
+        actorUserId: input.buyerUserId,
+        action: "marketplace.primary.free_claim",
+        entityType: "purchase",
+        entityId: purchaseIds[0],
+        metadata: {
+          purchase_ids: purchaseIds,
+          ticket_ids: reservedTicketIds,
+          quantity,
+        },
+      });
+      return {
+        free: true,
+        purchaseIds,
+        amountTotalCents: 0,
+        currency: "EUR",
+      };
+    }
+
+    assertEur(category.currency);
     const organizerUserId = event.organizer_user_id;
     if (!organizerUserId) {
       throw new StripeMarketplaceError("Event has no organizer assigned.", 409);
     }
     const seller = await assertPayoutReady(organizerUserId, "organizer");
 
-    const salesChannel = input.salesChannel ?? "marketplace";
-    const trackingOrigin = input.trackingOrigin ?? null;
     for (const ticket of reservedTickets) {
       const { data: purchase, error: purchaseError } = await sb
         .from("purchases")
@@ -346,7 +443,6 @@ export async function createPrimaryCheckout(input: {
     }
 
     const env = stripeEnv();
-    const grossTotalCents = perTicketCents * quantity;
     const breakdown = computePrimaryBreakdown({
       grossCents: grossTotalCents,
       marketplaceFeeBps: env.MISO_MARKETPLACE_FEE_BPS,

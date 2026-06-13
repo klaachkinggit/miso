@@ -9,8 +9,8 @@ test.describe("Marketplace API surface", () => {
     expect(res.status()).toBe(401);
   });
 
-  test("POST /api/marketplace/checkout rejects unauthenticated", async ({ request }) => {
-    const res = await request.post("/api/marketplace/checkout", {
+  test("POST /api/stripe-marketplace/checkout/resale rejects unauthenticated", async ({ request }) => {
+    const res = await request.post("/api/stripe-marketplace/checkout/resale", {
       data: { listing_id: "00000000-0000-0000-0000-000000000000" },
     });
     expect(res.status()).toBe(401);

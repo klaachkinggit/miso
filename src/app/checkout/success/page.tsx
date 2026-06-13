@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { MarketplacePayment, Purchase } from "@/types/db";
+import type { MarketplacePayment } from "@/types/db";
 import { StatusPoller } from "./status-poller";
 
 const FAILED_STATUSES = new Set(["failed", "refunded", "refund_pending"]);
@@ -22,14 +22,10 @@ export default async function CheckoutSuccessPage({
   searchParams,
 }: {
   searchParams?: Promise<{
-    session_id?: string;
-    purchase_id?: string;
     marketplace_payment_id?: string;
   }>;
 }) {
   const [user, params] = await Promise.all([requireUser(), searchParams]);
-  const sessionId = params?.session_id;
-  const purchaseId = params?.purchase_id;
   const marketplacePaymentId = params?.marketplace_payment_id;
   const sb = createServiceClient();
 
@@ -48,26 +44,6 @@ export default async function CheckoutSuccessPage({
       resolved = true;
       status = buyerFacingPaymentStatus(payment);
       if (payment.kind === "resale") pendingTitle = "Transferring your ticket.";
-    }
-  } else {
-    const { data: purchase } = sessionId
-      ? await sb
-          .from("purchases")
-          .select("*")
-          .eq("provider_session_id", sessionId)
-          .eq("buyer_user_id", user.id)
-          .maybeSingle<Purchase>()
-      : purchaseId
-        ? await sb
-            .from("purchases")
-            .select("*")
-            .eq("id", purchaseId)
-            .eq("buyer_user_id", user.id)
-            .maybeSingle<Purchase>()
-        : { data: null };
-    if (purchase) {
-      resolved = true;
-      status = purchase.status;
     }
   }
 
