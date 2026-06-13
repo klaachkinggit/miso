@@ -1,32 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { redirectToCheckout } from "@/lib/checkout/client";
 
 export function BuyListingButton({
   listingId,
   disabled,
   reason,
-  returnPath,
 }: {
   listingId: string;
   disabled?: boolean;
   reason?: string | null;
-  returnPath?: string;
 }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  async function startCheckout() {
+  function startCheckout() {
     setLoading(true);
-    const redirected = await redirectToCheckout({
-      endpoint: "/api/marketplace/checkout",
-      body: { listing_id: listingId, return_path: returnPath },
-    });
-    if (!redirected) {
-      setLoading(false);
-    }
+    router.push(`/checkout/card?listing_id=${listingId}`);
   }
 
   return (

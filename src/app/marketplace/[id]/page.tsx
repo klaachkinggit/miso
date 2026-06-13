@@ -14,10 +14,6 @@ export default async function MarketplaceListingPage({
   if (!item) notFound();
 
   return (
-    <ResaleListingDetail
-      item={item}
-      backHref="/marketplace"
-      returnPath={`/marketplace/${item.listing.id}`}
-    />
+    <ResaleListingDetail item={item} backHref="/marketplace" />
   );
 }

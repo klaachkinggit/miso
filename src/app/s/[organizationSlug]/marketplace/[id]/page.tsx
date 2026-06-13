@@ -5,7 +5,6 @@ import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { getSellableResaleListing } from "@/lib/marketplace/public";
 import {
   getActiveOrganizationBySlug,
-  organizationMarketplaceListingPath,
   organizationMarketplacePath,
 } from "@/lib/organizations/public";
 import { storefrontPathForHost } from "@/lib/organizations/hosts";
@@ -40,12 +39,6 @@ export default async function OrganizationMarketplaceListingPage({
         organization.slug,
         organizationMarketplacePath(organization.slug),
         "/marketplace",
-        headerStore.get("host"),
-      )}
-      returnPath={storefrontPathForHost(
-        organization.slug,
-        organizationMarketplaceListingPath(organization.slug, item.listing.id),
-        `/marketplace/${item.listing.id}`,
         headerStore.get("host"),
       )}
     />
