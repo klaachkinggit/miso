@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { isEmbedRequest } from "@/lib/embed/chrome";
 
 type SitemapColumn = {
   title: string;
@@ -43,7 +44,8 @@ const SITEMAP: SitemapColumn[] = [
   },
 ];
 
-export function Footer() {
+export async function Footer() {
+  if (await isEmbedRequest()) return null;
   return (
     <footer className="mt-24 border-t border-hairline bg-ink">
       <div className="container py-16">
