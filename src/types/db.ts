@@ -802,13 +802,18 @@ export type Database = {
       organizations: {
         Row: {
           branding: Json
+          country_code: string | null
           created_at: string
           created_by_user_id: string | null
+          custom_domain: string | null
+          custom_domain_verification_token: string | null
+          custom_domain_verified_at: string | null
           default_currency: Database["public"]["Enums"]["currency"]
           id: string
           legal_profile: Json
           name: string
           organizer_onboarding: Json | null
+          resale_cap_bps: number
           resale_royalty_bps: number
           resale_royalty_enabled: boolean
           slug: string
@@ -817,17 +822,23 @@ export type Database = {
           stripe_charges_enabled: boolean
           stripe_details_submitted: boolean
           stripe_payouts_enabled: boolean
+          theme: Json | null
           updated_at: string
         }
         Insert: {
           branding?: Json
+          country_code?: string | null
           created_at?: string
           created_by_user_id?: string | null
+          custom_domain?: string | null
+          custom_domain_verification_token?: string | null
+          custom_domain_verified_at?: string | null
           default_currency?: Database["public"]["Enums"]["currency"]
           id?: string
           legal_profile?: Json
           name: string
           organizer_onboarding?: Json | null
+          resale_cap_bps?: number
           resale_royalty_bps?: number
           resale_royalty_enabled?: boolean
           slug: string
@@ -836,17 +847,23 @@ export type Database = {
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
+          theme?: Json | null
           updated_at?: string
         }
         Update: {
           branding?: Json
+          country_code?: string | null
           created_at?: string
           created_by_user_id?: string | null
+          custom_domain?: string | null
+          custom_domain_verification_token?: string | null
+          custom_domain_verified_at?: string | null
           default_currency?: Database["public"]["Enums"]["currency"]
           id?: string
           legal_profile?: Json
           name?: string
           organizer_onboarding?: Json | null
+          resale_cap_bps?: number
           resale_royalty_bps?: number
           resale_royalty_enabled?: boolean
           slug?: string
@@ -855,6 +872,7 @@ export type Database = {
           stripe_charges_enabled?: boolean
           stripe_details_submitted?: boolean
           stripe_payouts_enabled?: boolean
+          theme?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -1235,6 +1253,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      resale_price_caps: {
+        Row: {
+          cap_bps: number
+          country_code: string
+          label: string | null
+          updated_at: string
+        }
+        Insert: {
+          cap_bps: number
+          country_code: string
+          label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cap_bps?: number
+          country_code?: string
+          label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       resale_seller_settlements: {
         Row: {
@@ -2710,6 +2749,7 @@ export type MarketplacePaymentItem = Tables<"marketplace_payment_items">
 export type EventWaitlist = Tables<"event_waitlists">
 export type OrganizationFollower = Tables<"organization_followers">
 export type PromoCode = Tables<"promo_codes">
+export type ResalePriceCap = Tables<"resale_price_caps">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">
