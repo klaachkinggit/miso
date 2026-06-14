@@ -12,6 +12,7 @@ export default async function CardCheckoutPage({
     extra_guests?: string;
     gift_email?: string;
     return_path?: string;
+    promo?: string;
   }>;
 }) {
   await requireUser();
@@ -34,6 +35,7 @@ export default async function CardCheckoutPage({
         extraGuests={params.extra_guests ? Number(params.extra_guests) : undefined}
         giftEmail={params.gift_email}
         returnPath={params.return_path}
+        promo={params.promo}
       />
     </div>
   );

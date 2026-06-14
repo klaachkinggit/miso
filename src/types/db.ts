@@ -480,6 +480,7 @@ export type Database = {
           buyer_user_id: string
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
+          discount_cents: number
           disputed_at: string | null
           failure_reason: string | null
           fulfilled_at: string | null
@@ -493,6 +494,7 @@ export type Database = {
           organizer_user_id: string | null
           primary_seller_cents: number
           primary_seller_user_id: string
+          promo_code_id: string | null
           purchase_id: string | null
           refunded_at: string | null
           resale_listing_id: string | null
@@ -509,6 +511,7 @@ export type Database = {
           buyer_user_id: string
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
+          discount_cents?: number
           disputed_at?: string | null
           failure_reason?: string | null
           fulfilled_at?: string | null
@@ -522,6 +525,7 @@ export type Database = {
           organizer_user_id?: string | null
           primary_seller_cents: number
           primary_seller_user_id: string
+          promo_code_id?: string | null
           purchase_id?: string | null
           refunded_at?: string | null
           resale_listing_id?: string | null
@@ -538,6 +542,7 @@ export type Database = {
           buyer_user_id?: string
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
+          discount_cents?: number
           disputed_at?: string | null
           failure_reason?: string | null
           fulfilled_at?: string | null
@@ -551,6 +556,7 @@ export type Database = {
           organizer_user_id?: string | null
           primary_seller_cents?: number
           primary_seller_user_id?: string
+          promo_code_id?: string | null
           purchase_id?: string | null
           refunded_at?: string | null
           resale_listing_id?: string | null
@@ -582,6 +588,13 @@ export type Database = {
             columns: ["primary_seller_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_payments_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
             referencedColumns: ["id"]
           },
           {
@@ -961,6 +974,59 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          active: boolean
+          amount_off_cents: number | null
+          code: string
+          created_at: string
+          discount_kind: string
+          ends_at: string | null
+          id: string
+          max_uses: number | null
+          organization_id: string
+          percent_off: number | null
+          starts_at: string | null
+          used_count: number
+        }
+        Insert: {
+          active?: boolean
+          amount_off_cents?: number | null
+          code: string
+          created_at?: string
+          discount_kind: string
+          ends_at?: string | null
+          id?: string
+          max_uses?: number | null
+          organization_id: string
+          percent_off?: number | null
+          starts_at?: string | null
+          used_count?: number
+        }
+        Update: {
+          active?: boolean
+          amount_off_cents?: number | null
+          code?: string
+          created_at?: string
+          discount_kind?: string
+          ends_at?: string | null
+          id?: string
+          max_uses?: number | null
+          organization_id?: string
+          percent_off?: number | null
+          starts_at?: string | null
+          used_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_codes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchases: {
         Row: {
           amount: number
@@ -1318,6 +1384,8 @@ export type Database = {
           price_per_extra_guest: number | null
           public_sales_counter_enabled: boolean
           resale_enabled: boolean
+          sale_ends_at: string | null
+          sale_starts_at: string | null
           sales_enabled: boolean
           sold_count: number
           supply: number
@@ -1344,6 +1412,8 @@ export type Database = {
           price_per_extra_guest?: number | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
+          sale_ends_at?: string | null
+          sale_starts_at?: string | null
           sales_enabled?: boolean
           sold_count?: number
           supply: number
@@ -1370,6 +1440,8 @@ export type Database = {
           price_per_extra_guest?: number | null
           public_sales_counter_enabled?: boolean
           resale_enabled?: boolean
+          sale_ends_at?: string | null
+          sale_starts_at?: string | null
           sales_enabled?: boolean
           sold_count?: number
           supply?: number
@@ -1684,9 +1756,55 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      decrement_promo_use: {
+        Args: { promo_id: string }
+        Returns: {
+          active: boolean
+          amount_off_cents: number | null
+          code: string
+          created_at: string
+          discount_kind: string
+          ends_at: string | null
+          id: string
+          max_uses: number | null
+          organization_id: string
+          percent_off: number | null
+          starts_at: string | null
+          used_count: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "promo_codes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: { roles: Database["public"]["Enums"]["user_role"][] }
         Returns: boolean
+      }
+      increment_promo_use: {
+        Args: { promo_id: string }
+        Returns: {
+          active: boolean
+          amount_off_cents: number | null
+          code: string
+          created_at: string
+          discount_kind: string
+          ends_at: string | null
+          id: string
+          max_uses: number | null
+          organization_id: string
+          percent_off: number | null
+          starts_at: string | null
+          used_count: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "promo_codes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       is_admin: { Args: never; Returns: boolean }
       is_event_published: { Args: { check_event_id: string }; Returns: boolean }
@@ -2591,6 +2709,7 @@ export type MarketplaceTransfer = Tables<"marketplace_transfers">
 export type MarketplacePaymentItem = Tables<"marketplace_payment_items">
 export type EventWaitlist = Tables<"event_waitlists">
 export type OrganizationFollower = Tables<"organization_followers">
+export type PromoCode = Tables<"promo_codes">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">

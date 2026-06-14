@@ -141,12 +141,24 @@ export function EventDetail({
               {categories.map((category) => {
                 const isClub = category.kind === "club_table";
                 const soldOut = category.remaining <= 0;
-                const disabled = !category.sales_enabled || soldOut;
-                const reason = !category.sales_enabled
-                  ? "Sales closed"
-                  : soldOut
-                    ? "Sold out"
-                    : null;
+                const now = Date.now();
+                const comingSoon =
+                  category.sale_starts_at != null &&
+                  now < new Date(category.sale_starts_at).getTime();
+                const salesEnded =
+                  category.sale_ends_at != null &&
+                  now > new Date(category.sale_ends_at).getTime();
+                const disabled =
+                  !category.sales_enabled || soldOut || comingSoon || salesEnded;
+                const reason = comingSoon
+                  ? `Coming soon · ${formatDateShort(category.sale_starts_at!)}`
+                  : salesEnded
+                    ? "Sales ended"
+                    : !category.sales_enabled
+                      ? "Sales closed"
+                      : soldOut
+                        ? "Sold out"
+                        : null;
 
                 const remainingBadge = soldOut ? (
                   <Badge variant="destructive">Not available</Badge>

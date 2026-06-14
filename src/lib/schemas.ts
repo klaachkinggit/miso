@@ -106,6 +106,8 @@ export const CreateCategorySchema = z
     public_sales_counter_enabled: z.coerce.boolean().default(true),
     benefits: z.string().max(1000).optional().nullable(),
     image_url: z.string().url().optional().nullable(),
+    sale_starts_at: z.coerce.date().optional().nullable(),
+    sale_ends_at: z.coerce.date().optional().nullable(),
   })
   .merge(ClubTableFields)
   .refine(
@@ -116,6 +118,12 @@ export const CreateCategorySchema = z
       message:
         "Club Table requires online advance, base capacity, and a color.",
     },
+  )
+  .refine(
+    (v) =>
+      !(v.sale_starts_at && v.sale_ends_at) ||
+      v.sale_ends_at.getTime() > v.sale_starts_at.getTime(),
+    { message: "Sales end must be after sales start." },
   )
   .refine(
     (v) =>

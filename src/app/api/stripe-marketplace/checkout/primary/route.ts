@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       idempotencyKey,
       salesChannel,
       trackingOrigin,
+      promoCode: body.promo ?? null,
     });
     return NextResponse.json(result, { status: 200 });
   } catch (error) {

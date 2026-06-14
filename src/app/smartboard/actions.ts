@@ -21,6 +21,7 @@ import { sendOrganizationAnnouncement } from "@/lib/email/send";
 import { listActiveFollowerEmails } from "@/lib/followers";
 import { getDefaultAdminOrganizationId } from "@/lib/organizations/auth";
 import { getActiveAdminOrganization, requireActiveAdminOrganization } from "@/lib/organizations/context";
+import { createPromoCode, deactivatePromoCode } from "@/lib/promo";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import type { Profile } from "@/types/db";
 import { CreateCategorySchema, CreateEventSchema, InviteControllerSchema } from "@/lib/schemas";
@@ -190,6 +191,8 @@ export async function createOrganizerCategory(formData: FormData) {
     max_resale_price: formData.get("max_resale_price") || null,
     resale_enabled: checkbox(formData, "resale_enabled"),
     benefits: formData.get("benefits") || null,
+    sale_starts_at: formData.get("sale_starts_at") || null,
+    sale_ends_at: formData.get("sale_ends_at") || null,
   });
   if (!parsed.success) fail("/smartboard", parsed.error.issues[0]?.message ?? "Invalid category.");
 
@@ -257,6 +260,72 @@ export async function getActiveOrganizationFollowerCount(
   if (!activeOrganization) return 0;
   const followers = await listActiveFollowerEmails({ organizationId: activeOrganization.id });
   return followers.length;
+}
+
+export async function createPromoCodeAction(formData: FormData) {
+  const profile = await requireOrganizer();
+  const { activeOrganization } = await requireActiveAdminOrganization(profile);
+
+  const code = String(formData.get("code") ?? "").trim();
+  const discountKind = String(formData.get("discount_kind") ?? "");
+  if (!code) fail("/smartboard?tab=promos", "Promo code is required.");
+  if (discountKind !== "percent" && discountKind !== "fixed") {
+    fail("/smartboard?tab=promos", "Choose a discount type.");
+  }
+
+  const percentOff = formData.get("percent_off")
+    ? Math.round(Number(formData.get("percent_off")))
+    : null;
+  const amountOffCents = formData.get("amount_off")
+    ? Math.round(Number(formData.get("amount_off")) * 100)
+    : null;
+  const maxUsesRaw = formData.get("max_uses");
+  const maxUses = maxUsesRaw ? Math.round(Number(maxUsesRaw)) : null;
+  const startsAt = formData.get("starts_at")
+    ? new Date(String(formData.get("starts_at"))).toISOString()
+    : null;
+  const endsAt = formData.get("ends_at")
+    ? new Date(String(formData.get("ends_at"))).toISOString()
+    : null;
+
+  if (discountKind === "percent" && (!percentOff || percentOff < 1 || percentOff > 100)) {
+    fail("/smartboard?tab=promos", "Percent off must be between 1 and 100.");
+  }
+  if (discountKind === "fixed" && (!amountOffCents || amountOffCents <= 0)) {
+    fail("/smartboard?tab=promos", "Fixed amount must be greater than 0.");
+  }
+
+  try {
+    await createPromoCode({
+      organizationId: activeOrganization.id,
+      code,
+      discountKind,
+      percentOff: discountKind === "percent" ? percentOff : null,
+      amountOffCents: discountKind === "fixed" ? amountOffCents : null,
+      maxUses,
+      startsAt,
+      endsAt,
+    });
+  } catch (error) {
+    fail("/smartboard?tab=promos", errorMessage(error, "Promo code could not be created."));
+  }
+  revalidatePath("/smartboard");
+  redirect("/smartboard?tab=promos");
+}
+
+export async function deactivatePromoCodeAction(formData: FormData) {
+  const profile = await requireOrganizer();
+  const { activeOrganization } = await requireActiveAdminOrganization(profile);
+  const promoCodeId = String(formData.get("promo_code_id") ?? "");
+  if (!promoCodeId) fail("/smartboard?tab=promos", "Missing promo code id.");
+
+  try {
+    await deactivatePromoCode({ promoCodeId, organizationId: activeOrganization.id });
+  } catch (error) {
+    fail("/smartboard?tab=promos", errorMessage(error, "Promo code could not be deactivated."));
+  }
+  revalidatePath("/smartboard");
+  redirect("/smartboard?tab=promos");
 }
 
 export async function inviteOrganizerController(formData: FormData) {
