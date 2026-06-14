@@ -6,6 +6,7 @@ export const PrimaryCheckoutInitSchema = z.object({
   extra_guests_count: z.number().int().min(0).default(0),
   gift_recipient_email: z.string().email().optional().nullable(),
   return_path: z.string().startsWith("/").max(200).optional(),
+  promo: z.string().trim().min(1).max(64).optional(),
 });
 
 export const ResaleCheckoutInitSchema = z.object({

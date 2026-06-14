@@ -48,6 +48,7 @@ export function BuyButton({
   const [extras, setExtras] = useState(0);
   const [isGift, setIsGift] = useState(false);
   const [giftEmail, setGiftEmail] = useState("");
+  const [promo, setPromo] = useState("");
 
   const isClub = category.kind === "club_table";
   const advance = Number(category.online_advance ?? category.price ?? 0);
@@ -71,6 +72,7 @@ export function BuyButton({
     if (quantity !== 1) params.set("quantity", String(quantity));
     if (extras > 0) params.set("extra_guests", String(extras));
     if (isGift && giftEmail) params.set("gift_email", giftEmail);
+    if (promo.trim()) params.set("promo", promo.trim());
     if (returnPath) params.set("return_path", returnPath);
     router.push(`/checkout/card?${params.toString()}`);
   }
@@ -188,6 +190,16 @@ export function BuyButton({
                 </p>
               </div>
             ) : null}
+          </div>
+
+          <div className="grid gap-1 rounded-md border border-border/70 p-3">
+            <Label htmlFor="promo_code">Promo code (optional)</Label>
+            <Input
+              id="promo_code"
+              placeholder="EARLYBIRD"
+              value={promo}
+              onChange={(e) => setPromo(e.target.value)}
+            />
           </div>
 
           <div className="rounded-md bg-secondary/40 p-3 text-sm">

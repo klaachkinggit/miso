@@ -42,6 +42,7 @@ export function CardCheckoutForm({
   extraGuests,
   giftEmail,
   returnPath,
+  promo,
 }: {
   mode: "primary" | "resale";
   id: string;
@@ -49,6 +50,7 @@ export function CardCheckoutForm({
   extraGuests?: number;
   giftEmail?: string;
   returnPath?: string;
+  promo?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,7 @@ export function CardCheckoutForm({
         if (extraGuests !== undefined) primaryBody.extra_guests_count = extraGuests;
         if (giftEmail) primaryBody.gift_recipient_email = giftEmail;
         if (returnPath) primaryBody.return_path = returnPath;
+        if (promo) primaryBody.promo = promo;
 
         const response = await fetch(endpoint, {
           method: "POST",
@@ -116,7 +119,7 @@ export function CardCheckoutForm({
     return () => {
       canceled = true;
     };
-  }, [id, mode, quantity, extraGuests, giftEmail, returnPath]);
+  }, [id, mode, quantity, extraGuests, giftEmail, returnPath, promo]);
 
   async function submit() {
     if (!stripeRef.current || !elementsRef.current || !paymentIdRef.current) return;

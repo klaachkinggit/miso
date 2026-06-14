@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, CalendarPlus, ExternalLink, LockKeyhole, Megaphone, Settings, ShieldCheck, Users, WalletCards } from "lucide-react";
+import { BarChart3, CalendarPlus, ExternalLink, LockKeyhole, Megaphone, Settings, ShieldCheck, Tag, Users, WalletCards } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,10 +16,15 @@ import {
   refreshOrganizerLiveStatus,
   slugify,
 } from "@/lib/organizers/profile";
+import { getActiveAdminOrganization } from "@/lib/organizations/context";
+import { listPromoCodes } from "@/lib/promo";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, Ticket } from "@/types/db";
+import { formatPrice } from "@/lib/format";
+import type { EventRow, PromoCode, Ticket } from "@/types/db";
 import {
   createOrganizerEvent,
+  createPromoCodeAction,
+  deactivatePromoCodeAction,
   getActiveOrganizationFollowerCount,
   saveLegalCompliance,
   saveOrganizerPage,
@@ -27,7 +32,7 @@ import {
   startStripeConnect,
 } from "./actions";
 
-const TAB_VALUES = ["events", "marketing", "analyse", "banking", "page"] as const;
+const TAB_VALUES = ["events", "marketing", "promos", "analyse", "banking", "page"] as const;
 
 export default async function SmartboardPage({
   searchParams,
@@ -64,6 +69,10 @@ export default async function SmartboardPage({
   const generatedCount = ticketRows.length;
   const followerCount = await getActiveOrganizationFollowerCount(profile);
   const announcedCount = params?.announced ? Number(params.announced) : null;
+  const { activeOrganization } = await getActiveAdminOrganization(profile);
+  const promoCodes = activeOrganization
+    ? await listPromoCodes(activeOrganization.id)
+    : [];
 
   return (
     <div className="container py-8">
@@ -99,6 +108,7 @@ export default async function SmartboardPage({
         <TabsList className="mt-6 flex h-auto w-full flex-wrap justify-start">
           <TabsTrigger value="events">Evenements</TabsTrigger>
           <TabsTrigger value="marketing">Marketing</TabsTrigger>
+          <TabsTrigger value="promos">Promos</TabsTrigger>
           <TabsTrigger value="analyse">Analyse</TabsTrigger>
           <TabsTrigger value="banking">Banking</TabsTrigger>
           <TabsTrigger value="page">Ma Page</TabsTrigger>
@@ -154,6 +164,21 @@ export default async function SmartboardPage({
           <div className="mt-5">
             <AnnounceComposer followerCount={followerCount} announcedCount={announcedCount} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="promos">
+          {activeOrganization ? (
+            <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+              <PromoCodeList promoCodes={promoCodes} />
+              <CreatePromoCard />
+            </div>
+          ) : (
+            <Card className="glass rounded-lg">
+              <CardContent className="p-5 text-sm text-muted-foreground">
+                Set up your organization before creating promo codes.
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="analyse">
@@ -424,6 +449,124 @@ function AnnounceComposer({
               Send announcement
             </Button>
           </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PromoCodeList({ promoCodes }: { promoCodes: PromoCode[] }) {
+  return (
+    <Card className="glass rounded-lg">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Tag className="h-5 w-5 text-primary" />
+          Promo codes
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {promoCodes.length ? (
+          <div className="overflow-hidden rounded-md border border-border/70">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">Code</th>
+                  <th className="px-3 py-2">Discount</th>
+                  <th className="px-3 py-2">Used</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {promoCodes.map((promo) => (
+                  <tr key={promo.id} className="border-t border-border/60">
+                    <td className="px-3 py-2 font-mono">{promo.code}</td>
+                    <td className="px-3 py-2">
+                      {promo.discount_kind === "percent"
+                        ? `${promo.percent_off}%`
+                        : formatPrice((promo.amount_off_cents ?? 0) / 100, "EUR")}
+                    </td>
+                    <td className="px-3 py-2">
+                      {promo.used_count}
+                      {promo.max_uses != null ? ` / ${promo.max_uses}` : ""}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant={promo.active ? "success" : "secondary"}>
+                        {promo.active ? "Active" : "Inactive"}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {promo.active ? (
+                        <form action={deactivatePromoCodeAction}>
+                          <input type="hidden" name="promo_code_id" value={promo.id} />
+                          <Button type="submit" variant="outline" size="sm">
+                            Deactivate
+                          </Button>
+                        </form>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No promo codes yet.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CreatePromoCard() {
+  return (
+    <Card className="glass h-fit rounded-lg">
+      <CardHeader>
+        <CardTitle>Create promo code</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={createPromoCodeAction} className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="promo_code_input">Code</Label>
+            <Input id="promo_code_input" name="code" placeholder="EARLYBIRD" required />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="discount_kind">Discount type</Label>
+            <select
+              id="discount_kind"
+              name="discount_kind"
+              className="h-10 rounded-md border border-border/70 bg-background px-3 text-sm"
+              defaultValue="percent"
+            >
+              <option value="percent">Percent off</option>
+              <option value="fixed">Fixed amount (EUR)</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="percent_off">Percent off</Label>
+              <Input id="percent_off" name="percent_off" type="number" min="1" max="100" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="amount_off">Fixed (EUR)</Label>
+              <Input id="amount_off" name="amount_off" type="number" min="0.01" step="0.01" />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="max_uses">Max uses (optional)</Label>
+            <Input id="max_uses" name="max_uses" type="number" min="1" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="starts_at">Starts</Label>
+              <Input id="starts_at" name="starts_at" type="datetime-local" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="ends_at">Ends</Label>
+              <Input id="ends_at" name="ends_at" type="datetime-local" />
+            </div>
+          </div>
+          <Button type="submit">Create promo code</Button>
         </form>
       </CardContent>
     </Card>

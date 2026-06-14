@@ -57,6 +57,8 @@ export interface CategoryInput {
   public_sales_counter_enabled: boolean;
   benefits?: string | null;
   image_url?: string | null;
+  sale_starts_at?: Date | null;
+  sale_ends_at?: Date | null;
   // Club Table fields (required when kind === 'club_table').
   // Note: `min_spending` is no longer collected — the table `price`
   // doubles as the minimum spending floor at the venue.
@@ -360,6 +362,8 @@ export async function createTicketCategory(params: {
     ...params.input,
     max_resale_price: params.input.max_resale_price ?? null,
     image_url: params.input.image_url ?? null,
+    sale_starts_at: params.input.sale_starts_at?.toISOString() ?? null,
+    sale_ends_at: params.input.sale_ends_at?.toISOString() ?? null,
     image_ipfs_uri: imageIpfsUri,
     // DB constraint requires min_spending NOT NULL for club_table rows.
     // App contract: table `price` doubles as the minimum spending floor.

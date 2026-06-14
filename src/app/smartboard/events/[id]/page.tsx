@@ -278,6 +278,16 @@ export default async function SmartboardEventPage({
                     <Label htmlFor="benefits">Benefits</Label>
                     <Textarea id="benefits" name="benefits" rows={3} />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="sale_starts_at">Sales start</Label>
+                      <Input id="sale_starts_at" name="sale_starts_at" type="datetime-local" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="sale_ends_at">Sales end</Label>
+                      <Input id="sale_ends_at" name="sale_ends_at" type="datetime-local" />
+                    </div>
+                  </div>
                   <label className="flex items-center gap-3 text-sm">
                     <input name="resale_enabled" type="checkbox" className="h-4 w-4" defaultChecked />
                     Resale enabled

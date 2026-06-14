@@ -21,6 +21,7 @@ import {
   validateExtraGuests,
 } from "@/lib/payments/checkout";
 import { allocateMoney } from "@/lib/payments/pricing";
+import { markPromoUsed, releasePromoUse, validateAndPricePromo } from "@/lib/promo";
 import type {
   Purchase,
   ResaleListing,
@@ -64,6 +65,8 @@ export interface MarketplacePaymentRow {
   organizer_royalty_bps: number;
   organizer_royalty_cents: number;
   primary_seller_cents: number;
+  promo_code_id: string | null;
+  discount_cents: number;
   stripe_payment_intent_id: string | null;
   stripe_charge_id: string | null;
   stripe_transfer_group: string | null;
@@ -104,9 +107,13 @@ export async function insertMarketplacePayment(
     | "last_webhook_at"
     | "failure_reason"
     | "stripe_charge_id"
+    | "promo_code_id"
+    | "discount_cents"
   > & {
     stripe_charge_id?: string | null;
     failure_reason?: string | null;
+    promo_code_id?: string | null;
+    discount_cents?: number;
   },
 ): Promise<MarketplacePaymentRow> {
   const sb = createServiceClient();
@@ -242,6 +249,18 @@ function assertEur(currency: string): asserts currency is "EUR" {
   }
 }
 
+// Scheduled release gate. Null bounds = always-open. An "early-bird" tier is a
+// category whose window is currently open.
+function assertSaleWindowOpen(category: TicketCategory): void {
+  const now = Date.now();
+  if (category.sale_starts_at && now < new Date(category.sale_starts_at).getTime()) {
+    throw new StripeMarketplaceError("Sales have not started.", 400);
+  }
+  if (category.sale_ends_at && now > new Date(category.sale_ends_at).getTime()) {
+    throw new StripeMarketplaceError("Sales have ended.", 400);
+  }
+}
+
 export async function createPrimaryCheckout(input: {
   buyerUserId: string;
   categoryId: string;
@@ -251,11 +270,15 @@ export async function createPrimaryCheckout(input: {
   idempotencyKey?: string;
   salesChannel?: SalesChannel;
   trackingOrigin?: string | null;
+  promoCode?: string | null;
 }): Promise<PrimaryCheckoutResult> {
   const sb = createServiceClient();
   const quantity = normalizeQuantity(input.quantity);
   const extras = normalizeExtras(input.extraGuestsCount);
   let pendingPaymentId: string | undefined;
+  // Set once markPromoUsed has consumed a use; the catch block releases it so
+  // an abort before the charge is created does not leak the redemption.
+  let consumedPromoCodeId: string | undefined;
   const reservedTicketIds: string[] = [];
   const purchaseIds: string[] = [];
 
@@ -281,17 +304,31 @@ export async function createPrimaryCheckout(input: {
           currency: "EUR",
         };
       }
-      // Free claims create no marketplace_payment, so the prior lookup above
-      // returns null. Replay returns the already-minted purchases as-is.
+      // Free claims create no marketplace_payment (so the lookup above is null)
+      // AND no marketplace_payment_items. A priced checkout that failed BEFORE
+      // its charge was created (Stripe error / items insert error) also has no
+      // LIVE payment, but it DID insert item rows and its purchases carry a
+      // non-zero amount. Only replay the genuine free-claim path — gating on
+      // "no live payment" alone would mis-report a never-charged priced
+      // checkout as a completed free claim.
       if (!existing) {
-        const { data: priorFree } = await sb
+        const { data: priorPurchases } = await sb
           .from("purchases")
-          .select("id")
+          .select("id, amount")
           .eq("buyer_user_id", input.buyerUserId)
           .eq("provider_session_id", input.idempotencyKey)
-          .returns<{ id: string }[]>();
-        const ids = (priorFree ?? []).map((p) => p.id);
-        if (ids.length > 0) {
+          .returns<{ id: string; amount: number | string }[]>();
+        const ids = (priorPurchases ?? []).map((p) => p.id);
+        const allZeroAmount =
+          ids.length > 0 &&
+          (priorPurchases ?? []).every((p) => Number(p.amount) === 0);
+        const { data: anyItem } = await sb
+          .from(ITEM_TABLE)
+          .select("id")
+          .in("purchase_id", ids.length ? ids : [""])
+          .limit(1)
+          .maybeSingle<{ id: string }>();
+        if (ids.length > 0 && allZeroAmount && !anyItem) {
           return {
             free: true,
             purchaseIds: ids,
@@ -330,6 +367,7 @@ export async function createPrimaryCheckout(input: {
       throw new Error("Ticket could not be reserved.");
     }
 
+    assertSaleWindowOpen(category);
     validateExtraGuests(category, extras);
     const pricing = checkoutPricing(category, extras);
     const perTicketCents = toCents(pricing.amount);
@@ -443,11 +481,43 @@ export async function createPrimaryCheckout(input: {
     }
 
     const env = stripeEnv();
+
+    // The organizer absorbs the promo discount: validate + price server-side,
+    // then feed the DISCOUNTED gross through computePrimaryBreakdown so the
+    // buyer charge, marketplace fee, and primary-seller transfer all recompute
+    // consistently. Promo never applies to the free-claim path (handled above).
+    let promoCodeId: string | null = null;
+    let discountCents = 0;
+    if (input.promoCode) {
+      const promo = await validateAndPricePromo({
+        code: input.promoCode,
+        organizationId: event.organization_id,
+        grossCents: grossTotalCents,
+      });
+      promoCodeId = promo.promoCodeId;
+      discountCents = promo.discountCents;
+    }
+    const effectiveGrossCents = grossTotalCents - discountCents;
+
     const breakdown = computePrimaryBreakdown({
-      grossCents: grossTotalCents,
+      grossCents: effectiveGrossCents,
       marketplaceFeeBps: env.MISO_MARKETPLACE_FEE_BPS,
     });
     const transferGroup = newTransferGroup("miso_p");
+
+    // Consume the use atomically before charging. If the conditional increment
+    // reports the code exhausted (a concurrent checkout claimed the last use),
+    // abort with a 409 — the outer catch releases reserved tickets.
+    if (promoCodeId) {
+      const consumed = await markPromoUsed(promoCodeId);
+      if (!consumed) {
+        throw new StripeMarketplaceError(
+          "Promo code has reached its usage limit.",
+          409,
+        );
+      }
+      consumedPromoCodeId = promoCodeId;
+    }
 
     const payment = await insertMarketplacePayment({
       kind: "primary",
@@ -463,6 +533,8 @@ export async function createPrimaryCheckout(input: {
       organizer_royalty_bps: 0,
       organizer_royalty_cents: 0,
       primary_seller_cents: breakdown.primarySellerCents,
+      promo_code_id: promoCodeId,
+      discount_cents: discountCents,
       stripe_payment_intent_id: null,
       stripe_charge_id: null,
       stripe_transfer_group: transferGroup,
@@ -470,7 +542,9 @@ export async function createPrimaryCheckout(input: {
     });
     pendingPaymentId = payment.id;
 
-    const itemCents = allocateMoney(fromCents(grossTotalCents), quantity).map(
+    // Allocate the DISCOUNTED total across items so the per-purchase shares sum
+    // to the actual buyer charge (breakdown.amountTotalCents).
+    const itemCents = allocateMoney(fromCents(effectiveGrossCents), quantity).map(
       toCents,
     );
     const { error: itemsError } = await sb.from(ITEM_TABLE).insert(
@@ -546,6 +620,12 @@ export async function createPrimaryCheckout(input: {
         .update({ status: "failed" })
         .in("id", purchaseIds)
         .eq("status", "pending");
+    }
+    // A use was consumed but the charge was never created — return it to the
+    // pool so an abort (Stripe error, items insert error) does not leak a
+    // redemption and prematurely exhaust a capped code.
+    if (consumedPromoCodeId) {
+      await releasePromoUse(consumedPromoCodeId);
     }
     await releaseReservedTickets();
     throw error;
@@ -777,7 +857,7 @@ export interface FeeInputs {
   marketplaceFeeBps: number;
 }
 
-const MIN_GROSS_CENTS = 1;
+export const MIN_GROSS_CENTS = 1;
 const BPS_DENOMINATOR = 10_000;
 
 function assertNonNegativeInt(n: number, label: string) {

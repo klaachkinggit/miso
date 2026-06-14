@@ -31,6 +31,7 @@ export type MarketplaceTransfer = Tables<"marketplace_transfers">
 export type MarketplacePaymentItem = Tables<"marketplace_payment_items">
 export type EventWaitlist = Tables<"event_waitlists">
 export type OrganizationFollower = Tables<"organization_followers">
+export type PromoCode = Tables<"promo_codes">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">
