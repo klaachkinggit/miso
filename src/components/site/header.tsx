@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { canOperateGateRole, canUseOrganizerWorkspace, getCurrentProfile } from "@/lib/auth";
+import { isEmbedRequest } from "@/lib/embed/chrome";
 import { getAdminOrganizationIds, getMemberOrganizationIds } from "@/lib/organizations/auth";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/site/user-menu";
 
 export async function Header() {
+  if (await isEmbedRequest()) return null;
   const profile = await getCurrentProfile();
   const [adminOrganizationIds, memberOrganizationIds] = profile
     ? await Promise.all([getAdminOrganizationIds(profile.id), getMemberOrganizationIds(profile.id)])

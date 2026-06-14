@@ -53,6 +53,15 @@
       hsl(var(--ink));
     min-height: 100vh;
   }
+  /* Embed document: let scrollHeight hug the card so the iframe auto-sizes to
+     content instead of being pinned to viewport height by the rules above. */
+  html:has(.miso-embed-card),
+  body:has(.miso-embed-card) {
+    min-height: 0;
+  }
+  body:has(.miso-embed-card) main {
+    min-height: 0;
+  }
   ::selection {
     background: hsl(var(--signal));
     color: hsl(var(--ink));

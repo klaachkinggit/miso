@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { EmbedSnippet } from "@/components/smartboard/embed-snippet";
 import { requireRole } from "@/lib/auth";
+import { buildEmbedSnippet } from "@/lib/embed/snippet";
 import { formatDateShort } from "@/lib/format";
 import {
   getOrganizerCompliance,
@@ -73,6 +75,22 @@ export default async function SmartboardPage({
   const promoCodes = activeOrganization
     ? await listPromoCodes(activeOrganization.id)
     : [];
+
+  const publishedEventIds = eventRows
+    .filter((event) => event.status === "published")
+    .map((event) => event.id);
+  const { data: embedCategories } = publishedEventIds.length
+    ? await sb
+        .from("ticket_categories")
+        .select("id, name, event_id")
+        .in("event_id", publishedEventIds)
+        .order("price", { ascending: true })
+    : { data: [] as Array<{ id: string; name: string; event_id: string }> };
+  const appOrigin = (
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.APP_URL ??
+    "http://localhost:3002"
+  ).replace(/\/+$/, "");
 
   return (
     <div className="container py-8">
@@ -220,6 +238,11 @@ export default async function SmartboardPage({
         </TabsContent>
 
         <TabsContent value="page">
+          <EmbedWidgetCard
+            origin={appOrigin}
+            events={eventRows.filter((event) => event.status === "published")}
+            categories={embedCategories ?? []}
+          />
           <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
             <Card className="glass rounded-lg">
               <CardHeader>
@@ -568,6 +591,52 @@ function CreatePromoCard() {
           </div>
           <Button type="submit">Create promo code</Button>
         </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmbedWidgetCard({
+  origin,
+  events,
+  categories,
+}: {
+  origin: string;
+  events: EventRow[];
+  categories: Array<{ id: string; name: string; event_id: string }>;
+}) {
+  const eventsWithCategories = events.filter((event) =>
+    categories.some((category) => category.event_id === event.id),
+  );
+  return (
+    <Card className="glass mb-5 rounded-lg">
+      <CardHeader>
+        <CardTitle>Embed widget</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-5 text-sm text-muted-foreground">
+        <p>
+          Paste a category snippet on any external site to embed a checkout button. Buyers complete
+          payment back on MISO.
+        </p>
+        {eventsWithCategories.length ? (
+          eventsWithCategories.map((event) => (
+            <div key={event.id} className="grid gap-2">
+              <p className="font-medium text-foreground">{event.name}</p>
+              {categories
+                .filter((category) => category.event_id === event.id)
+                .map((category) => (
+                  <div key={category.id} className="grid gap-1">
+                    <p className="font-mono text-[11px] uppercase tracking-[0.16em]">
+                      {category.name}
+                    </p>
+                    <EmbedSnippet snippet={buildEmbedSnippet(origin, category.id)} />
+                  </div>
+                ))}
+            </div>
+          ))
+        ) : (
+          <p>Publish an event with ticket categories to generate an embed snippet.</p>
+        )}
       </CardContent>
     </Card>
   );
