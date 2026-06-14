@@ -110,3 +110,61 @@ export function storefrontRewriteUrl(request: NextRequest): URL | null {
   url.pathname = rewritePath;
   return url;
 }
+
+// Edge-safe custom-domain → slug lookup. The middleware runs on the edge runtime,
+// where `@/lib/supabase/service` (server-only + node sdk) can't be imported, so we
+// hit PostgREST directly with `fetch` (the same query resolveOrgSlugByCustomDomain
+// runs server-side). Returns null on any miss/error so host routing fails closed.
+async function resolveOrgSlugByCustomDomainEdge(host: string | null | undefined): Promise<string | null> {
+  const domain = normalizeHost(host);
+  if (!domain) return null;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+
+  try {
+    const params = new URLSearchParams({
+      select: "slug",
+      custom_domain: `eq.${domain}`,
+      status: "eq.active",
+      custom_domain_verified_at: "not.is.null",
+      limit: "1",
+    });
+    const res = await fetch(`${url}/rest/v1/organizations?${params.toString()}`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Array<{ slug: string }>;
+    return rows[0]?.slug ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Rewrite URL for an incoming request whose host is a VERIFIED org custom domain
+// (not a miso storefront subdomain — those are handled by storefrontRewriteUrl).
+// Mirrors the subdomain rewrite path rules so both host kinds behave identically.
+export async function customDomainRewriteUrl(request: NextRequest): Promise<URL | null> {
+  const host = request.headers.get("host") ?? request.nextUrl.host;
+  if (storefrontSlugFromHost(host)) return null; // a miso storefront host — not a custom domain
+
+  // Cheap platform-host short-circuit: any host under a miso root domain
+  // (apex, app.*, reserved subdomains, localhost) is NOT a custom domain, so
+  // skip the per-request DB lookup — only genuinely external hosts reach it.
+  const bareHost = host.split(":")[0]?.toLowerCase() ?? "";
+  const underMisoRoot = storefrontRootDomains().some(
+    (root) => bareHost === root || bareHost.endsWith(`.${root}`),
+  );
+  if (underMisoRoot) return null;
+
+  const slug = await resolveOrgSlugByCustomDomainEdge(host);
+  if (!slug) return null;
+
+  const rewritePath = storefrontRewritePath(request.nextUrl.pathname, slug);
+  if (!rewritePath) return null;
+
+  const url = request.nextUrl.clone();
+  url.pathname = rewritePath;
+  return url;
+}

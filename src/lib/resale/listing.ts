@@ -26,6 +26,7 @@ import {
   markTicketResaleCanceled,
 } from "@/lib/tickets/lifecycle";
 import { notifyWaitlistHead } from "@/lib/waitlist";
+import { maxResalePrice, resolveResaleCapBps } from "@/lib/resale/caps";
 import type { Ticket, EventRow, TicketCategory, ResaleListing } from "@/types/db";
 
 const INVALID_FOR_RESALE = new Set([
@@ -82,9 +83,11 @@ export async function createResaleListing(params: {
   } else {
     originalOnlineTotal = Number(category.price);
   }
-  if (params.price > originalOnlineTotal) {
+  const effectiveCapBps = await resolveResaleCapBps({ organizationId: event.organization_id });
+  const cap = maxResalePrice(originalOnlineTotal, effectiveCapBps);
+  if (params.price > cap) {
     throw new DomainError(
-      `Resale price cannot exceed the original online total of ${originalOnlineTotal}.`,
+      `Resale price cannot exceed ${cap} (face ${originalOnlineTotal} + allowed markup).`,
     );
   }
   if (params.price < 0) throw new Error("Resale price must be positive");

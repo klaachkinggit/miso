@@ -1,6 +1,6 @@
 import type { NextRequest, NextResponse } from "next/server";
 import { NextResponse as NextResponseCtor } from "next/server";
-import { storefrontRewriteUrl } from "@/lib/organizations/hosts";
+import { customDomainRewriteUrl, storefrontRewriteUrl } from "@/lib/organizations/hosts";
 import { updateSession } from "@/lib/supabase/middleware";
 
 function applyFrameHeaders(response: NextResponse, pathname: string) {
@@ -21,7 +21,10 @@ export async function middleware(request: NextRequest) {
   response.headers.set("x-pathname", pathname);
   applyFrameHeaders(response, pathname);
 
-  const rewriteUrl = storefrontRewriteUrl(request);
+  // A miso storefront subdomain rewrites synchronously (pure string parse). A
+  // verified org custom domain needs a DB lookup; only attempt it when the host
+  // is NOT already a known storefront host (customDomainRewriteUrl enforces that).
+  const rewriteUrl = storefrontRewriteUrl(request) ?? (await customDomainRewriteUrl(request));
   if (!rewriteUrl) return response;
 
   // Forward x-pathname on the REQUEST so RSC `headers()` reads it after the rewrite.

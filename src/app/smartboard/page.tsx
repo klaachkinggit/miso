@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { EmbedSnippet } from "@/components/smartboard/embed-snippet";
+import { ThemePicker } from "@/components/smartboard/theme-picker";
+import { ResaleCapSettings } from "@/components/smartboard/resale-cap-settings";
+import { CustomDomainSettings } from "@/components/smartboard/custom-domain-settings";
+import { getTheme, type ThemeKey } from "@/lib/organizations/theme";
+import { resolveResaleCapBps } from "@/lib/resale/caps";
 import { requireRole } from "@/lib/auth";
 import { buildEmbedSnippet } from "@/lib/embed/snippet";
 import { formatDateShort } from "@/lib/format";
@@ -75,6 +80,31 @@ export default async function SmartboardPage({
   const promoCodes = activeOrganization
     ? await listPromoCodes(activeOrganization.id)
     : [];
+
+  // Org self-serve settings (P1.5 theme / P1.7 resale cap / P1.8 custom domain).
+  const orgSettings = activeOrganization
+    ? (
+        await sb
+          .from("organizations")
+          .select(
+            "theme, resale_cap_bps, country_code, custom_domain, custom_domain_verified_at, custom_domain_verification_token",
+          )
+          .eq("id", activeOrganization.id)
+          .maybeSingle<{
+            theme: unknown;
+            resale_cap_bps: number;
+            country_code: string | null;
+            custom_domain: string | null;
+            custom_domain_verified_at: string | null;
+            custom_domain_verification_token: string | null;
+          }>()
+      ).data
+    : null;
+  const effectiveCapBps = activeOrganization
+    ? await resolveResaleCapBps({ organizationId: activeOrganization.id })
+    : 0;
+  const countryOverride =
+    effectiveCapBps !== (orgSettings?.resale_cap_bps ?? 0);
 
   const publishedEventIds = eventRows
     .filter((event) => event.status === "published")
@@ -243,7 +273,44 @@ export default async function SmartboardPage({
             events={eventRows.filter((event) => event.status === "published")}
             categories={embedCategories ?? []}
           />
-          <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+          {activeOrganization ? (
+            <div className="mt-5 grid gap-5 lg:grid-cols-3">
+              <Card className="glass rounded-lg">
+                <CardHeader>
+                  <CardTitle>Storefront theme</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ThemePicker currentKey={getTheme(orgSettings?.theme).key as ThemeKey} />
+                </CardContent>
+              </Card>
+              <Card className="glass rounded-lg">
+                <CardHeader>
+                  <CardTitle>Resale price cap</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResaleCapSettings
+                    orgCapBps={orgSettings?.resale_cap_bps ?? 0}
+                    effectiveCapBps={effectiveCapBps}
+                    countryCode={orgSettings?.country_code ?? null}
+                    countryOverride={countryOverride}
+                  />
+                </CardContent>
+              </Card>
+              <Card className="glass rounded-lg">
+                <CardHeader>
+                  <CardTitle>Custom domain</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CustomDomainSettings
+                    customDomain={orgSettings?.custom_domain ?? null}
+                    verified={Boolean(orgSettings?.custom_domain_verified_at)}
+                    verificationToken={orgSettings?.custom_domain_verification_token ?? null}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
+          <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_380px]">
             <Card className="glass rounded-lg">
               <CardHeader>
                 <CardTitle>Organizer page</CardTitle>
