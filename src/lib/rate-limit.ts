@@ -21,6 +21,8 @@ const RATE_LIMITS = {
   follow: { limit: 30, window: "60 s" },
   // Unauthenticated, per-IP: credential stuffing / signup spam.
   auth: { limit: 10, window: "60 s" },
+  // AI chat (copilot per-user, buyer assistant per-IP): token-cost amplifier.
+  ai: { limit: 20, window: "60 s" },
 } as const;
 
 export type RateLimitBucket = keyof typeof RATE_LIMITS;

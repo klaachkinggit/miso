@@ -33,6 +33,7 @@ export type EventWaitlist = Tables<"event_waitlists">
 export type OrganizationFollower = Tables<"organization_followers">
 export type PromoCode = Tables<"promo_codes">
 export type ResalePriceCap = Tables<"resale_price_caps">
+export type OrgEmbedding = Tables<"org_embeddings">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">

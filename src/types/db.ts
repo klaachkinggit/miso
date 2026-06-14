@@ -676,6 +676,50 @@ export type Database = {
           },
         ]
       }
+      org_embeddings: {
+        Row: {
+          content: string
+          created_at: string
+          embedding: string
+          id: string
+          metadata: Json
+          organization_id: string
+          source_id: string | null
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          embedding: string
+          id?: string
+          metadata?: Json
+          organization_id: string
+          source_id?: string | null
+          source_type: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string
+          source_id?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_embeddings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_customers: {
         Row: {
           first_seen_at: string
@@ -1859,6 +1903,21 @@ export type Database = {
         Args: { check_organization_id: string }
         Returns: boolean
       }
+      match_org_embeddings: {
+        Args: {
+          match_count?: number
+          match_org_id: string
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
+          source_id: string
+          source_type: string
+        }[]
+      }
       organizes_event: { Args: { check_event_id: string }; Returns: boolean }
       refresh_organizer_live_status: {
         Args: { p_user_id: string }
@@ -2750,6 +2809,7 @@ export type EventWaitlist = Tables<"event_waitlists">
 export type OrganizationFollower = Tables<"organization_followers">
 export type PromoCode = Tables<"promo_codes">
 export type ResalePriceCap = Tables<"resale_price_caps">
+export type OrgEmbedding = Tables<"org_embeddings">
 export type Currency = Enums<"currency">
 export type UserRole = Enums<"user_role">
 export type OrganizationRole = Enums<"organization_role">
