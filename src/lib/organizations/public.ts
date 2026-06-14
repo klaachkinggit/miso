@@ -6,7 +6,7 @@ import type { Organization } from "@/types/db";
 
 export type PublicOrganization = Pick<
   Organization,
-  "id" | "name" | "slug" | "status" | "default_currency" | "branding"
+  "id" | "name" | "slug" | "status" | "default_currency" | "branding" | "theme"
 >;
 
 export { normalizeStorefrontSlug } from "@/lib/organizations/slugs";
@@ -36,7 +36,7 @@ export async function getActiveOrganizationBySlug(
   const sb = createServiceClient();
   const { data, error } = await sb
     .from("organizations")
-    .select("id, name, slug, status, default_currency, branding")
+    .select("id, name, slug, status, default_currency, branding, theme")
     .eq("slug", slug)
     .eq("status", "active")
     .maybeSingle<PublicOrganization>();
