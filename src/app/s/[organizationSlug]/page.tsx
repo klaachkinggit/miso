@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { BuyerAssistantWidget } from "@/components/ai/buyer-assistant-widget";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
 import { EventsFilterPanel } from "@/components/site/events-filter-panel";
@@ -206,6 +207,11 @@ export default async function OrganizationStorefrontPage({
           }
         />
       )}
+
+      <BuyerAssistantWidget
+        organizationId={organization.id}
+        organizationSlug={organization.slug}
+      />
     </div>
   );
 }

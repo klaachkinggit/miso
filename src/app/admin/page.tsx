@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CopilotPanel } from "@/components/ai/copilot-panel";
 import { EmptyState } from "@/components/site/empty-state";
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { loadOrganizerOverview } from "@/lib/analytics/organizer";
@@ -216,6 +217,8 @@ export default async function OrganizerDashboardPage({
           </EmptyState>
         )}
       </div>
+
+      {activeOrganization ? <CopilotPanel organizationId={activeOrganization.id} /> : null}
     </div>
   );
 }
