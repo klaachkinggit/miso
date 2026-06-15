@@ -59,6 +59,7 @@ const config: Config = {
           DEFAULT: "hsl(var(--ink))",
           raised: "hsl(var(--ink-raised))",
           soft: "hsl(var(--ink-soft))",
+          elevated: "hsl(var(--ink-elevated))",
         },
         paper: {
           DEFAULT: "hsl(var(--paper))",

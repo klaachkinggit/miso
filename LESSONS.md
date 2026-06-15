@@ -16,3 +16,9 @@ A generated server action gated on the form's `event_id` while operating on an u
 
 ## 2026-06-13 - Verify subagent claims against git, not prose
 A verify agent confidently reported a route rename that never happened and misattributed a build failure. Next time: before acting on a subagent's claim about repo state, check `git status`/`git log` or rerun the command yourself — it costs seconds.
+
+## 2026-06-15 - macOS has no `timeout`; bound commands with the Bash tool timeout
+A background workflow stalled ~85 min after `timeout 150 npm install …` hit `command not found` (darwin ships no `timeout`/`gtimeout`), so the guard no-op'd (exit 127) and a later long command ran unbounded. Next time: never rely on shell `timeout` on macOS — set the Bash tool's own `timeout` param (it kills the process), or install coreutils first.
+
+## 2026-06-15 - Pre-stage fragile infra inline; give workflow agents writes only
+The same 85-min stall came from a build agent running `npm install --legacy-peer-deps` + `supabase db reset` + `npm run build` itself. Doing all serial/fragile infra (deps, migration+reset, types regen, rate-limit bucket) inline in the main thread FIRST, then fanning out a Workflow whose agents ONLY write files (explicitly forbidden from install/build/db-reset), removed the stall and the AI feature built clean. Next time: scout/stage infra inline, delegate only file authoring to parallel agents, run typecheck/lint/build/tests yourself afterward.
