@@ -19,3 +19,9 @@
 - development @ f62ba3e: backbone complete incl. multi-item primary (ADR 0002); 336 tests green; build env-independent.
 - THE PLAN for the final build session: docs/SAAS_V1_PLAN.md (P0 ship blockers -> P1 competitive -> P2 stretch, acceptance checklist included). Handoff: docs/handoffs/2026-06-13-fable5-session3.md.
 - First task next session: plan P0.1 legacy checkout decommission (verify free-ticket flow first).
+
+## 2026-06-15 - P1 complete incl. P1.6 AI (PR #25); design skills vendored
+- All of P1 shipped to `development`. P1.6 AI in-product merged (PR #25, commit e366c76): env-gated copilot (`/admin`) + org-scoped RAG buyer assistant (`/s/[slug]`) + escalate-to-email.
+- AI stack facts: Vercel AI SDK v6 (`streamText().toTextStreamResponse()`, `embed`/`embedMany`, `createAnthropic`/`createOpenAI`). Anthropic has NO embeddings API → OpenAI `text-embedding-3-small` (1536-dim) for pgvector. `org_embeddings` + `match_org_embeddings()` bake org isolation into the RPC (`match_org_id` required); `is_organization_admin` RLS. No keys ⇒ chat 503 / embeddings null / retrieval [] (local+CI stay green). Migration `20260614160000_ai_embeddings.sql`.
+- Vendored design skills into `.claude/skills/`: `ui-ux-pro-max`, `impeccable`, `awesome-design-md`. `tay` + `skill-ui` not found on GitHub (skill-ui closest: plugin87/ux-ui-agent-skills).
+- Landing "Operator Editorial" glow-up in progress on `feat/landing-glow-up` (alternate ink/paper spreads, broadsheet ticker, dashboard "plate", giant pricing numbers).
