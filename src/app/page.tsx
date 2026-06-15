@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import type { Organization } from "@/types/db";
 import { Hero } from "@/components/landing/hero";
 import { ProofStrip } from "@/components/landing/proof-strip";
+import { Manifesto } from "@/components/landing/manifesto";
 import { Capabilities } from "@/components/landing/capabilities";
 import { DashboardModule } from "@/components/landing/dashboard-module";
 import { PricingPaper } from "@/components/landing/pricing-paper";
@@ -38,10 +39,11 @@ export default async function HomePage() {
     <div className="pb-24 md:pb-0">
       <Hero />
       <ProofStrip />
+      <Manifesto />
       <Capabilities />
       <DashboardModule />
-      <PricingPaper />
       <Storefronts storefronts={liveStorefronts} />
+      <PricingPaper />
       <FinalCta />
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView } from "motion/react";
-import { Fragment, useRef, type CSSProperties } from "react";
+import { Fragment, useRef, type CSSProperties, type ElementType } from "react";
 
 type Segment = {
   text: string;
@@ -16,15 +16,18 @@ export function WordReveal({
   style,
   stagger = 0.045,
   duration = 0.9,
+  as,
 }: {
   segments: Segment[];
   className?: string;
   style?: CSSProperties;
   stagger?: number;
   duration?: number;
+  as?: ElementType;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-15% 0px" });
+  const Wrapper = (as ?? "div") as ElementType;
 
   const words: { word: string; segment: Segment }[] = [];
   segments.forEach((seg) => {
@@ -39,7 +42,7 @@ export function WordReveal({
 
   let idx = -1;
   return (
-    <div ref={ref} className={className} style={style}>
+    <Wrapper ref={ref} className={className} style={style}>
       {words.map((entry, i) => {
         if (entry.word === "\n") return <br key={`br-${i}`} />;
         idx += 1;
@@ -69,7 +72,7 @@ export function WordReveal({
           </Fragment>
         );
       })}
-    </div>
+    </Wrapper>
   );
 }
 

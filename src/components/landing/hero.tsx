@@ -25,6 +25,7 @@ export function Hero() {
       ref={ref}
       className="relative isolate overflow-hidden border-b border-hairline"
     >
+      {/* Grid layer */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-20"
@@ -38,19 +39,19 @@ export function Hero() {
             "radial-gradient(ellipse 70% 60% at 50% 0%, black 35%, transparent 100%)",
         }}
       />
+      {/* Single signal blob — the only ambient layer */}
       <motion.div
         aria-hidden
         style={{ y: blobY }}
         className="pointer-events-none absolute -right-32 top-10 -z-10 h-[480px] w-[480px] rounded-full bg-signal/12 blur-[120px]"
       />
-      <motion.div
-        aria-hidden
-        animate={{ opacity: [0.4, 0.7, 0.4] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        className="pointer-events-none absolute left-1/3 top-1/2 -z-10 h-[320px] w-[320px] rounded-full bg-paper/[0.04] blur-[100px]"
-      />
 
       <div className="container relative pt-20 pb-24 md:pt-28 md:pb-32">
+        {/* Section index */}
+        <p aria-hidden className="mb-8 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground select-none">
+          §01 / 06
+        </p>
+
         <div className="grid gap-16 lg:grid-cols-[1.25fr_1fr] lg:gap-20">
           <div className="max-w-2xl">
             <Reveal>
@@ -68,16 +69,18 @@ export function Hero() {
               </p>
             </Reveal>
 
-            <WordReveal
-              className="display mt-7 text-[3.25rem] leading-[0.95] text-foreground md:text-[5.5rem] lg:text-[6.25rem]"
-              segments={[
-                { text: "Ticketing" },
-                { break: true, text: "" },
-                { text: "without the" },
-                { break: true, text: "" },
-                { text: "gatekeeper.", italic: true, color: "hsl(var(--signal))" },
-              ]}
-            />
+            {/* h1 wraps WordReveal (which renders a div internally) — exactly one h1 on the page */}
+            <h1 className="type-masthead leading-[0.92] mt-7">
+              <WordReveal
+                segments={[
+                  { text: "Ticketing" },
+                  { break: true, text: "" },
+                  { text: "without the" },
+                  { break: true, text: "" },
+                  { text: "gatekeeper.", italic: true, color: "hsl(var(--signal))" },
+                ]}
+              />
+            </h1>
 
             <Reveal delay={0.45} y={20}>
               <p className="mt-8 max-w-lg text-lg leading-relaxed text-muted-foreground md:text-xl">
@@ -105,26 +108,32 @@ export function Hero() {
               </div>
             </Reveal>
 
+            {/* KPI strip — baseline-ruled row, display-numeric scale */}
             <Reveal delay={0.75} y={16}>
-              <div className="mt-12 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-hairline bg-hairline md:max-w-md">
-                {[
-                  { value: 237, suffix: "+", label: "Organizers" },
-                  { value: 4.2, suffix: "M", prefix: "€", decimals: 1, label: "Paid out" },
-                  { value: 31, suffix: "", label: "EU cities" },
-                ].map((kpi) => (
-                  <div key={kpi.label} className="bg-ink px-4 py-3.5">
-                    <CountUp
-                      to={kpi.value}
-                      prefix={kpi.prefix ?? ""}
-                      suffix={kpi.suffix}
-                      decimals={kpi.decimals ?? 0}
-                      className="display text-2xl text-foreground"
-                    />
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      {kpi.label}
-                    </p>
-                  </div>
-                ))}
+              <div className="mt-12 md:max-w-lg">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-4">
+                  By the numbers
+                </p>
+                <div className="flex items-baseline gap-0 divide-x divide-hairline border-t border-hairline pt-5">
+                  {[
+                    { value: 237, suffix: "+", label: "Organizers" },
+                    { value: 4.2, suffix: "M", prefix: "€", decimals: 1, label: "Paid out" },
+                    { value: 31, suffix: "", label: "EU cities" },
+                  ].map((kpi) => (
+                    <div key={kpi.label} className="flex-1 pl-5 first:pl-0 pr-5 last:pr-0">
+                      <CountUp
+                        to={kpi.value}
+                        prefix={kpi.prefix ?? ""}
+                        suffix={kpi.suffix}
+                        decimals={kpi.decimals ?? 0}
+                        className="display-numeric text-foreground"
+                      />
+                      <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        {kpi.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </Reveal>
           </div>
@@ -142,8 +151,9 @@ export function Hero() {
 
 function HeroPanel() {
   return (
-    <div className="relative aspect-[5/6] w-full max-w-md ml-auto">
-      <div className="absolute inset-0 rounded-md border border-hairline-strong bg-ink-raised">
+    <div className="relative w-full max-w-sm ml-auto">
+      <div className="rounded-md border border-hairline-strong bg-ink-raised glass-top-highlight">
+        {/* Titlebar */}
         <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
           <div className="flex items-center gap-2">
             <motion.span
@@ -153,7 +163,7 @@ function HeroPanel() {
               className="ticker-mark"
             />
             <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Live dashboard
+              Live
             </span>
           </div>
           <div className="flex gap-1.5">
@@ -162,27 +172,8 @@ function HeroPanel() {
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-px bg-hairline">
-          {[
-            { label: "Sold today", value: 412, delta: "+38%" },
-            { label: "Gross", value: 18420, prefix: "€", delta: "+12%" },
-            { label: "Door scanned", value: 97, suffix: "%", delta: "live" },
-            { label: "Resale queue", value: 23, delta: "@ cap" },
-          ].map((kpi) => (
-            <div key={kpi.label} className="bg-ink-raised px-4 py-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                {kpi.label}
-              </p>
-              <CountUp
-                to={kpi.value}
-                prefix={kpi.prefix ?? ""}
-                suffix={kpi.suffix ?? ""}
-                className="display mt-2 block text-2xl text-foreground"
-              />
-              <p className="mt-1 font-mono text-[10px] text-signal">{kpi.delta}</p>
-            </div>
-          ))}
-        </div>
+
+        {/* Tier bars */}
         <div className="space-y-3 px-4 py-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Tonight · NIGHT VOLTAGE
@@ -197,6 +188,8 @@ function HeroPanel() {
             ))}
           </div>
         </div>
+
+        {/* Stripe payout footer */}
         <div className="border-t border-hairline px-4 py-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           <motion.span
             aria-hidden
@@ -222,11 +215,12 @@ function TierRow({ tier, sold, delay }: { tier: string; sold: number; delay: num
       </div>
       <div className="mt-1.5 h-[3px] overflow-hidden rounded-full bg-ink-soft">
         <motion.div
-          initial={{ width: 0 }}
-          whileInView={{ width: `${sold}%` }}
+          initial={{ scaleX: 0 }}
+          whileInView={{ scaleX: sold / 100 }}
           viewport={{ once: true, margin: "-15% 0px" }}
           transition={{ duration: 1.2, delay, ease: [0.22, 0.72, 0.18, 1] }}
-          className="h-full bg-signal"
+          style={{ transformOrigin: "left" }}
+          className="h-full w-full bg-signal"
         />
       </div>
     </div>

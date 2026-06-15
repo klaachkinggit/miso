@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { Reveal } from "@/components/motion/reveal";
 import { CountUp } from "@/components/motion/count-up";
 
@@ -21,6 +22,27 @@ const EVENTS = [
 ];
 
 const SPARK = [22, 28, 24, 41, 36, 58, 64, 71, 68, 82, 78, 94];
+
+// Baseline hairline rows for the spark chart grid (4 rows at 25% intervals)
+const GRID_ROWS = [0, 25, 50, 75, 100];
+
+function SyncTicker() {
+  const shouldReduceMotion = useReducedMotion();
+  const [seconds, setSeconds] = useState(2);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (shouldReduceMotion) return;
+    intervalRef.current = setInterval(() => {
+      setSeconds((s) => s + 1);
+    }, 1000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [shouldReduceMotion]);
+
+  return <span>Last sync · {seconds}s ago</span>;
+}
 
 export function DashboardModule() {
   return (
@@ -53,8 +75,12 @@ export function DashboardModule() {
               </Link>
             </Reveal>
           </div>
+
+          {/* Dashboard plate — bleeds off the right edge on lg+ */}
           <Reveal delay={0.2} y={48}>
-            <FullDashboardMock />
+            <div className="lg:overflow-visible">
+              <FullDashboardMock />
+            </div>
           </Reveal>
         </div>
       </div>
@@ -64,101 +90,154 @@ export function DashboardModule() {
 
 function FullDashboardMock() {
   const max = Math.max(...SPARK);
+
   return (
-    <div className="relative">
-      <div className="overflow-hidden rounded-lg border border-hairline-strong bg-ink-raised">
-        <div className="flex items-center justify-between border-b border-hairline px-5 py-3">
-          <div className="flex items-center gap-2">
-            <motion.span
-              aria-hidden
-              animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="ticker-mark"
-            />
-            <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Atelier Sonique · workspace
-            </span>
+    /*
+     * Outer wrapper: overflow-visible so the plate can bleed right on lg+.
+     * lg:-mr-16 xl:-mr-32 2xl:-mr-48 pushes the right edge past the container.
+     */
+    <div className="relative lg:-mr-16 xl:-mr-32 2xl:-mr-48">
+      {/*
+       * The elevated plate: bg-ink-elevated (one step above ink-soft),
+       * large soft drop shadow below, glass-top-highlight (1px inner top sheen).
+       */}
+      <div
+        className="glass-top-highlight overflow-hidden rounded-lg border border-hairline-strong bg-ink-elevated shadow-[0_40px_120px_-40px_rgba(0,0,0,0.8)]"
+      >
+        {/* App chrome titlebar */}
+        <div className="flex items-center justify-between border-b border-hairline px-4 py-2.5">
+          {/* Traffic-light dots + workspace label */}
+          <div className="flex items-center gap-3">
+            {/* Traffic-light trio */}
+            <div className="flex items-center gap-1.5" aria-hidden>
+              <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
+            </div>
+            <div className="flex items-center gap-2">
+              <motion.span
+                aria-hidden
+                animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="ticker-mark"
+              />
+              <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                Atelier Sonique · workspace
+              </span>
+            </div>
           </div>
           <span className="font-mono text-[11px] text-muted-foreground">v1.4 · live</span>
         </div>
-        <div className="grid grid-cols-4 gap-px bg-hairline">
-          {KPIS.map((kpi) => (
-            <div key={kpi.label} className="bg-ink-raised px-4 py-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                {kpi.label}
-              </p>
-              <CountUp
-                to={kpi.value}
-                prefix={kpi.prefix ?? ""}
-                suffix={kpi.suffix ?? ""}
-                decimals={kpi.decimals ?? 0}
-                className="display mt-2 block text-xl text-foreground md:text-2xl"
-              />
-            </div>
-          ))}
-        </div>
-        <div className="grid gap-px bg-hairline md:grid-cols-[1.4fr_1fr]">
-          <div className="bg-ink-raised p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Sales velocity · 7d
-              </p>
-              <p className="font-mono text-[10px] text-signal">+38% wow</p>
-            </div>
-            <div className="flex h-32 items-end gap-1.5">
-              {SPARK.map((p, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ scaleY: 0 }}
-                  whileInView={{ scaleY: 1 }}
-                  viewport={{ once: true, margin: "-15% 0px" }}
-                  transition={{
-                    duration: 0.7,
-                    delay: 0.4 + i * 0.045,
-                    ease: [0.22, 0.72, 0.18, 1],
-                  }}
-                  className="flex-1 origin-bottom rounded-sm"
-                  style={{
-                    height: `${(p / max) * 100}%`,
-                    background:
-                      i === SPARK.length - 1
-                        ? "hsl(var(--signal))"
-                        : "hsl(var(--hairline-strong))",
-                  }}
-                />
+
+        {/*
+         * Mobile: horizontal scroll snap so panels are swipeable with a
+         * peek of the next panel. Desktop: stacked layout via CSS grid.
+         */}
+        <div className="overflow-x-auto snap-x snap-mandatory md:overflow-visible">
+          <div className="min-w-[560px] md:min-w-0">
+            {/* KPI row */}
+            <div className="grid grid-cols-4 gap-px bg-hairline">
+              {KPIS.map((kpi) => (
+                <div key={kpi.label} className="snap-start bg-ink-elevated px-4 py-5">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                    {kpi.label}
+                  </p>
+                  <CountUp
+                    to={kpi.value}
+                    prefix={kpi.prefix ?? ""}
+                    suffix={kpi.suffix ?? ""}
+                    decimals={kpi.decimals ?? 0}
+                    className="display mt-2 block text-xl text-foreground tabular-nums md:text-2xl"
+                  />
+                </div>
               ))}
             </div>
-          </div>
-          <div className="bg-ink-raised p-5">
-            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              Upcoming events
-            </p>
-            <ul className="space-y-3">
-              {EVENTS.map((event, i) => (
-                <motion.li
-                  key={event.name}
-                  initial={{ opacity: 0, x: 16 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, margin: "-15% 0px" }}
-                  transition={{
-                    duration: 0.6,
-                    delay: 0.5 + i * 0.1,
-                    ease: [0.22, 0.72, 0.18, 1],
-                  }}
-                  className="grid grid-cols-[1fr_auto] items-center gap-2 border-b border-hairline pb-3 last:border-b-0 last:pb-0"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] text-foreground">{event.name}</p>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      {event.tier} · {event.sold}%
-                    </p>
+
+            {/* Spark chart + events */}
+            <div className="grid gap-px bg-hairline md:grid-cols-[1.4fr_1fr]">
+              {/* Spark bar chart — taller at h-40, with hairline baseline grid */}
+              <div className="snap-start bg-ink-elevated p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                    Sales velocity · 7d
+                  </p>
+                  <p className="font-mono text-[10px] text-signal">↑ +38% wow</p>
+                </div>
+                <div className="relative h-40">
+                  {/* Hairline baseline grid — absolutely positioned behind bars */}
+                  <div className="pointer-events-none absolute inset-0" aria-hidden>
+                    {GRID_ROWS.map((pct) => (
+                      <div
+                        key={pct}
+                        className="absolute left-0 right-0 border-t border-hairline"
+                        style={{ bottom: `${pct}%` }}
+                      />
+                    ))}
                   </div>
-                  <span className="font-mono text-[12px] text-foreground">{event.gross}</span>
-                </motion.li>
-              ))}
-            </ul>
+                  {/* Bars */}
+                  <div className="absolute inset-0 flex items-end gap-1">
+                    {SPARK.map((p, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ scaleY: 0 }}
+                        whileInView={{ scaleY: 1 }}
+                        viewport={{ once: true, margin: "-15% 0px" }}
+                        transition={{
+                          duration: 0.7,
+                          delay: 0.4 + i * 0.045,
+                          ease: [0.22, 0.72, 0.18, 1],
+                        }}
+                        className="flex-1 origin-bottom rounded-sm"
+                        style={{
+                          height: `${(p / max) * 100}%`,
+                          background:
+                            i === SPARK.length - 1
+                              ? "hsl(var(--signal))"
+                              : "hsl(var(--hairline-strong))",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Upcoming events */}
+              <div className="snap-start bg-ink-elevated p-5">
+                <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Upcoming events
+                </p>
+                <ul className="space-y-3">
+                  {EVENTS.map((event, i) => (
+                    <motion.li
+                      key={event.name}
+                      initial={{ opacity: 0, x: 16 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true, margin: "-15% 0px" }}
+                      transition={{
+                        duration: 0.6,
+                        delay: 0.5 + i * 0.1,
+                        ease: [0.22, 0.72, 0.18, 1],
+                      }}
+                      className="grid grid-cols-[1fr_auto] items-center gap-2 border-b border-hairline pb-3 last:border-b-0 last:pb-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] text-foreground">{event.name}</p>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {event.tier} · {event.sold}%
+                        </p>
+                      </div>
+                      <span className="font-mono text-[12px] tabular-nums text-foreground">
+                        {event.gross}
+                      </span>
+                    </motion.li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Footer: Stripe payout + ticking sync timestamp */}
         <div className="flex items-center justify-between border-t border-hairline px-5 py-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           <span>
             <motion.span
@@ -171,7 +250,7 @@ function FullDashboardMock() {
             </motion.span>{" "}
             Stripe payout · €12,402 · clears in 18h
           </span>
-          <span>Last sync · 2s ago</span>
+          <SyncTicker />
         </div>
       </div>
     </div>
