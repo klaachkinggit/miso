@@ -15,6 +15,10 @@ except Exception:
 # Parallel arrays — index i pairs DESCS[i] with REGEXES[i].
 # Catastrophic rm = RECURSIVE (-r/-R) on a critical target. Non-recursive rm of a
 # specific file (even by absolute path) is NOT blocked — that's a normal operation.
+# EXCEPTION: secret env files (.env / .env.local) ARE protected from rm/mv/truncate
+# via Bash, since protect-secrets.sh only covers the Edit/Write/Read tools, not Bash.
+# Append (>>) and cp (restore-from-backup) are intentionally still allowed, and
+# .env.example (a non-secret, git-tracked template) is never blocked.
 DESCS=(
   "recursive rm of root"
   "recursive rm of home"
@@ -28,6 +32,9 @@ DESCS=(
   "mkfs"
   "pipe remote content to shell"
   "force push to main/master"
+  "delete/move of .env secret file"
+  "truncating redirect onto .env secret file"
+  "git clean -f (removes untracked files incl .env)"
 )
 REGEXES=(
   'rm[[:space:]]+-[a-zA-Z]*[rR][a-zA-Z]*[[:space:]]+/([[:space:]]|$|\*)'
@@ -42,6 +49,9 @@ REGEXES=(
   'mkfs\.'
   '(curl|wget)[[:space:]].*[|][[:space:]]*(ba)?sh([[:space:]]|$)'
   'git[[:space:]]+push[[:space:]].*--force[^-]*(main|master)'
+  '(rm|mv|shred|truncate)[[:space:]]+([^|;&]*[[:space:]])?\.env(\.local|\*)?([[:space:]]|"|'"'"'|$)'
+  '[^>]>[[:space:]]*\.env(\.local)?([[:space:]]|"|'"'"'|$)'
+  'git[[:space:]]+clean[[:space:]].*-[a-zA-Z]*f'
 )
 
 i=0
