@@ -38,6 +38,7 @@ const ROWS: Row[] = [
 ];
 
 export function Capabilities() {
+  const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -52,7 +53,7 @@ export function Capabilities() {
           {/* Sticky left column */}
           <div className="lg:sticky lg:top-28 lg:self-start">
             <motion.p
-              initial={{ opacity: 0, y: 16 }}
+              initial={reduced ? false : { opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-15% 0px" }}
               transition={{ duration: 0.7, ease: [0.22, 0.72, 0.18, 1] }}
@@ -63,7 +64,7 @@ export function Capabilities() {
               Capabilities · 01 — 05
             </motion.p>
             <motion.h2
-              initial={{ opacity: 0, y: 24 }}
+              initial={reduced ? false : { opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-15% 0px" }}
               transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 0.72, 0.18, 1] }}
@@ -74,7 +75,7 @@ export function Capabilities() {
               <span className="display-italic text-muted-foreground">Nothing they don&apos;t.</span>
             </motion.h2>
             <motion.p
-              initial={{ opacity: 0, y: 16 }}
+              initial={reduced ? false : { opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-15% 0px" }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -93,7 +94,7 @@ export function Capabilities() {
             <motion.div
               aria-hidden
               className="absolute left-0 top-0 bottom-0 hidden w-px origin-top bg-signal md:block"
-              style={{ scaleY: railScale }}
+              style={{ scaleY: reduced ? 1 : railScale }}
             />
 
             <ol className="border-y border-hairline">
@@ -117,7 +118,7 @@ function CapabilityRow({ row, index }: { row: Row; index: number }) {
   return (
     <motion.li
       ref={rowRef}
-      initial={{ opacity: 0, y: 28 }}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 28 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-12% 0px" }}
       transition={{

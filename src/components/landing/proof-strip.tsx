@@ -36,6 +36,13 @@ export function ProofStrip() {
         {/* Hairline separator between cartouche and track */}
         <div className="w-px bg-hairline shrink-0" aria-hidden />
 
+        {/* Screen-reader-only list of stats — the scrolling track below is aria-hidden */}
+        <ul aria-label="Live network stats" className="sr-only">
+          {ITEMS.map((item) => (
+            <li key={item.value}>{item.value} {item.unit}</li>
+          ))}
+        </ul>
+
         {/* Scrolling track — masked at both edges */}
         <div className="flex-1 overflow-hidden mask-fade-x" aria-hidden>
           <motion.div

@@ -41,7 +41,7 @@ function SyncTicker() {
     };
   }, [shouldReduceMotion]);
 
-  return <span>Last sync · {seconds}s ago</span>;
+  return <span aria-hidden="true">Last sync · {seconds}s ago</span>;
 }
 
 export function DashboardModule() {
@@ -89,6 +89,7 @@ export function DashboardModule() {
 }
 
 function FullDashboardMock() {
+  const reduced = useReducedMotion();
   const max = Math.max(...SPARK);
 
   return (
@@ -96,7 +97,7 @@ function FullDashboardMock() {
      * Outer wrapper: overflow-visible so the plate can bleed right on lg+.
      * lg:-mr-16 xl:-mr-32 2xl:-mr-48 pushes the right edge past the container.
      */
-    <div className="relative lg:-mr-16 xl:-mr-32 2xl:-mr-48">
+    <div className="relative lg:-mr-16 xl:-mr-32 2xl:-mr-48" role="img" aria-label="Miso operator dashboard preview">
       {/*
        * The elevated plate: bg-ink-elevated (one step above ink-soft),
        * large soft drop shadow below, glass-top-highlight (1px inner top sheen).
@@ -117,7 +118,7 @@ function FullDashboardMock() {
             <div className="flex items-center gap-2">
               <motion.span
                 aria-hidden
-                animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
+                animate={reduced ? undefined : { opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 className="ticker-mark"
               />
@@ -179,7 +180,7 @@ function FullDashboardMock() {
                     {SPARK.map((p, i) => (
                       <motion.div
                         key={i}
-                        initial={{ scaleY: 0 }}
+                        initial={reduced ? false : { scaleY: 0 }}
                         whileInView={{ scaleY: 1 }}
                         viewport={{ once: true, margin: "-15% 0px" }}
                         transition={{
@@ -210,7 +211,7 @@ function FullDashboardMock() {
                   {EVENTS.map((event, i) => (
                     <motion.li
                       key={event.name}
-                      initial={{ opacity: 0, x: 16 }}
+                      initial={reduced ? false : { opacity: 0, x: 16 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true, margin: "-15% 0px" }}
                       transition={{
@@ -242,7 +243,7 @@ function FullDashboardMock() {
           <span>
             <motion.span
               aria-hidden
-              animate={{ opacity: [0.4, 1, 0.4] }}
+              animate={reduced ? undefined : { opacity: [0.4, 1, 0.4] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
               className="text-signal"
             >

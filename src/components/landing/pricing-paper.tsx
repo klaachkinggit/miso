@@ -45,7 +45,6 @@ function FeeBar() {
       <p
         className="font-mono text-[11px] uppercase tracking-[0.22em] mb-4"
         style={{ color: "hsl(var(--muted-paper))" }}
-        aria-hidden="false"
       >
         §&nbsp;Buyer / Organizer breakdown
       </p>
@@ -66,8 +65,8 @@ function FeeBar() {
             }}
             animate={inView ? { scaleX: 1 } : { scaleX: prefersReduced ? 1 : 0 }}
             transition={{
-              duration: 0.9,
-              delay: BAR_SEGMENTS.indexOf(seg) * 0.12,
+              duration: prefersReduced ? 0 : 0.9,
+              delay: prefersReduced ? 0 : BAR_SEGMENTS.indexOf(seg) * 0.12,
               ease: [0.22, 0.72, 0.18, 1],
             }}
           />
@@ -101,6 +100,7 @@ function FeeBar() {
 }
 
 export function PricingPaper() {
+  const prefersReduced = useReducedMotion();
   return (
     <section className="paper-section grain border-b border-paper-hairline py-32 md:py-40">
       <div className="container">
@@ -115,10 +115,10 @@ export function PricingPaper() {
 
         {/* Headline */}
         <motion.h2
-          initial={{ opacity: 0, y: 24 }}
+          initial={prefersReduced ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-15% 0px" }}
-          transition={{ duration: 0.9, ease: [0.22, 0.72, 0.18, 1] }}
+          transition={{ duration: prefersReduced ? 0 : 0.9, ease: [0.22, 0.72, 0.18, 1] }}
           className="type-section-head text-ink"
         >
           No subscription.
@@ -134,12 +134,12 @@ export function PricingPaper() {
           {ROWS.map((row, i) => (
             <motion.div
               key={row.label}
-              initial={{ opacity: 0, y: 16 }}
+              initial={prefersReduced ? false : { opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-10% 0px" }}
               transition={{
-                duration: 0.7,
-                delay: i * 0.055,
+                duration: prefersReduced ? 0 : 0.7,
+                delay: prefersReduced ? 0 : i * 0.055,
                 ease: [0.22, 0.72, 0.18, 1],
               }}
               className="grid grid-cols-1 gap-2 py-8 md:grid-cols-[1fr_2fr] md:items-baseline md:gap-12"

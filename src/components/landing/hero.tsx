@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "motion/react";
+import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Reveal } from "@/components/motion/reveal";
 import { CountUp } from "@/components/motion/count-up";
 
 export function Hero() {
+  const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -58,7 +59,7 @@ export function Hero() {
               <p className="eyebrow-signal flex items-center gap-2.5">
                 <motion.span
                   aria-hidden
-                  animate={{
+                  animate={reduced ? undefined : {
                     opacity: [0.4, 1, 0.4],
                     scale: [0.9, 1.1, 0.9],
                   }}
@@ -140,7 +141,7 @@ export function Hero() {
 
           <motion.div style={{ y: panelY }} className="relative hidden lg:block">
             <Reveal delay={0.3} y={40}>
-              <HeroPanel />
+              <HeroPanel reduced={reduced ?? false} />
             </Reveal>
           </motion.div>
         </div>
@@ -149,7 +150,7 @@ export function Hero() {
   );
 }
 
-function HeroPanel() {
+function HeroPanel({ reduced }: { reduced: boolean }) {
   return (
     <div className="relative w-full max-w-sm ml-auto">
       <div className="rounded-md border border-hairline-strong bg-ink-raised glass-top-highlight">
@@ -158,7 +159,7 @@ function HeroPanel() {
           <div className="flex items-center gap-2">
             <motion.span
               aria-hidden
-              animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
+              animate={reduced ? undefined : { opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               className="ticker-mark"
             />
@@ -193,7 +194,7 @@ function HeroPanel() {
         <div className="border-t border-hairline px-4 py-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           <motion.span
             aria-hidden
-            animate={{ opacity: [0.4, 1, 0.4] }}
+            animate={reduced ? undefined : { opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
             className="text-signal"
           >
