@@ -1,5 +1,7 @@
 # Stripe Marketplace Implementation Plan
 
+> **Status (2026-06-15): implemented.** The marketplace payment system (separate charges and transfers) is live; the legacy stored-value checkout was decommissioned (ADR 0003). Any "open choices" below are resolved — see ADRs 0001–0003 and the code in `src/lib/stripe-marketplace/`. Kept as historical design context.
+
 This plan is the handoff source for replacing Miso's legacy stored-value checkout with direct Stripe marketplace settlement. Domain terms are defined in [CONTEXT.md](./CONTEXT.md). The implementation branch is `stripe-europe-cash-in-out`.
 
 ## Decisions

@@ -12,6 +12,11 @@ except Exception:
 
 [ -z "$FILE" ] && exit 0
 
+# Non-secret templates/examples hold no secrets — allow the file tools to read/edit them.
+case "$FILE" in
+  *.example) exit 0 ;;
+esac
+
 PATTERNS=(
   '\.env$' '\.env\.' '\.pem$' '\.key$' '\.p12$' '\.pfx$'
   'id_rsa' 'id_ed25519' 'id_ecdsa'

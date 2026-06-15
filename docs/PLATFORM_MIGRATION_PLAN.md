@@ -1,5 +1,7 @@
 # Miso Platform Migration Plan
 
+> **Status (2026-06-15): historical.** All slices shipped; the org-first platform is live on `development`. Kept as the record of why the platform is structured this way. For current state see `docs/CONTEXT.md` and `docs/handoffs/`.
+
 Miso is becoming a Weezevent-style platform where organizers create their own billeterie. The current ticketing system remains the engine behind every Organization.
 
 ## Product Shape
