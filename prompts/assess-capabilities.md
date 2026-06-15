@@ -5,13 +5,15 @@ feature** (describe the feature). Goal: pull in the capabilities that genuinely
 help — across all three layers — skip everything the base already covers, keep it lean.
 
 ## Input
+
 A description of the project, or the feature about to be built.
 
 ## Steps
+
 1. **Identify needs** — list the concrete domains/tasks and the **stack** involved
    (e.g. Vercel/Next.js, Docker, Stripe, Supabase, Sentry, AWS, Postgres, Figma).
 2. **Check what the base already covers — do NOT re-add these:**
-   - Skills/prompts: grill-me, tdd, diagnose, zoom-out, security-scan, preflight, handoff, to-issues
+   - Skills/prompts: grill-me, tdd, diagnose, zoom-out, security-scan, preflight, to-issues
    - MCP servers: **github, filesystem, git, playwright, db (Postgres)** are already configured
    - Workflow: Superpowers (plugin)
 3. **For genuine gaps, assess all three layers:**
@@ -23,6 +25,7 @@ A description of the project, or the feature about to be built.
 6. **Report, then build** — state what you added per layer (and why), what you skipped (already covered), then proceed.
 
 ## Guardrails
+
 - Prefer ONE plugin that bundles a stack over many loose skills, when available.
 - A base-harness prompt beats a new skill when they overlap; an existing MCP beats a new one.
 - Never install unvetted. This is an assessment, not a shopping spree — if the base covers it, add nothing.

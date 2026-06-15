@@ -5,11 +5,9 @@ One source of truth (SERVERS) → per-tool emitters. Adding a new tool = one fun
 
 Usage:
     python3 tools/gen-mcp.py <tool>
-    tool ∈ {claude, cursor, codex, windsurf, gemini}
+    tool ∈ {claude, codex}
 
-Project-scoped configs (claude, cursor, codex) are WRITTEN to the repo.
-Global-only configs (windsurf, gemini) are PRINTED with their target path,
-because writing to $HOME would clobber the user's other servers.
+Project-scoped configs (claude, codex) are WRITTEN to the repo.
 
 Env vars: GITHUB_TOKEN (required for github), DATABASE_URL (optional → adds db server).
 """
@@ -74,28 +72,6 @@ def emit_claude():
     _write(".mcp.json", json.dumps(cfg, indent=2))
 
 
-def emit_cursor():
-    cfg = _json_servers(lambda v: "${env:%s}" % v)  # Cursor: ${env:VAR}
-    os.makedirs(".cursor", exist_ok=True)
-    _write(".cursor/mcp.json", json.dumps(cfg, indent=2))
-
-
-def emit_windsurf():
-    cfg = _json_servers(lambda v: "${env:%s}" % v)  # Windsurf: ${env:VAR}
-    path = "~/.codeium/windsurf/mcp_config.json"
-    _print_global(path, json.dumps(cfg, indent=2))
-
-
-def emit_gemini():
-    cfg = _json_servers(lambda v: "$%s" % v)  # Gemini: $VAR
-    path = "~/.gemini/settings.json"
-    _print_global(
-        path,
-        json.dumps(cfg, indent=2),
-        note="Merge the mcpServers block into your existing settings.json.",
-    )
-
-
 def emit_codex():
     # Codex: TOML, no ${} interpolation. Secrets are forwarded by NAME via env_vars.
     lines = []
@@ -133,20 +109,9 @@ def _write(path, content):
     print("  wrote %s" % path)
 
 
-def _print_global(path, content, note=""):
-    print("  %s is global-only — not written automatically." % path)
-    if note:
-        print("  %s" % note)
-    print("  Target: %s\n" % path)
-    print(content)
-
-
 EMITTERS = {
     "claude": emit_claude,
-    "cursor": emit_cursor,
     "codex": emit_codex,
-    "windsurf": emit_windsurf,
-    "gemini": emit_gemini,
 }
 
 if __name__ == "__main__":
