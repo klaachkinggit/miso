@@ -64,7 +64,7 @@ Full sentences. Explicit confirmation required. Never skip hooks. Never force-pu
 ## Harness Parity
 
 - This repo intentionally carries provider mirrors so the user can switch between Codex and Claude without changing project behavior.
-- Keep `AGENTS.md` and `CLAUDE.md` semantically in sync. `AGENT.md` is only a compatibility pointer to `AGENTS.md`.
+- Keep `AGENTS.md` and `CLAUDE.md` semantically in sync.
 - Keep `.codex/skills/` and `.claude/skills/` mirrored. Codex loads `.codex`; Claude loads `.claude`.
 - Shared workflow bodies live in `prompts/`. Claude slash commands in `.claude/commands/` should stay thin wrappers to those files.
 - Do not restore `.agents/` or in-repo harness archive folders. Use git history for removed harness files.

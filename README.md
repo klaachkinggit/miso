@@ -26,7 +26,6 @@ provider entrypoints so each tool can boot with the same project contract:
 
 - `AGENTS.md` — Codex/project shared rules
 - `CLAUDE.md` — Claude Code mirror of the same rules
-- `AGENT.md` — compatibility pointer to `AGENTS.md`
 - `prompts/` — shared reusable workflow prompts
 - `.codex/config.toml` — MCP server configuration
 - `.codex/hooks.json` + `.codex/hooks/` — local safety/format hooks

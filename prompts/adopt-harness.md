@@ -8,7 +8,7 @@ mirrors, remove dead weight, keep what's genuinely project-specific.
 ## Steps
 
 1. **Inventory** what's already there — list it before touching anything:
-   - `AGENTS.md`, `CLAUDE.md`, `AGENT.md`, `prompts/`, `.mcp.json`, `skills-lock.json`
+   - `AGENTS.md`, `CLAUDE.md`, `prompts/`, `.mcp.json`, `skills-lock.json`
    - provider mirrors: `.codex/`, `.claude/`
    - legacy harness folders only if present (`.agents/`) so they can be removed
    - git hooks (`git config --get core.hooksPath`), CI workflows in `.github/`
