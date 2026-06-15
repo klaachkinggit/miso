@@ -120,13 +120,13 @@ export function Hero() {
                     { value: 4.2, suffix: "M", prefix: "€", decimals: 1, label: "Paid out" },
                     { value: 31, suffix: "", label: "EU cities" },
                   ].map((kpi) => (
-                    <div key={kpi.label} className="flex-1 pl-5 first:pl-0 pr-5 last:pr-0">
+                    <div key={kpi.label} className="min-w-0 flex-1 pl-3 first:pl-0 pr-3 last:pr-0 sm:pl-5 sm:pr-5">
                       <CountUp
                         to={kpi.value}
                         prefix={kpi.prefix ?? ""}
                         suffix={kpi.suffix}
                         decimals={kpi.decimals ?? 0}
-                        className="display-numeric text-foreground"
+                        className="display-numeric text-foreground text-[clamp(1.5rem,7vw,3.25rem)]"
                       />
                       <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                         {kpi.label}
