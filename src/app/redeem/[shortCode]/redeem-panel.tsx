@@ -26,9 +26,10 @@ interface ConfirmResponse {
 export interface RedeemPanelProps {
   gateShortCode: string;
   tickets: TicketOption[];
+  token?: string;
 }
 
-export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
+export function RedeemPanel({ gateShortCode, tickets, token }: RedeemPanelProps) {
   const hasChoice = tickets.length > 1;
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(
     hasChoice ? null : (tickets[0]?.id ?? null),
@@ -44,7 +45,7 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
       const confRes = await fetch("/api/redeem/confirm", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ gate_short_code: gateShortCode, ticket_id: ticket.id }),
+        body: JSON.stringify({ gate_short_code: gateShortCode, ticket_id: ticket.id, token }),
         signal: controller.signal,
       });
       const conf = (await confRes.json()) as ConfirmResponse & { error?: string };
@@ -63,7 +64,7 @@ export function RedeemPanel({ gateShortCode, tickets }: RedeemPanelProps) {
     });
 
     return () => controller.abort();
-  }, [gateShortCode, ticket]);
+  }, [gateShortCode, ticket, token]);
 
   const accepted = outcome?.result === "valid";
   const choosing = hasChoice && !ticket;

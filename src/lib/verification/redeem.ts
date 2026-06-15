@@ -34,6 +34,7 @@ import {
 } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { markTicketRedeemed } from "@/lib/tickets/lifecycle";
+import { verifyGateToken } from "@/lib/gates/rotating-token";
 import type {
   EventRow,
   GateSession,
@@ -194,12 +195,18 @@ export async function confirmRedemption(params: {
   userId: string;
   gateShortCode: string;
   ticketId: string;
+  token?: string;
 }): Promise<ConfirmOutcome> {
   const sb = createServiceClient();
 
   const gate = await getGateSessionByShortCode(params.gateShortCode);
   if (!gate) return { result: "no_session", reason: "Gate not found" };
   if (!isGateSessionUsable(gate)) return { result: "no_session", reason: "Gate closed/expired" };
+  // Rotating-QR freshness (no-op when MISO_GATE_ROTATION_SECRET is unset): a stale
+  // screenshot or shared link carries an expired token and is rejected here.
+  if (!verifyGateToken(gate.id, params.token)) {
+    return { result: "no_session", reason: "Gate code expired — rescan the QR" };
+  }
 
   const { data: ticket } = await sb
     .from("tickets")

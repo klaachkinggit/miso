@@ -179,6 +179,7 @@ export const OpenGateSchema = z.object({
 export const RedeemConfirmSchema = z.object({
   gate_short_code: z.string().min(4).max(16).trim().toUpperCase(),
   ticket_id: z.string().uuid(),
+  token: z.string().max(64).optional(),
 });
 
 export const RedeemPrepareSchema = z.object({
