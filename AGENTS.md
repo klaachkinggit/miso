@@ -23,7 +23,7 @@
 ## Workflow
 
 - Before any non-trivial feature, assess whether a skill, MCP server, or plugin would help (`prompts/assess-capabilities.md` / `find-skills`); vet before adding anything, and do not vendor tools that the base environment already provides.
-- Front-end / UI work → use the design skills in `.codex/skills/`: `frontend-design` (bold, anti-generic UI), `ui-ux-pro-max` (styles, palettes, font pairs, UX rules), `impeccable` (anti-slop self-audit), `web-design-guidelines` (a11y / Web Interface Guidelines review), `awesome-design-md` (drop-in design systems). Commit to one aesthetic direction; audit before shipping.
+- Front-end / UI work → use the compact design skills in `.codex/skills/`: `frontend-design` (bold, anti-generic UI), `ui-ux-pro-max` (UX/a11y/layout checklist), `impeccable` (anti-slop self-audit), `web-design-guidelines` (a11y / Web Interface Guidelines review), `awesome-design-md` (drop-in design systems). Commit to one aesthetic direction; audit before shipping.
 - Use `prompts/grill-me.md` before any large implementation — uncover all decision branches first.
 - Multi-file behavior change → run `prompts/sparc.md` (Spec → Pseudocode → Architecture → Refinement → Completion). Skip for typo/single-line/bump.
 - Failing test before implementation on any non-trivial change.

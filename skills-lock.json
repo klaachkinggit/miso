@@ -66,13 +66,13 @@
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/supabase-postgres-best-practices/SKILL.md",
-      "computedHash": "ccd6e4596bd51cf344fe76c464867c541ccc16b6d90ae7a9db449fb17588613b"
+      "computedHash": "c7d513c91c4f8db25211f205dcfea630ccd8c9d56ea3c446007c9c67a3930424"
     },
     "ui-ux-pro-max": {
       "source": "repo-vendored",
       "sourceType": "local",
       "skillPath": ".codex/skills/ui-ux-pro-max/SKILL.md",
-      "computedHash": "9bd26c52dfd10dfd613dd3cc85df217dc25a172e380bde41fdfa6fedda288b2a"
+      "computedHash": "4111d8e626d74e5a4d8685a589b12673c72bc36938d418df389f041b49e7106e"
     },
     "upgrade-stripe": {
       "source": "docs.stripe.com",
@@ -84,7 +84,7 @@
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/vercel-react-best-practices/SKILL.md",
-      "computedHash": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355"
+      "computedHash": "181517981351bb44207bde91c1dff80283e53bea17eb989b28609d339979e03e"
     },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",

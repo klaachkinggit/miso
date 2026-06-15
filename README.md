@@ -26,10 +26,11 @@ The repo-local agent harness is Codex-only:
 - `prompts/` — reusable workflow prompts
 - `.codex/config.toml` — MCP server configuration
 - `.codex/hooks.json` + `.codex/hooks/` — local safety/format hooks
-- `.codex/skills/` — small curated project skill set
+- `.codex/skills/` — small curated project skill set with compact entrypoints
 
-Legacy provider harness folders are not tracked here; use user-level installs for
-personal tool preferences.
+Legacy provider harness folders and harness archive folders are not kept here;
+use git history for removed harness files and user-level installs for personal
+tool preferences.
 
 ## Local setup
 

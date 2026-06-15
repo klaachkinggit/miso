@@ -7,7 +7,6 @@ metadata:
   version: "1.1.1"
   organization: Supabase
   date: January 2026
-  abstract: Comprehensive Postgres performance optimization guide for developers using Supabase and Postgres. Contains performance rules across 8 categories, prioritized by impact from critical (query performance, connection management) to incremental (advanced features). Each rule includes detailed explanations, incorrect vs. correct SQL examples, query plan analysis, and specific performance metrics to guide automated optimization and code generation.
 ---
 
 # Supabase Postgres Best Practices
@@ -17,6 +16,7 @@ Comprehensive performance optimization guide for Postgres, maintained by Supabas
 ## When to Apply
 
 Reference these guidelines when:
+
 - Writing SQL queries or designing schemas
 - Implementing indexes or query optimization
 - Reviewing database performance issues
@@ -26,34 +26,33 @@ Reference these guidelines when:
 
 ## Rule Categories by Priority
 
-| Priority | Category | Impact | Prefix |
-|----------|----------|--------|--------|
-| 1 | Query Performance | CRITICAL | `query-` |
-| 2 | Connection Management | CRITICAL | `conn-` |
-| 3 | Security & RLS | CRITICAL | `security-` |
-| 4 | Schema Design | HIGH | `schema-` |
-| 5 | Concurrency & Locking | MEDIUM-HIGH | `lock-` |
-| 6 | Data Access Patterns | MEDIUM | `data-` |
-| 7 | Monitoring & Diagnostics | LOW-MEDIUM | `monitor-` |
-| 8 | Advanced Features | LOW | `advanced-` |
+| Priority | Category                 | Impact      | Prefix      |
+| -------- | ------------------------ | ----------- | ----------- |
+| 1        | Query Performance        | CRITICAL    | `query-`    |
+| 2        | Connection Management    | CRITICAL    | `conn-`     |
+| 3        | Security & RLS           | CRITICAL    | `security-` |
+| 4        | Schema Design            | HIGH        | `schema-`   |
+| 5        | Concurrency & Locking    | MEDIUM-HIGH | `lock-`     |
+| 6        | Data Access Patterns     | MEDIUM      | `data-`     |
+| 7        | Monitoring & Diagnostics | LOW-MEDIUM  | `monitor-`  |
+| 8        | Advanced Features        | LOW         | `advanced-` |
 
-## How to Use
+## Compact Checklist
 
-Read individual rule files for detailed explanations and SQL examples:
-
-```
-references/query-missing-indexes.md
-references/query-partial-indexes.md
-references/_sections.md
-```
-
-Each rule file contains:
-- Brief explanation of why it matters
-- Incorrect SQL example with explanation
-- Correct SQL example with explanation
-- Optional EXPLAIN output or metrics
-- Additional context and references
-- Supabase-specific notes (when applicable)
+- Query performance: inspect `EXPLAIN (ANALYZE, BUFFERS)`, add missing indexes,
+  prefer partial/composite/covering indexes when they match real predicates.
+- Connection management: keep transactions short, use pooling, avoid idle
+  transaction sessions, and batch inserts when possible.
+- Security and RLS: index policy predicates, avoid per-row auth function calls,
+  and keep privileges least-privileged.
+- Schema design: use constraints, stable primary keys, indexed foreign keys, and
+  lowercase identifiers.
+- Concurrency: avoid long locks, order writes consistently, use advisory locks
+  only for explicit cross-row coordination.
+- Data access: avoid N+1 queries, use keyset pagination for large lists, and
+  design upserts around unique constraints.
+- Monitoring: use `pg_stat_statements`, slow query logs, vacuum/analyze checks,
+  and query plans before guessing.
 
 ## References
 

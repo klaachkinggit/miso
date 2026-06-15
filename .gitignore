@@ -50,7 +50,6 @@ artifacts/
 # local agent/runtime state
 .claude/
 .agents/
-.harness-archive/
 .codex/bash.log
 .codex/sessions/
 

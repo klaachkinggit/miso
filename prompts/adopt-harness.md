@@ -9,7 +9,7 @@ project-specific.
 
 1. **Inventory** what's already there — list it before touching anything:
    - `.codex/`, `AGENTS.md`, `prompts/`, `.mcp.json`, `skills-lock.json`
-   - legacy harness folders only if present (`.claude/`, `.agents/`) so they can be removed or archived
+   - legacy harness folders only if present (`.claude/`, `.agents/`) so they can be removed
    - git hooks (`git config --get core.hooksPath`), CI workflows in `.github/`
 2. **Apply the harness** — install only the Codex files the project needs. Back
    up any overwritten file to `<file>.bak`.
@@ -29,12 +29,13 @@ project-specific.
    project-rules marker. Never silently drop project rules.
 6. **Verify** — one repo-local skill folder (`.codex/skills`), one prompt folder
    (`prompts/`), hooks under `.codex/hooks`, no tracked legacy harness folders,
+   no in-repo harness archive folders,
    and a quick sanity run.
 
 ## Guardrails (harness rules apply)
 
 - Destructive actions need confirmation unless already requested in the task.
-- Prefer git history over in-repo archives for removed harness files; local archives
-  are ignored and should not be committed.
+- Prefer git history over archive folders for removed harness files. Do not keep
+  harness archives in the repository tree.
 - Never discard project-specific rules — migrate them.
 - Fewer, sharper skills beat many overlapping ones.
