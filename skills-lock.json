@@ -1,6 +1,7 @@
 {
   "version": 1,
   "layout": ".codex/skills",
+  "mirrors": [".claude/skills"],
   "skills": {
     "awesome-design-md": {
       "source": "repo-vendored",

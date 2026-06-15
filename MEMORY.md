@@ -36,6 +36,10 @@
 
 - PR #26 landing glow-up, PR #27 rotating gate QR, and PR #28 harness update are merged on `development`. Current quality bar from local audit: typecheck/lint/build green; unit tests 425 passed / 4 skipped.
 
-## 2026-06-15 - Harness cleanup target
+## 2026-06-15 - Harness cleanup target (superseded)
 
-- Repo-local harness is Codex-only: `AGENTS.md`, `prompts/`, `.codex/config.toml`, `.codex/hooks*`, and a curated `.codex/skills/` set. Legacy provider folders and harness archive folders should not exist in the repo tree.
+- Superseded by the harness parity correction below. Previous cleanup target was Codex-only; current policy keeps Codex and Claude provider mirrors.
+
+## 2026-06-15 - Harness parity correction
+
+- Supersedes the Codex-only cleanup target: this repo intentionally keeps Codex and Claude provider mirrors so the user can switch tools in-place. Keep `AGENTS.md` and `CLAUDE.md` in sync; keep `.codex/skills/` and `.claude/skills/` mirrored; keep `.agents/` and in-repo harness archive folders out of the tree.

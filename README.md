@@ -20,17 +20,24 @@ key decisions.
 
 ## Agent harness
 
-The repo-local agent harness is Codex-only:
+The repo-local agent harness supports switching between Codex and Claude without
+changing project behavior. Some information is intentionally duplicated across
+provider entrypoints so each tool can boot with the same project contract:
 
-- `AGENTS.md` — always-loaded project rules
-- `prompts/` — reusable workflow prompts
+- `AGENTS.md` — Codex/project shared rules
+- `CLAUDE.md` — Claude Code mirror of the same rules
+- `AGENT.md` — compatibility pointer to `AGENTS.md`
+- `prompts/` — shared reusable workflow prompts
 - `.codex/config.toml` — MCP server configuration
 - `.codex/hooks.json` + `.codex/hooks/` — local safety/format hooks
-- `.codex/skills/` — small curated project skill set with compact entrypoints
+- `.codex/skills/` — Codex skill mirror with compact entrypoints
+- `.claude/settings.json` + `.claude/hooks/` — Claude Code safety/format hooks
+- `.claude/commands/` — Claude slash-command wrappers for `prompts/`
+- `.claude/skills/` — Claude skill mirror matching `.codex/skills/`
 
-Legacy provider harness folders and harness archive folders are not kept here;
-use git history for removed harness files and user-level installs for personal
-tool preferences.
+`.codex/skills/` and `.claude/skills/` should stay mirrored. Legacy `.agents/`
+folders and in-repo harness archive folders are not kept here; use git history
+for removed harness files and user-level installs for personal tool preferences.
 
 ## Local setup
 
