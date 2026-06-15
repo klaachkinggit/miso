@@ -1,5 +1,8 @@
 # Miso Handoff - 2026-06-11, Session 2
 
+> Historical handoff. Superseded by `docs/handoffs/2026-06-15-v1-complete.md`
+> and the current `development` branch. Do not use this as current product state.
+
 Reader: Claude Fable 5, ultracode effort. User wants the next session to leverage the harness aggressively.
 
 Current branch: `feat/stripe-marketplace`, created from `development` at `95f5104`.
@@ -102,7 +105,7 @@ The user explicitly wants the next agent to use the harness:
 - MCPs: github, playwright, filesystem, git if available
 - plugins and new capabilities: search for more when useful via `find-skills`, `/assess-capabilities`, and the `stripe-projects` skill
 
-Follow `CLAUDE.md` harness rules: PRs target `development`, never `main`; use SPARC for multi-file work; write ADRs for hard-to-reverse decisions; run preflight before PRs.
+Follow `AGENTS.md` harness rules: PRs target `development`, never `main`; use SPARC for multi-file work; write ADRs for hard-to-reverse decisions; run preflight before PRs.
 
 ## Suggested Skills
 

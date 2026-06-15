@@ -18,6 +18,19 @@ on Base Sepolia (Thirdweb); payments run on Stripe Connect.
 See `docs/CONTEXT.md` for the domain glossary (authoritative) and `docs/adr/` for
 key decisions.
 
+## Agent harness
+
+The repo-local agent harness is Codex-only:
+
+- `AGENTS.md` — always-loaded project rules
+- `prompts/` — reusable workflow prompts
+- `.codex/config.toml` — MCP server configuration
+- `.codex/hooks.json` + `.codex/hooks/` — local safety/format hooks
+- `.codex/skills/` — small curated project skill set
+
+Legacy provider harness folders are not tracked here; use user-level installs for
+personal tool preferences.
+
 ## Local setup
 
 ```bash
@@ -32,9 +45,9 @@ npm run dev                         # http://localhost:3002
 
 Next.js reads `.env.local` (gitignored). The `dev` script binds port **3002**.
 
-## Required environment
+## Required Environment
 
-Copy `.env.example` to `.env.local` and fill these. The app is env-gated: optional
+Copy `.env.example` to `.env.local` and fill the full template. The app is env-gated: optional
 integrations (AI, email, Redis, Sentry, Vercel domains) **no-op cleanly when their
 keys are absent**, so a minimal local setup only needs Supabase + Stripe.
 
@@ -63,10 +76,11 @@ ANTHROPIC_API_KEY=
 OPENAI_API_KEY=                                 # embeddings (text-embedding-3-small)
 # MISO_AI_MODEL=claude-sonnet-4-6               # optional chat model override
 
-# Optional integrations (all no-op without keys)
+# Optional integrations (all no-op without keys; see .env.example for the full list)
 RESEND_API_KEY=                                 # + EMAIL_FROM, EMAIL_REPLY_TO
 UPSTASH_REDIS_REST_URL=                         # + UPSTASH_REDIS_REST_TOKEN (rate limiting)
 SENTRY_DSN=                                     # + NEXT_PUBLIC_SENTRY_DSN, SENTRY_* build vars
+MISO_GATE_ROTATION_SECRET=                      # rotating gate QR, optional locally
 ```
 
 For local Stripe webhooks:
@@ -88,6 +102,6 @@ npm run test:e2e         # playwright (run `npm run test:e2e:install` once)
 ## Deploy
 
 Vercel-ready: `development` → preview, `main` → production (production is cut from
-`development`; never push `main` directly). Configure the environment above in
-Vercel. Storefront subdomains need a wildcard domain; custom domains are
-provisioned via the Vercel Domains API. See `docs/ci-and-deploy.md`.
+`development`; never push `main` directly). Configure production from
+`.env.example` plus `docs/ci-and-deploy.md`. Storefront subdomains need a
+wildcard domain; custom domains are provisioned via the Vercel Domains API.

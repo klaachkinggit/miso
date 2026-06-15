@@ -1,26 +1,46 @@
 {
-  "_comment": "Codex CLI hooks. Reuses the SAME scripts as Claude Code (.claude/hooks/). Codex's hook event names and command-hook contract mirror Claude Code's. The scripts read tool input as JSON on stdin and exit 2 to block. VERIFY: Codex's stdin field names must match what the scripts expect (tool_input.command / tool_input.file_path). If they differ in your Codex version, the scripts fail OPEN (no-op) — test with a known-bad command before relying on the block. See HARNESS.md.",
+  "_comment": "Codex CLI hooks. Scripts are vendored under .codex/hooks and read tool input JSON on stdin. They exit 2 to block dangerous actions.",
   "hooks": {
-    "PreToolUse": [
+    "Stop": [
       {
-        "matcher": "^Bash$|^Shell$",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/block-dangerous.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/log-bash.sh\""
+            "command": "osascript -e 'display notification \"Done\" with title \"Codex\"' 2>/dev/null || echo -n $'\\a'"
           }
         ]
-      },
+      }
+    ],
+    "PreToolUse": [
       {
         "matcher": "^Edit$|^Write$|^Read$",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/protect-secrets.sh\""
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/protect-secrets.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$|^Shell$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/block-dangerous.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/log-bash.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "^mcp__github__create_pull_request$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-pr-gate.sh\"",
+            "timeout": 120
           }
         ]
       }
@@ -31,7 +51,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/auto-format.sh\""
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/auto-format.sh\"",
+            "timeout": 30
           }
         ]
       }

@@ -11,8 +11,7 @@ const config = [
   {
     ignores: [
       ".next/**",
-      ".agents/**",
-      ".claude/**",
+      ".codex/**",
       ".harness-archive/**",
       "node_modules/**",
       "next-env.d.ts",

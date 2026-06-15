@@ -22,8 +22,8 @@
 
 ## Workflow
 
-- Before any non-trivial feature, assess whether a skill, MCP server, or plugin would help (`prompts/assess-capabilities.md` / `find-skills`); vet and install before building. Never add what the base already covers.
-- Front-end / UI work → use the design skills in `.claude/skills/`: `frontend-design` (bold, anti-generic UI), `ui-ux-pro-max` (styles, palettes, font pairs, UX rules), `impeccable` (anti-slop self-audit), `web-design-guidelines` (a11y / Web Interface Guidelines review), `awesome-design-md` (drop-in design systems). Commit to one aesthetic direction; audit before shipping.
+- Before any non-trivial feature, assess whether a skill, MCP server, or plugin would help (`prompts/assess-capabilities.md` / `find-skills`); vet before adding anything, and do not vendor tools that the base environment already provides.
+- Front-end / UI work → use the design skills in `.codex/skills/`: `frontend-design` (bold, anti-generic UI), `ui-ux-pro-max` (styles, palettes, font pairs, UX rules), `impeccable` (anti-slop self-audit), `web-design-guidelines` (a11y / Web Interface Guidelines review), `awesome-design-md` (drop-in design systems). Commit to one aesthetic direction; audit before shipping.
 - Use `prompts/grill-me.md` before any large implementation — uncover all decision branches first.
 - Multi-file behavior change → run `prompts/sparc.md` (Spec → Pseudocode → Architecture → Refinement → Completion). Skip for typo/single-line/bump.
 - Failing test before implementation on any non-trivial change.
@@ -40,22 +40,22 @@
 
 ## Risk & Review
 
-- Before `/preflight` on auth/data/infra changes, run `prompts/risk-review.md`.
-- ≥2 HIGH-risk dimensions → write an ADR and route review through Opus tier (see `prompts/subagent.md`).
+- Before preflight on auth/data/infra changes, run `prompts/risk-review.md`.
+- ≥2 HIGH-risk dimensions → write an ADR and route review through the frontier tier (see `prompts/subagent.md`).
 
 ## Subagents & Cost
 
 - Delegate to a subagent only when independent or broad — see `prompts/subagent.md`. Each spawn pays cold-start; do not delegate work whose target you already know.
-- **Model tier routing**: Haiku for search/summaries/bounded lookups, Sonnet default, Opus for `/risk-review` ≥2 HIGH or `/adr`-worthy work. One Opus call beats five Sonnet retries.
-- At session end (or weekly): `prompts/cost-review.md` — `/cost`, prune unused skills/MCP, verify `/compact` discipline.
+- **Model tier routing**: mini for search/summaries/bounded lookups, inherited/default for normal coding, frontier for `prompts/risk-review.md` ≥2 HIGH or ADR-worthy work.
+- At session end or weekly: `prompts/cost-review.md` — prune unused skills/MCP and verify compaction discipline.
 
 ## Token economy
 
-- **Navigate with the code graph, not blind sweeps.** Use the CodeGraph MCP (`codegraph_search` / `codegraph_explore` / `codegraph_status`) to find symbols, callers, and blast radius before reading files — it replaces multi-call grep/read fans (~−47% tokens, −58% tool calls; 100% local). Build/refresh per repo with `codegraph init`; it auto-syncs on edits.
+- **Navigate with the code graph, not blind sweeps.** Use the CodeGraph MCP (`codegraph_search`, `codegraph_explore`, `codegraph_node`) to find symbols, callers, and blast radius before reading files — it replaces multi-call grep/read fans (~−47% tokens, −58% tool calls; 100% local). Build/refresh per repo with `codegraph init`; it auto-syncs on edits.
 - **Read semantically, not wholesale.** Prefer graph/symbol lookups and scoped reads (offset/limit) over whole-file dumps; for one-shot whole-repo context use `repomix`.
-- **Route by cost.** Cheap model (Haiku / mini tier) for search, summaries, bounded lookups; reserve the strong model for design, architecture, and review.
+- **Route by cost.** Cheap model (mini tier) for search, summaries, bounded lookups; reserve the strong model for design, architecture, and review.
 - **Keep the cache warm.** Rules files load every turn and are prompt-cached — keep them stable; don't mutate per-session. Heavy procedures live in skills/prompts (lazy-loaded), not here.
-- **Compact deliberately.** `/compact` at a phase boundary (~60–70% context), not at the auto-compaction cliff. Offload heavy reads to subagents so their intermediate output never inflates the main thread.
+- **Compact deliberately.** Compact at a phase boundary (~60–70% context), not at the auto-compaction cliff. Offload heavy reads to subagents so their intermediate output never inflates the main thread.
 
 ## Destructive Actions
 
