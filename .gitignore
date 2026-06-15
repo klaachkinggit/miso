@@ -48,5 +48,8 @@ playwright/.cache
 artifacts/
 .claude/bash.log
 
+# local code graph index
+.codegraph/
+
 # competitor reference screenshots (untracked, local only)
 weezevent/
