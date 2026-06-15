@@ -31,6 +31,9 @@ fi
 fmt() {
   local file="$1"
   [ -f "$file" ] || return 0
+  case "$file" in
+    .codex/skills/*|.claude/skills/*) return 0 ;;
+  esac
   case "${file##*.}" in
     js|jsx|ts|tsx|css|scss|json|html|md|yaml|yml)
       if [ -x "node_modules/.bin/prettier" ]; then node_modules/.bin/prettier --write "$file" 2>/dev/null || true

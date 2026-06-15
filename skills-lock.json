@@ -7,91 +7,91 @@
       "source": "repo-vendored",
       "sourceType": "local",
       "skillPath": ".codex/skills/awesome-design-md/SKILL.md",
-      "computedHash": "403cb855c6cf087fc6768aa8782d415513a71d6652a890e000c217b52793686b"
+      "computedHash": "bc92379dfcb27bb8c0352ad0598cfa47b836d26de6e5add3147e3af185573363"
     },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/deploy-to-vercel/SKILL.md",
-      "computedHash": "648fb516d9c3fcff7c3aebb8a241e1a7d9b2928e4eca5782fa87ddb38c280df7"
+      "computedHash": "8001265e56ef2028d842efe31bd8e6dd09f38aef31997fc7e592a37f05966657"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/find-skills/SKILL.md",
-      "computedHash": "74cb6fd4de90246ca47168a35aed191025a1d74a448557208336be0e9f0b0243"
+      "computedHash": "1e85f6f9686e145aca4a124e3b704b9bbea9aa87e08515c1e352eee70f6e6e7a"
     },
     "frontend-design": {
       "source": "repo-vendored",
       "sourceType": "local",
       "skillPath": ".codex/skills/frontend-design/SKILL.md",
-      "computedHash": "6cb7796839f9d502107413b8502437a4749e92e3f971e5daa4e45d1f24e1d0f7"
+      "computedHash": "8827600a53d3dbd93fd34858d92b219381b14135aeed0362db1e1c310c693375"
     },
     "impeccable": {
       "source": "repo-vendored",
       "sourceType": "local",
       "skillPath": ".codex/skills/impeccable/SKILL.md",
-      "computedHash": "ee930077a1d6e861a2d00cf92f319b198e7d05f021c06bd505b8bd261401e44a"
+      "computedHash": "9cbf6e7e1a5360756f1f07f3ccb113afa62318e32b72856fdf7d2eea0667ec3c"
     },
     "setup-solidity-contracts": {
       "source": "openzeppelin/openzeppelin-skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/setup-solidity-contracts/SKILL.md",
-      "computedHash": "ca3a5082825e3cbb0f977944ab57d03c032d92266c60e802560bb7db99d177f0"
+      "computedHash": "1173e734862065bc048c8efb8fbd74596861e2dc9d776871e859a91a8a1cec98"
     },
     "solidity-security": {
       "source": "wshobson/agents",
       "sourceType": "github",
       "skillPath": ".codex/skills/solidity-security/SKILL.md",
-      "computedHash": "3578eb696205303541ab9e86c5ea56f10fa1af2c7f6110b0dae381b64aa08324"
+      "computedHash": "ce1b1bce04f868cbe48b4a765839d3f589e5f15c2c47f52b4b1ca9a1306ae779"
     },
     "stripe-best-practices": {
       "source": "docs.stripe.com",
       "sourceType": "well-known",
       "skillPath": ".codex/skills/stripe-best-practices/SKILL.md",
-      "computedHash": "a0cf3c80e171e7524a3003398f8b439475c5886313b1bfda4c49798789271fda"
+      "computedHash": "095d18610be432040e7abbede36e59d8bc5876a84534cb69f895300e43e5dc1f"
     },
     "stripe-projects": {
       "source": "projects.dev/providers",
       "sourceType": "well-known",
       "skillPath": ".codex/skills/stripe-projects/SKILL.md",
-      "computedHash": "52d203e4b8e93a636448acf75a6f995edb8e600d67d0c4e241a2eacf0da87d89"
+      "computedHash": "0a6dbc7cb06aab6c49629ee62d7cd8bc88c016c675ae0eaf2efc17694dbd7718"
     },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/supabase/SKILL.md",
-      "computedHash": "50dc61d242bb61289197a692cdb55a6a6e4a3dfda06090419294e546df7eb7d2"
+      "computedHash": "41f4694e5e8114215fb2c4b1b72f373dddec52eb784ec92ed8d8a6885cb0f197"
     },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/supabase-postgres-best-practices/SKILL.md",
-      "computedHash": "86fd95b62b9cae6031c80aecb9cbd39b30a7c4130fcc39ba0045d96b4a875579"
+      "computedHash": "ccd6e4596bd51cf344fe76c464867c541ccc16b6d90ae7a9db449fb17588613b"
     },
     "ui-ux-pro-max": {
       "source": "repo-vendored",
       "sourceType": "local",
       "skillPath": ".codex/skills/ui-ux-pro-max/SKILL.md",
-      "computedHash": "fc204ba6fc0787dde4437945bdcf4bd108c16910b7af8bcb05e8d069e7b63190"
+      "computedHash": "9bd26c52dfd10dfd613dd3cc85df217dc25a172e380bde41fdfa6fedda288b2a"
     },
     "upgrade-stripe": {
       "source": "docs.stripe.com",
       "sourceType": "well-known",
       "skillPath": ".codex/skills/upgrade-stripe/SKILL.md",
-      "computedHash": "41b14d0a479294580830ad06c42c7cd466fde377e0a1b8d99538443e3df3cbcc"
+      "computedHash": "150c420efffb9eea65c7950848d5172d77e8f96b2b7bbec20ee76006bae56a32"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/vercel-react-best-practices/SKILL.md",
-      "computedHash": "bf24d59ef6781c2e5f6fb0320124a83bc0b87d5cb73e413ab5bb4f74e0324519"
+      "computedHash": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355"
     },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "skillPath": ".codex/skills/web-design-guidelines/SKILL.md",
-      "computedHash": "c85ffa68bca661f2aa70ca37cb053f5cc7e739acf623a1b5be1de34c8c9b9e99"
+      "computedHash": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f"
     }
   }
 }
