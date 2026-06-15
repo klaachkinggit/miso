@@ -7,8 +7,18 @@ import { formatDate } from "@/lib/format";
 import type { EventRow, Ticket, TicketCategory } from "@/types/db";
 import { RedeemPanel } from "./redeem-panel";
 
-export default async function RedeemPage({ params }: { params: Promise<{ shortCode: string }> }) {
-  const [{ shortCode }, user] = await Promise.all([params, getCurrentUser()]);
+export default async function RedeemPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ shortCode: string }>;
+  searchParams: Promise<{ t?: string }>;
+}) {
+  const [{ shortCode }, { t: token }, user] = await Promise.all([
+    params,
+    searchParams,
+    getCurrentUser(),
+  ]);
   if (!user) redirect(`/login?next=/redeem/${shortCode}`);
 
   const gate = await getGateSessionByShortCode(shortCode);
@@ -97,6 +107,7 @@ export default async function RedeemPage({ params }: { params: Promise<{ shortCo
       ) : (
         <RedeemPanel
           gateShortCode={gate.short_code}
+          token={token}
           tickets={eligible.map((ticket) => ({
             id: ticket.id,
             serial_number: ticket.serial_number,

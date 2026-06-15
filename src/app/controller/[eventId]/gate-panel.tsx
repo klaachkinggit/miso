@@ -26,6 +26,7 @@ interface PollResponse {
   session: GateSession;
   last_redemption: { id: string; result: string; redeemed_at: string; evm_address: string | null } | null;
   last_ticket: { id: string; serial_number: number; status: string } | null;
+  rotatingToken?: string | null;
 }
 
 interface GateCategoryOption {
@@ -51,6 +52,7 @@ export function GatePanel({
   const [last, setLast] = useState<PollResponse["last_redemption"]>(null);
   const [lastTicket, setLastTicket] = useState<PollResponse["last_ticket"]>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [rotatingToken, setRotatingToken] = useState<string | null>(null);
   const sessionId = session?.id;
   const sessionStatus = session?.status;
   const needsCategorySelection = scope === "selected" && selectedCategoryIds.length === 0;
@@ -117,13 +119,16 @@ export function GatePanel({
       setSession(data.session);
       setLast(data.last_redemption);
       setLastTicket(data.last_ticket);
+      setRotatingToken(data.rotatingToken ?? null);
     };
     void tick();
     const id = window.setInterval(tick, 2500);
     return () => window.clearInterval(id);
   }, [sessionId, sessionStatus]);
 
-  const url = session ? `${origin}/redeem/${session.short_code}` : null;
+  const url = session
+    ? `${origin}/redeem/${session.short_code}${rotatingToken ? `?t=${encodeURIComponent(rotatingToken)}` : ""}`
+    : null;
   const valid = last?.result === "valid";
 
   useEffect(() => {

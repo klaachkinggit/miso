@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/auth";
 import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { getGatePollForController } from "@/lib/gates/operations";
+import { currentGateToken } from "@/lib/gates/rotating-token";
 
 export async function GET(
   _request: NextRequest,
@@ -20,7 +21,7 @@ export async function GET(
     const { id } = await params;
     const poll = await getGatePollForController({ gateSessionId: id, profile });
     if (!poll) throw new ApiRouteError("Gate not found.", 404);
-    return NextResponse.json(poll);
+    return NextResponse.json({ ...poll, rotatingToken: currentGateToken(id) });
   } catch (error) {
     return apiErrorResponse(error, { fallback: "Could not load gate." });
   }
