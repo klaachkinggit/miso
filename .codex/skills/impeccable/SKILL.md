@@ -1,28 +1,23 @@
 ---
 name: impeccable
-description: Use for a final Codex-side UI quality audit before shipping frontend work. Checks for generic AI design tells, accessibility gaps, responsive issues, and product-fit problems.
+description: Final UI quality audit before shipping frontend work. Checks generic AI design tells, a11y gaps, responsive bugs, and product fit.
 ---
 
 # Impeccable
 
-Use this skill after the UI is implemented and before final verification.
+Use after UI implemented, before final answer.
 
 ## Audit
 
-Check the rendered UI and source against these failure modes:
+- Product fit: visual direction matches domain and task.
+- Layout: no overlap, no horizontal mobile scroll, stable dimensions, readable hierarchy.
+- Text: fits containers, wraps cleanly, no viewport font scaling, no negative letter spacing.
+- Color: sufficient contrast, not one-note palette, semantic states visible.
+- Interaction: hover/focus/active/loading/empty/error/success states exist where expected.
+- Accessibility: labels, alt text, focus rings, keyboard path, reduced motion.
+- Assets: real images/media load and are not decorative filler.
+- Frontend craft: no nested cards, no blob/orb backgrounds, no marketing hero for app tools.
 
-- Generic SaaS composition: oversized hero cards, purple-blue gradients, decorative blobs, nested cards, and repetitive feature tiles.
-- Weak product fit: visual style does not match the actual audience, workflow density, or domain.
-- Accessibility gaps: poor contrast, missing labels, weak focus states, inaccessible dialogs, and dynamic state changes without clear affordance.
-- Responsive breakage: clipped text, overflowing buttons, unstable fixed-format controls, or content overlap on mobile and desktop.
-- Typography issues: viewport-scaled text, negative letter spacing, headings too large for their container, and weak hierarchy in dense panels.
-- Interaction slop: hover/focus states resize layout, destructive actions lack clear confirmation, disabled states are unclear, or controls use unfamiliar shapes where standard icons fit.
+## Verify
 
-## Process
-
-1. Inspect the relevant components and CSS.
-2. Run the app when needed and capture Playwright screenshots at desktop and mobile widths.
-3. Report only concrete findings with `path:line`, impact, and the smallest useful fix.
-4. If no issues remain, say so and name any verification gap.
-
-Prefer fixing real issues over adding new visual systems.
+Use browser/screenshot when UI changed. Check mobile and desktop.

@@ -1,44 +1,34 @@
 ---
 name: stripe-best-practices
-description: >-
-  Guides Stripe integration decisions — API selection (Checkout Sessions vs
-  PaymentIntents), Connect platform setup (Accounts v2, controller properties),
-  billing/subscriptions, Treasury financial accounts, integration surfaces
-  (Checkout, Payment Element), migrating from deprecated Stripe APIs, and
-  security best practices (API key management, restricted keys, webhooks,
-  OAuth). Use when building, modifying, or reviewing any Stripe integration —
-  including accepting payments, building marketplaces, integrating Stripe,
-  processing payments, setting up subscriptions, creating connected accounts, or
-  implementing secure key handling.
-
+description: Stripe integration decisions for payments, Checkout Sessions, PaymentIntents, Connect, billing, webhooks, security, and API migrations.
 ---
 
-Latest Stripe API version: **2026-04-22.dahlia**. Always use the latest API version and SDK unless the user specifies otherwise.
+# Stripe Best Practices
 
-API key default: Always recommend a [restricted API key (RAK)](https://docs.stripe.com/keys/restricted-api-keys.md) (`rk_` prefix) over a secret key (`sk_` prefix).
+Use for any Stripe code or design.
 
-## Integration routing
+## Decide API
 
-| Building…                                                                | Recommended API                     | Details                  |
-| ------------------------------------------------------------------------ | ----------------------------------- | ------------------------ |
-| One-time payments                                                        | Checkout Sessions                   | <references/payments.md> |
-| Custom payment form with embedded UI                                     | Checkout Sessions + Payment Element | <references/payments.md> |
-| Saving a payment method for later                                        | Setup Intents                       | <references/payments.md> |
-| Connect platform or marketplace                                          | Accounts v2 (`/v2/core/accounts`)   | <references/connect.md>  |
-| Subscriptions or recurring billing                                       | Billing APIs + Checkout Sessions    | <references/billing.md>  |
-| Embedded financial accounts / banking                                    | v2 Financial Accounts               | <references/treasury.md> |
-| Security (key management, RAKs, webhooks, OAuth, 2FA, Connect liability) | See security reference              | <references/security.md> |
+- Hosted Checkout for simple hosted flows.
+- PaymentIntents/Payment Element for custom checkout.
+- Connect for marketplaces/platforms.
+- Billing for subscriptions/invoices.
 
-Read the relevant reference file before answering any integration question or writing code.
+## Connect
 
-## Critical rules
+- Model connected accounts separately from platform users.
+- Use explicit account/controller properties.
+- Treat onboarding/account status as external state.
+- Handle transfers, refunds, disputes, and account updates idempotently.
 
-- *Never include `payment_method_types` in any Stripe API call*, with one exception: Terminal (in-person payments) integrations must pass `payment_method_types: ['card_present']` on the PaymentIntent. For all other integrations, omit this parameter entirely to enable dynamic payment methods, which enables you to configure payment method settings from the Dashboard and dynamically display the most relevant eligible payment methods to each customer to maximize conversion. To customize which payment methods you accept, use [`payment_method_configurations`](https://docs.stripe.com/payments/payment-method-configurations.md) or `excluded_payment_method_types` instead of `payment_method_types`.
+## Security
 
-## Key documentation
+- Never expose secret keys.
+- Verify webhooks with raw body + endpoint secret.
+- Store Stripe IDs, not card data.
+- Use idempotency keys for create/mutate calls.
+- Log event IDs and processing status.
 
-When the user’s request does not clearly fit a single domain above, consult:
+## Migration
 
-- [Integration Options](https://docs.stripe.com/payments/payment-methods/integration-options.md) — Start here when designing any integration.
-- [API Tour](https://docs.stripe.com/payments-api/tour.md) — Overview of Stripe’s API surface.
-- [Go Live Checklist](https://docs.stripe.com/get-started/checklist/go-live.md) — Review before launching.
+Check current API version and SDK behavior before changing. Prefer official Stripe docs for exact fields.
