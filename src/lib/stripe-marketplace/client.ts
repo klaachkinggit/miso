@@ -7,7 +7,7 @@ import Stripe from "stripe";
 // one folder.
 
 const StripeEnv = z.object({
-  STRIPE_SECRET_KEY: z.string().min(20).regex(/^(sk|rk)_/, "must start with sk_ or rk_"),
+  STRIPE_SECRET_KEY: z.string().min(20).startsWith("rk_"),
   STRIPE_WEBHOOK_SECRET: z.string().min(10).startsWith("whsec_"),
   // The marketplace webhook is a separate registered endpoint in Stripe and
   // gets its own signing secret. Falls back to STRIPE_WEBHOOK_SECRET for
