@@ -7,7 +7,7 @@
 //
 // Run with: npm run contracts:compile
 //
-// Deterministic: optimizer enabled, runs=200, evmVersion=paris. Re-running
+// Deterministic: optimizer enabled, runs=200, evmVersion=cancun. Re-running
 // against unchanged sources produces an identical bytecode file.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";

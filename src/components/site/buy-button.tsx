@@ -111,8 +111,9 @@ export function BuyButton({
                   size="icon"
                   onClick={() => setQuantity((v) => Math.max(1, v - 1))}
                   disabled={quantity <= 1}
+                  aria-label="Decrease ticket quantity"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus aria-hidden="true" className="h-4 w-4" />
                 </Button>
                 <span className="w-6 text-center font-mono">{quantity}</span>
                 <Button
@@ -121,8 +122,9 @@ export function BuyButton({
                   size="icon"
                   onClick={() => setQuantity((v) => Math.min(10, v + 1))}
                   disabled={quantity >= 10}
+                  aria-label="Increase ticket quantity"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus aria-hidden="true" className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -145,8 +147,9 @@ export function BuyButton({
                     size="icon"
                     onClick={() => setExtras((v) => Math.max(0, v - 1))}
                     disabled={extras === 0}
+                    aria-label="Decrease extra guests"
                   >
-                    <Minus className="h-4 w-4" />
+                    <Minus aria-hidden="true" className="h-4 w-4" />
                   </Button>
                   <span className="w-6 text-center font-mono">{extras}</span>
                   <Button
@@ -155,8 +158,9 @@ export function BuyButton({
                     size="icon"
                     onClick={() => setExtras((v) => Math.min(maxExtras, v + 1))}
                     disabled={extras >= maxExtras}
+                    aria-label="Increase extra guests"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus aria-hidden="true" className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

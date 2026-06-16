@@ -1,9 +1,7 @@
 // MisoTicket ABI.
 //
-// Bytecode is filled in after compiling `contracts/MisoTicket.sol`
-// (Foundry / Hardhat) and pasting the resulting hex string into
-// `MISO_TICKET_BYTECODE`. Until then, deploy paths will throw at the
-// encode step, which is intentional: Phase 5 sets the bytecode.
+// Bytecode is generated from `contracts/MisoTicket.sol` by
+// `npm run contracts:compile`.
 //
 // ABI is hand-written from the Solidity source so runtime code can
 // deploy/read without depending on a compiler artifact.

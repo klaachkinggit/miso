@@ -31,7 +31,7 @@ export default async function CheckoutSuccessPage({
 
   let status = "pending";
   let resolved = false;
-  let pendingTitle = "Minting ticket.";
+  let pendingTitle = "Preparing your digital ticket.";
 
   if (marketplacePaymentId) {
     const { data: payment } = await sb
@@ -43,7 +43,7 @@ export default async function CheckoutSuccessPage({
     if (payment) {
       resolved = true;
       status = buyerFacingPaymentStatus(payment);
-      if (payment.kind === "resale") pendingTitle = "Transferring your ticket.";
+      if (payment.kind === "resale") pendingTitle = "Moving your digital ticket.";
     }
   }
 
@@ -76,7 +76,7 @@ export default async function CheckoutSuccessPage({
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
           {paid
-            ? "Your digital ticket is now in your wallet."
+            ? "Your digital ticket is ready in My tickets."
             : failed
               ? "The reservation was released. Try checkout again."
               : "This page refreshes while we finalize your ticket."}

@@ -49,11 +49,21 @@ export function EventsFilterPanel({ discovery, hasActive, basePath = "/events" }
         }}
       >
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <label htmlFor="event-search" className="sr-only">
+            Search events
+          </label>
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
+            id="event-search"
+            name="q"
+            type="search"
+            autoComplete="off"
             value={q}
             onChange={(event) => setQ(event.target.value)}
-            placeholder="Search events, artists, venues, cities"
+            placeholder="Search events, artists, venues, cities…"
             className="pl-9"
           />
         </div>

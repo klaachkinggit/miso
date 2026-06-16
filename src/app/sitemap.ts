@@ -60,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const sb = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
 
     const [{ data: events }, { data: organizations }] = await Promise.all([

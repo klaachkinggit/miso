@@ -7,7 +7,7 @@ import Stripe from "stripe";
 // one folder.
 
 const StripeEnv = z.object({
-  STRIPE_SECRET_KEY: z.string().min(20).startsWith("sk_"),
+  STRIPE_SECRET_KEY: z.string().min(20).regex(/^(sk|rk)_/, "must start with sk_ or rk_"),
   STRIPE_WEBHOOK_SECRET: z.string().min(10).startsWith("whsec_"),
   // The marketplace webhook is a separate registered endpoint in Stripe and
   // gets its own signing secret. Falls back to STRIPE_WEBHOOK_SECRET for
@@ -62,7 +62,7 @@ export function stripeClient(): Stripe {
     // Pin an explicit API version so a future global Stripe upgrade
     // never silently changes payload shapes. Bump deliberately.
     // Keep in lockstep with src/lib/payments/stripe.ts.
-    apiVersion: "2026-04-22.dahlia",
+    apiVersion: "2026-05-27.dahlia",
     typescript: true,
     appInfo: {
       name: "miso-stripe-marketplace",

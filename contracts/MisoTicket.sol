@@ -21,6 +21,7 @@ contract MisoTicket is ERC721, AccessControl {
     constructor(string memory name_, string memory symbol_, address admin)
         ERC721(name_, symbol_)
     {
+        require(admin != address(0), "admin zero");
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MINTER_ROLE, admin);
         _grantRole(METADATA_ROLE, admin);
@@ -30,8 +31,8 @@ contract MisoTicket is ERC721, AccessControl {
     function mintTo(address to, uint256 tokenId, string calldata uri)
         external onlyRole(MINTER_ROLE)
     {
-        _safeMint(to, tokenId);
         _tokenURIs[tokenId] = uri;
+        _safeMint(to, tokenId);
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
@@ -51,7 +52,7 @@ contract MisoTicket is ERC721, AccessControl {
         external onlyRole(ADMIN_TRANSFER_ROLE)
     {
         require(ownerOf(tokenId) == from, "wrong owner");
-        _transfer(from, to, tokenId);
+        _safeTransfer(from, to, tokenId);
         emit AdminTransfer(from, to, tokenId);
     }
 

@@ -14,7 +14,7 @@ function getStripeClient(): Stripe {
     throw new Error("STRIPE_SECRET_KEY is required");
   }
   stripeClient ??= new Stripe(secretKey, {
-    apiVersion: "2026-04-22.dahlia" as const,
+    apiVersion: "2026-05-27.dahlia" as const,
   });
   return stripeClient;
 }

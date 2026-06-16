@@ -142,9 +142,9 @@ export function EventDetail({
               Entry verification
             </p>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              After checkout, your digital ticket appears in your wallet. At the
-              gate, open the pass for QR verification — MISO keeps ownership and
-              resale history tied to the ticket.
+              After checkout, your digital ticket appears in My tickets. At the
+              gate, open the pass for QR verification; MISO keeps resale history
+              tied to the ticket.
             </p>
           </article>
         </div>
