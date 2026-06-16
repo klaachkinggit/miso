@@ -25,17 +25,17 @@ export function ResaleListingList({
   }
 
   return (
-    <ul className="divide-y divide-hairline overflow-hidden rounded-md border border-hairline">
+    <ul className="grid gap-3">
       {items.map((item) => {
         const href = listingHref(item);
         return (
           <li
             key={item.listing.id}
-            className="group flex flex-col gap-4 bg-ink-raised p-4 transition-colors hover:bg-ink-soft sm:flex-row sm:items-center sm:gap-5"
+            className="group flex flex-col gap-4 rounded-md border border-hairline bg-card p-4 transition-colors hover:border-signal/50 sm:flex-row sm:items-center sm:gap-5"
           >
             <Link
               href={href}
-              className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md bg-secondary sm:h-24 sm:w-32"
+              className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden rounded bg-secondary sm:h-28 sm:w-40"
             >
               {(() => {
                 const mp = eventImage(item.event, "marketplace");
@@ -56,14 +56,14 @@ export function ResaleListingList({
               </Badge>
             </Link>
 
-            <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="min-w-0 flex-1 space-y-2">
               <Link
                 href={href}
-                className="line-clamp-1 text-base font-semibold transition-colors group-hover:text-primary"
+                className="display line-clamp-1 text-2xl text-foreground transition-colors group-hover:text-signal"
               >
                 {item.event.name}
               </Link>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" />
                   {item.event.venue_name}, {item.event.city}
@@ -78,21 +78,34 @@ export function ResaleListingList({
                 </span>
               </div>
               {item.ticket.total_headcount ? (
-                <p className="text-xs text-muted-foreground">As-is group pass: {item.ticket.total_headcount} guests</p>
+                <p className="text-xs text-muted-foreground">
+                  As-is group pass: {item.ticket.total_headcount} guests
+                </p>
               ) : null}
               {item.ticket.min_spending_remaining != null ? (
                 <p className="text-xs text-muted-foreground">
-                  Venue balance due: {formatPrice(item.ticket.min_spending_remaining, item.category.currency)}
+                  Venue balance due:{" "}
+                  {formatPrice(
+                    item.ticket.min_spending_remaining,
+                    item.category.currency,
+                  )}
                 </p>
               ) : null}
             </div>
 
             <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center">
               <div className="text-right">
-                <div className="text-lg font-semibold">{formatPrice(item.buyerTotal, item.listing.currency)}</div>
+                <div className="display text-2xl text-foreground">
+                  {formatPrice(item.buyerTotal, item.listing.currency)}
+                </div>
                 {item.platformFee + item.stripeFee > 0 ? (
                   <p className="text-[11px] text-muted-foreground">
-                    incl. {formatPrice(item.platformFee + item.stripeFee, item.listing.currency)} fees
+                    incl.{" "}
+                    {formatPrice(
+                      item.platformFee + item.stripeFee,
+                      item.listing.currency,
+                    )}{" "}
+                    fees
                   </p>
                 ) : null}
               </div>

@@ -32,9 +32,14 @@ export function EventDetail({
     .sort((a, b) => Number(a.price) - Number(b.price))[0];
   const eventSoldOut =
     categories.length > 0 &&
-    !categories.some((category) => category.remaining > 0 && category.sales_enabled);
+    !categories.some(
+      (category) => category.remaining > 0 && category.sales_enabled,
+    );
   const showWaitlist =
-    eventSoldOut && Boolean(waitlistPath) && Boolean(organizationSlug) && Boolean(eventSlug);
+    eventSoldOut &&
+    Boolean(waitlistPath) &&
+    Boolean(organizationSlug) &&
+    Boolean(eventSlug);
   const hero = eventImage(event, "hero");
 
   return (
@@ -42,7 +47,14 @@ export function EventDetail({
       <section className="relative min-h-[520px] overflow-hidden border-b border-hairline md:min-h-[640px]">
         <div className="absolute inset-0 bg-ink">
           {hero ? (
-            <Image src={hero} alt={event.name} fill priority sizes="100vw" className="object-cover" />
+            <Image
+              src={hero}
+              alt={event.name}
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
           ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-ink/30" />
           <div className="absolute inset-0 bg-gradient-to-r from-ink/85 via-transparent to-transparent" />
@@ -56,7 +68,7 @@ export function EventDetail({
             <h1 className="display text-5xl text-foreground md:text-7xl lg:text-[5.5rem]">
               {event.name}
             </h1>
-            <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground/75">
+            <div className="mt-8 flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-foreground/80">
               <span className="flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5" />
                 {formatDate(event.date)}
@@ -88,9 +100,14 @@ export function EventDetail({
         <div className="space-y-8">
           <article>
             <p className="eyebrow">About this event</p>
-            <h2 className="display mt-3 text-3xl text-foreground md:text-4xl">The story.</h2>
+            <h2 className="display mt-3 text-3xl text-foreground md:text-4xl">
+              The story.
+            </h2>
             <div className="mt-5 space-y-4 text-sm leading-relaxed text-muted-foreground md:text-base">
-              <p>{event.description || "No event description has been added yet."}</p>
+              <p>
+                {event.description ||
+                  "No event description has been added yet."}
+              </p>
               {event.conditions ? (
                 <div className="mt-6 border-t border-hairline pt-6">
                   <p className="eyebrow mb-2">Conditions</p>
@@ -108,6 +125,8 @@ export function EventDetail({
                 <img
                   src={event.floor_plan_url}
                   alt="Venue floor plan"
+                  width={1200}
+                  height={800}
                   className="w-full rounded object-contain"
                 />
               </div>
@@ -117,19 +136,23 @@ export function EventDetail({
             </article>
           ) : null}
 
-          <article className="rounded-md border border-hairline bg-ink-raised p-6">
+          <article className="rounded-md border border-hairline bg-card p-6">
             <p className="eyebrow-signal flex items-center gap-2">
               <ShieldCheck className="h-3.5 w-3.5" />
               Entry verification
             </p>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              After checkout, your digital ticket appears in your wallet. At the gate, open the
-              pass for QR verification — MISO keeps ownership and resale history tied to the ticket.
+              After checkout, your digital ticket appears in your wallet. At the
+              gate, open the pass for QR verification — MISO keeps ownership and
+              resale history tied to the ticket.
             </p>
           </article>
         </div>
 
-        <aside id="tickets" className="space-y-4">
+        <aside
+          id="tickets"
+          className="space-y-4 lg:sticky lg:top-24 lg:self-start"
+        >
           <div className="mb-2 flex items-baseline justify-between">
             <p className="eyebrow">Tickets · tables</p>
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -137,7 +160,7 @@ export function EventDetail({
             </p>
           </div>
           {categories.length ? (
-            <div className="space-y-px overflow-hidden rounded-md border border-hairline bg-hairline">
+            <div className="space-y-3">
               {categories.map((category) => {
                 const isClub = category.kind === "club_table";
                 const soldOut = category.remaining <= 0;
@@ -149,7 +172,10 @@ export function EventDetail({
                   category.sale_ends_at != null &&
                   now > new Date(category.sale_ends_at).getTime();
                 const disabled =
-                  !category.sales_enabled || soldOut || comingSoon || salesEnded;
+                  !category.sales_enabled ||
+                  soldOut ||
+                  comingSoon ||
+                  salesEnded;
                 const reason = comingSoon
                   ? `Coming soon · ${formatDateShort(category.sale_starts_at!)}`
                   : salesEnded
@@ -169,7 +195,10 @@ export function EventDetail({
                 );
 
                 return (
-                  <div key={category.id} className="space-y-4 bg-ink-raised p-5">
+                  <div
+                    key={category.id}
+                    className="space-y-4 rounded-md border border-hairline bg-card p-5"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 items-start gap-3">
                         {isClub && category.color_hex ? (
@@ -180,7 +209,9 @@ export function EventDetail({
                           />
                         ) : null}
                         <div className="min-w-0">
-                          <h3 className="font-medium text-foreground">{category.name}</h3>
+                          <h3 className="font-medium text-foreground">
+                            {category.name}
+                          </h3>
                           {category.description ? (
                             <p className="mt-1 text-sm text-muted-foreground">
                               {category.description}
@@ -191,7 +222,10 @@ export function EventDetail({
                               <p>
                                 Minimum:{" "}
                                 <span className="text-foreground">
-                                  {formatPrice(category.price, category.currency)}
+                                  {formatPrice(
+                                    category.price,
+                                    category.currency,
+                                  )}
                                 </span>
                               </p>
                               {category.base_capacity != null ? (
@@ -215,7 +249,10 @@ export function EventDetail({
                       <div>
                         <div className="display text-2xl text-foreground">
                           {isClub && category.online_advance != null
-                            ? formatPrice(category.online_advance, category.currency)
+                            ? formatPrice(
+                                category.online_advance,
+                                category.currency,
+                              )
                             : formatPrice(category.price, category.currency)}
                         </div>
                         {isClub ? (
@@ -246,15 +283,16 @@ export function EventDetail({
               })}
             </div>
           ) : (
-            <div className="rounded-md border border-dashed border-hairline bg-ink-raised/40 p-6 text-sm text-muted-foreground">
+            <div className="rounded-md border border-dashed border-hairline bg-card/70 p-6 text-sm text-muted-foreground">
               No ticket tiers are available.
             </div>
           )}
           {showWaitlist && waitlistPath && organizationSlug && eventSlug ? (
-            <div className="rounded-md border border-hairline bg-ink-raised p-5">
+            <div className="rounded-md border border-hairline bg-card p-5">
               <p className="eyebrow mb-1">Sold out</p>
               <p className="mb-4 text-sm text-muted-foreground">
-                Join the waitlist and we&apos;ll email you the moment a ticket frees up.
+                Join the waitlist and we&apos;ll email you the moment a ticket
+                frees up.
               </p>
               <WaitlistButton
                 organizationSlug={organizationSlug}
@@ -277,7 +315,7 @@ export function EventDetail({
           </div>
           <a
             href="#tickets"
-            className="inline-flex h-11 items-center rounded-md bg-signal px-6 text-sm font-medium text-ink"
+            className="inline-flex h-11 items-center rounded-md bg-signal px-6 text-sm font-medium text-accent-foreground"
           >
             Get ticket
           </a>

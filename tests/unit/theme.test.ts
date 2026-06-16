@@ -5,6 +5,7 @@ import {
   REQUIRED_THEME_TOKENS,
   THEME_KEYS,
   THEME_PRESETS,
+  THEME_TEMPLATE_VARIANTS,
   getTheme,
   isValidThemeKey,
 } from "@/lib/organizations/theme";
@@ -28,13 +29,25 @@ describe("storefront theme", () => {
   });
 
   it("never interpolates arbitrary preset payloads — only the key is read", () => {
-    const resolved = getTheme({ preset: "ink", cssVars: { "--background": "0 0% 0%" } });
+    const resolved = getTheme({
+      preset: "ink",
+      cssVars: { "--background": "0 0% 0%" },
+    });
     expect(resolved).toBe(THEME_PRESETS.ink);
-    expect(resolved.cssVars["--background"]).toBe(THEME_PRESETS.ink.cssVars["--background"]);
+    expect(resolved.cssVars["--background"]).toBe(
+      THEME_PRESETS.ink.cssVars["--background"],
+    );
   });
 
   it("exposes the expected closed set of keys", () => {
-    expect(THEME_KEYS).toEqual(["ink", "aurora", "sunset", "mono"]);
+    expect(THEME_KEYS).toEqual([
+      "ink",
+      "aurora",
+      "sunset",
+      "mono",
+      "gallery",
+      "festival",
+    ]);
   });
 
   it("defines every required token var on every preset", () => {
@@ -54,6 +67,33 @@ describe("storefront theme", () => {
       expect(preset.fontPair.body).toBeTruthy();
       expect(layouts.has(preset.heroLayout)).toBe(true);
     }
+  });
+
+  it("carries buyer-facing template metadata and card variants per preset", () => {
+    const schemes = new Set(["dark", "light"]);
+    for (const key of THEME_KEYS) {
+      const preset = THEME_PRESETS[key];
+      expect(preset.description.length).toBeGreaterThan(20);
+      expect(preset.bestFor.length).toBeGreaterThan(10);
+      expect(THEME_TEMPLATE_VARIANTS.has(preset.cardVariant)).toBe(true);
+      expect(schemes.has(preset.colorScheme)).toBe(true);
+    }
+  });
+
+  it("offers materially different public website treatments", () => {
+    expect(
+      new Set(THEME_KEYS.map((key) => THEME_PRESETS[key].heroLayout)).size,
+    ).toBeGreaterThan(1);
+    expect(
+      new Set(THEME_KEYS.map((key) => THEME_PRESETS[key].cardVariant)).size,
+    ).toBeGreaterThan(1);
+    expect(
+      new Set(THEME_KEYS.map((key) => THEME_PRESETS[key].fontPair.heading))
+        .size,
+    ).toBeGreaterThan(1);
+    expect(
+      new Set(THEME_KEYS.map((key) => THEME_PRESETS[key].colorScheme)).size,
+    ).toBeGreaterThan(1);
   });
 
   it("isValidThemeKey accepts known keys and rejects unknown/non-string", () => {

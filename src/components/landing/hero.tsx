@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "motion/react";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -49,7 +54,10 @@ export function Hero() {
 
       <div className="container relative pt-20 pb-24 md:pt-28 md:pb-32">
         {/* Section index */}
-        <p aria-hidden className="mb-8 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground select-none">
+        <p
+          aria-hidden
+          className="mb-8 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground select-none"
+        >
           §01 / 06
         </p>
 
@@ -59,11 +67,19 @@ export function Hero() {
               <p className="eyebrow-signal flex items-center gap-2.5">
                 <motion.span
                   aria-hidden
-                  animate={reduced ? undefined : {
-                    opacity: [0.4, 1, 0.4],
-                    scale: [0.9, 1.1, 0.9],
+                  animate={
+                    reduced
+                      ? undefined
+                      : {
+                          opacity: [0.4, 1, 0.4],
+                          scale: [0.9, 1.1, 0.9],
+                        }
+                  }
+                  transition={{
+                    duration: 2.4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
                   }}
-                  transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
                   className="ticker-mark"
                 />
                 MISO · Ticketing infrastructure
@@ -78,15 +94,20 @@ export function Hero() {
                   { break: true, text: "" },
                   { text: "without the" },
                   { break: true, text: "" },
-                  { text: "gatekeeper.", italic: true, color: "hsl(var(--signal))" },
+                  {
+                    text: "gatekeeper.",
+                    italic: true,
+                    color: "hsl(var(--signal))",
+                  },
                 ]}
               />
             </h1>
 
             <Reveal delay={0.45} y={20}>
               <p className="mt-8 max-w-lg text-lg leading-relaxed text-muted-foreground md:text-xl">
-                Branded storefronts, direct Stripe payouts, anti-scalping resale, real-time gate
-                control. The infrastructure your venue runs on — not the marketplace it sells through.
+                Branded storefronts, direct Stripe payouts, anti-scalping
+                resale, real-time gate control. The infrastructure your venue
+                runs on — not the marketplace it sells through.
               </p>
             </Reveal>
 
@@ -118,16 +139,25 @@ export function Hero() {
                 <div className="flex items-baseline gap-0 divide-x divide-hairline border-t border-hairline pt-5">
                   {[
                     { value: 237, suffix: "+", label: "Organizers" },
-                    { value: 4.2, suffix: "M", prefix: "€", decimals: 1, label: "Paid out" },
+                    {
+                      value: 4.2,
+                      suffix: "M",
+                      prefix: "€",
+                      decimals: 1,
+                      label: "Paid out",
+                    },
                     { value: 31, suffix: "", label: "EU cities" },
                   ].map((kpi) => (
-                    <div key={kpi.label} className="min-w-0 flex-1 pl-3 first:pl-0 pr-3 last:pr-0 sm:pl-5 sm:pr-5">
+                    <div
+                      key={kpi.label}
+                      className="min-w-0 flex-1 pl-3 first:pl-0 pr-3 last:pr-0 sm:pl-5 sm:pr-5"
+                    >
                       <CountUp
                         to={kpi.value}
                         prefix={kpi.prefix ?? ""}
                         suffix={kpi.suffix}
                         decimals={kpi.decimals ?? 0}
-                        className="display-numeric text-foreground text-[clamp(1.5rem,7vw,3.25rem)]"
+                        className="display-numeric text-2xl text-foreground sm:text-4xl lg:text-5xl"
                       />
                       <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                         {kpi.label}
@@ -139,7 +169,10 @@ export function Hero() {
             </Reveal>
           </div>
 
-          <motion.div style={{ y: panelY }} className="relative hidden lg:block">
+          <motion.div
+            style={{ y: panelY }}
+            className="relative hidden lg:block"
+          >
             <Reveal delay={0.3} y={40}>
               <HeroPanel reduced={reduced ?? false} />
             </Reveal>
@@ -159,7 +192,11 @@ function HeroPanel({ reduced }: { reduced: boolean }) {
           <div className="flex items-center gap-2">
             <motion.span
               aria-hidden
-              animate={reduced ? undefined : { opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
+              animate={
+                reduced
+                  ? undefined
+                  : { opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }
+              }
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               className="ticker-mark"
             />
@@ -169,7 +206,10 @@ function HeroPanel({ reduced }: { reduced: boolean }) {
           </div>
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
-              <span key={i} className="h-1.5 w-1.5 rounded-full bg-hairline-strong" />
+              <span
+                key={i}
+                className="h-1.5 w-1.5 rounded-full bg-hairline-strong"
+              />
             ))}
           </div>
         </div>
@@ -185,7 +225,12 @@ function HeroPanel({ reduced }: { reduced: boolean }) {
               { tier: "VIP Pit", sold: 96 },
               { tier: "Door", sold: 41 },
             ].map((row, i) => (
-              <TierRow key={row.tier} tier={row.tier} sold={row.sold} delay={1 + i * 0.15} />
+              <TierRow
+                key={row.tier}
+                tier={row.tier}
+                sold={row.sold}
+                delay={1 + i * 0.15}
+              />
             ))}
           </div>
         </div>
@@ -207,7 +252,15 @@ function HeroPanel({ reduced }: { reduced: boolean }) {
   );
 }
 
-function TierRow({ tier, sold, delay }: { tier: string; sold: number; delay: number }) {
+function TierRow({
+  tier,
+  sold,
+  delay,
+}: {
+  tier: string;
+  sold: number;
+  delay: number;
+}) {
   return (
     <div>
       <div className="flex items-center justify-between text-[12px]">

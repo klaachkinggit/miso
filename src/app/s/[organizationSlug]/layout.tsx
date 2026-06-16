@@ -11,7 +11,10 @@ export default async function StorefrontThemeLayout({
   children: React.ReactNode;
   params: Promise<{ organizationSlug: string }>;
 }) {
-  const [{ organizationSlug }, profile] = await Promise.all([params, getCurrentProfile()]);
+  const [{ organizationSlug }, profile] = await Promise.all([
+    params,
+    getCurrentProfile(),
+  ]);
   redirectIfCannotUseBuyerSurface(profile);
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
@@ -30,10 +33,16 @@ export default async function StorefrontThemeLayout({
     "--font-sans": theme.fontPair.body,
     background: "hsl(var(--background))",
     color: "hsl(var(--foreground))",
+    colorScheme: theme.colorScheme,
   } as CSSProperties;
 
   return (
-    <div data-storefront-theme={theme.key} data-hero-layout={theme.heroLayout} style={style}>
+    <div
+      data-storefront-theme={theme.key}
+      data-hero-layout={theme.heroLayout}
+      data-card-variant={theme.cardVariant}
+      style={style}
+    >
       {children}
     </div>
   );

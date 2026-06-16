@@ -14,12 +14,12 @@ export function FollowOrganizationButton({
   organizationSlug,
   organizationName,
   following,
-  accent,
+  accent = "hsl(var(--signal))",
 }: {
   organizationSlug: string;
   organizationName: string;
   following: boolean;
-  accent: string;
+  accent?: string;
 }) {
   const [isFollowing, setIsFollowing] = useState(following);
   const [pending, startTransition] = useTransition();

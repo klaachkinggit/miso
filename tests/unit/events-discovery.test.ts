@@ -21,7 +21,9 @@ const BASE_DISCOVERY: EventDiscoveryParams = {
   sort: "date",
 };
 
-function discoveryWith(overrides: Partial<EventDiscoveryParams>): EventDiscoveryParams {
+function discoveryWith(
+  overrides: Partial<EventDiscoveryParams>,
+): EventDiscoveryParams {
   return { ...BASE_DISCOVERY, ...overrides };
 }
 
@@ -70,8 +72,14 @@ describe("event discovery helpers", () => {
   });
 
   it("computes tonight range across the midnight boundary", () => {
-    const lateNight = rangeForEventFilter("tonight", new Date("2026-05-18T02:30:00"));
-    const evening = rangeForEventFilter("tonight", new Date("2026-05-18T20:30:00"));
+    const lateNight = rangeForEventFilter(
+      "tonight",
+      new Date("2026-05-18T02:30:00"),
+    );
+    const evening = rangeForEventFilter(
+      "tonight",
+      new Date("2026-05-18T20:30:00"),
+    );
 
     expect(lateNight?.start).toEqual(new Date("2026-05-17T18:00:00"));
     expect(lateNight?.end).toEqual(new Date("2026-05-18T06:00:00"));
@@ -80,9 +88,18 @@ describe("event discovery helpers", () => {
   });
 
   it("computes weekend and next-month ranges from stable dates", () => {
-    const fridayWeekend = rangeForEventFilter("weekend", new Date("2026-05-22T12:00:00"));
-    const sundayWeekend = rangeForEventFilter("weekend", new Date("2026-05-24T12:00:00"));
-    const nextMonth = rangeForEventFilter("next-month", new Date("2026-12-18T12:00:00"));
+    const fridayWeekend = rangeForEventFilter(
+      "weekend",
+      new Date("2026-05-22T12:00:00"),
+    );
+    const sundayWeekend = rangeForEventFilter(
+      "weekend",
+      new Date("2026-05-24T12:00:00"),
+    );
+    const nextMonth = rangeForEventFilter(
+      "next-month",
+      new Date("2026-12-18T12:00:00"),
+    );
 
     expect(fridayWeekend?.start).toEqual(new Date("2026-05-23T00:00:00"));
     expect(fridayWeekend?.end).toEqual(new Date("2026-05-25T00:00:00"));
@@ -94,15 +111,30 @@ describe("event discovery helpers", () => {
   it("filters by city and free-text event fields", () => {
     const events = [
       event({ id: "event-1", name: "Warehouse Night", city: "Casablanca" }),
-      event({ id: "event-2", name: "Beach Brunch", city: "Rabat", venue_name: "Pier" }),
-      event({ id: "event-3", name: "Gallery Session", city: "Casablanca", description: "Ambient room" }),
+      event({
+        id: "event-2",
+        name: "Beach Brunch",
+        city: "Rabat",
+        venue_name: "Pier",
+      }),
+      event({
+        id: "event-3",
+        name: "Gallery Session",
+        city: "Casablanca",
+        description: "Ambient room",
+      }),
     ];
 
     expect(
-      filterDiscoveredEvents(events, discoveryWith({ q: "ambient", city: "casa" })).map((e) => e.id),
+      filterDiscoveredEvents(
+        events,
+        discoveryWith({ q: "ambient", city: "casa" }),
+      ).map((e) => e.id),
     ).toEqual(["event-3"]);
     expect(
-      filterDiscoveredEvents(events, discoveryWith({ q: "pier" })).map((e) => e.id),
+      filterDiscoveredEvents(events, discoveryWith({ q: "pier" })).map(
+        (e) => e.id,
+      ),
     ).toEqual(["event-2"]);
   });
 
@@ -130,20 +162,32 @@ describe("event discovery helpers", () => {
     ];
 
     expect(
-      filterDiscoveredEvents(events, discoveryWith({ genre: "techno", vibe: "club" })).map((e) => e.id),
+      filterDiscoveredEvents(
+        events,
+        discoveryWith({ genre: "techno", vibe: "club" }),
+      ).map((e) => e.id),
     ).toEqual(["event-1"]);
     expect(
-      filterDiscoveredEvents(events, discoveryWith({ festival: true })).map((e) => e.id),
+      filterDiscoveredEvents(events, discoveryWith({ festival: true })).map(
+        (e) => e.id,
+      ),
     ).toEqual(["event-2"]);
     expect(
-      filterDiscoveredEvents(events, discoveryWith({ q: "amelie" })).map((e) => e.id),
+      filterDiscoveredEvents(events, discoveryWith({ q: "amelie" })).map(
+        (e) => e.id,
+      ),
     ).toEqual(["event-3"]);
   });
 
   it("describes active filters in buyer-facing copy", () => {
     expect(
-      eventDiscoveryDescription(3, discoveryWith({ q: "techno", city: "Rabat" })),
-    ).toBe('3 available · NFT tickets · verified access · matching "techno" · in Rabat');
+      eventDiscoveryDescription(
+        3,
+        discoveryWith({ q: "techno", city: "Rabat" }),
+      ),
+    ).toBe(
+      '3 available · digital tickets · verified access · matching "techno" · in Rabat',
+    );
   });
 
   it("detects active filters and resolves price bucket ranges", () => {

@@ -49,43 +49,56 @@ export default async function OrganizationMarketplacePage({
   );
 
   return (
-    <div className="container py-12">
-      <div className="mb-8 flex flex-wrap items-center gap-1 border-b border-hairline pb-3">
-        <Link
-          href={storefrontPath}
-          className="rounded-md px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Events
-        </Link>
-        <Link
-          href={marketplacePath}
-          aria-current="page"
-          className="rounded-md bg-foreground px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
-        >
-          Exchange
-        </Link>
-      </div>
-      <header className="mb-10">
-        <p className="eyebrow-signal">{organization.name}</p>
-        <h1 className="display mt-4 text-4xl text-foreground md:text-6xl">
-          Official<br />
-          <span className="display-italic">exchange.</span>
-        </h1>
-        <p className="mt-4 max-w-xl text-muted-foreground">
-          {branding.tagline ?? "Verified tickets listed by members. Price-capped, no scalping markup."}
-        </p>
-      </header>
-      <ResaleListingList
-        items={listings}
-        listingHref={(item) =>
-          storefrontPathForHost(
-            organization.slug,
-            organizationMarketplaceListingPath(organization.slug, item.listing.id),
-            `/marketplace/${item.listing.id}`,
-            host,
-          )
-        }
-      />
+    <div className="storefront-page pb-20">
+      <section className="border-b border-hairline bg-background">
+        <div className="container py-12 md:py-16">
+          <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <header>
+              <p className="eyebrow-signal">{organization.name}</p>
+              <h1 className="display mt-4 text-5xl text-foreground md:text-7xl">
+                Official
+                <br />
+                <span className="display-italic text-signal">exchange.</span>
+              </h1>
+              <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+                {branding.tagline ??
+                  "Verified tickets listed by members. Price-capped, no scalping markup."}
+              </p>
+            </header>
+            <nav
+              className="storefront-tabbar"
+              aria-label={`${organization.name} storefront sections`}
+            >
+              <Link href={storefrontPath} className="storefront-tabbar-link">
+                Events
+              </Link>
+              <Link
+                href={marketplacePath}
+                aria-current="page"
+                className="storefront-tabbar-active"
+              >
+                Exchange
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </section>
+      <main className="container py-10">
+        <ResaleListingList
+          items={listings}
+          listingHref={(item) =>
+            storefrontPathForHost(
+              organization.slug,
+              organizationMarketplaceListingPath(
+                organization.slug,
+                item.listing.id,
+              ),
+              `/marketplace/${item.listing.id}`,
+              host,
+            )
+          }
+        />
+      </main>
     </div>
   );
 }

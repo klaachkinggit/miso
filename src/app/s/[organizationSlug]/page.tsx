@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { BuyerAssistantWidget } from "@/components/ai/buyer-assistant-widget";
@@ -19,6 +20,7 @@ import {
   DEFAULT_ORGANIZATION_ACCENT,
   normalizeOrganizationBranding,
 } from "@/lib/organizations/branding";
+import { getTheme } from "@/lib/organizations/theme";
 import {
   getActiveOrganizationBySlug,
   organizationEventPath,
@@ -45,12 +47,9 @@ export default async function OrganizationStorefrontPage({
   params: Promise<{ organizationSlug: string }>;
   searchParams?: Promise<RawSearchParams>;
 }) {
-  const [{ organizationSlug }, query, profile, headerStore] = await Promise.all([
-    params,
-    searchParams,
-    getCurrentProfile(),
-    headers(),
-  ]);
+  const [{ organizationSlug }, query, profile, headerStore] = await Promise.all(
+    [params, searchParams, getCurrentProfile(), headers()],
+  );
   redirectIfCannotUseBuyerSurface(profile);
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);
@@ -75,138 +74,176 @@ export default async function OrganizationStorefrontPage({
     organizationId: organization.id,
   });
   const branding = normalizeOrganizationBranding(organization.branding);
+  const theme = getTheme(organization.theme);
   const accent = branding.accent_color ?? DEFAULT_ORGANIZATION_ACCENT;
   const following = profile
     ? await isFollowing({ organizationId: organization.id, userId: profile.id })
     : false;
 
   return (
-    <div className="container py-10 pb-20 md:py-14">
-      <section className="relative mb-10 overflow-hidden rounded-md border border-hairline bg-ink-raised">
-        {branding.hero_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={branding.hero_image_url}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-65"
-          />
-        ) : null}
-        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/85 to-ink/30" />
-        <div className="absolute inset-x-0 bottom-0 h-px" style={{ backgroundColor: accent, opacity: 0.4 }} />
-        <div className="relative flex min-h-72 max-w-3xl flex-col justify-end gap-5 p-8 md:p-12">
-          {branding.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={branding.logo_url}
-              alt={`${organization.name} logo`}
-              className="h-16 w-16 rounded-md border border-hairline object-contain"
-            />
-          ) : null}
-          <div>
-            <p className="eyebrow mb-3 flex items-center gap-2.5" style={{ color: accent }}>
-              <span
-                aria-hidden
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: accent, boxShadow: `0 0 0 4px ${accent}33` }}
-              />
-              Official storefront
-            </p>
-            <h1 className="display text-5xl text-foreground md:text-7xl">
-              {organization.name}<span className="display-italic" style={{ color: accent }}>.</span>
+    <div
+      className="storefront-page pb-20"
+      style={{ "--organization-accent": accent } as CSSProperties}
+    >
+      <section className="storefront-hero">
+        <div className="container storefront-hero-grid">
+          <div className="storefront-hero-copy">
+            <div className="flex flex-wrap items-center gap-3">
+              {branding.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={branding.logo_url}
+                  alt={`${organization.name} logo`}
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 rounded-md border border-hairline bg-background object-contain p-1"
+                />
+              ) : null}
+              <p className="eyebrow-signal flex items-center gap-2.5">
+                <span className="ticker-mark" aria-hidden />
+                Official billetterie
+              </p>
+            </div>
+            <h1 className="display storefront-hero-title">
+              {organization.name}
+              <span className="display-italic text-signal">.</span>
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              {branding.tagline ?? eventDiscoveryDescription(events.length, discovery)}
+            <p className="storefront-hero-deck">
+              {branding.tagline ??
+                eventDiscoveryDescription(events.length, discovery)}
             </p>
-            {profile ? (
-              <div className="mt-6">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link href="#events" className="storefront-primary-link">
+                Browse events
+              </Link>
+              <Link
+                href={marketplacePath}
+                className="storefront-secondary-link"
+              >
+                Official exchange
+              </Link>
+              {profile ? (
                 <FollowOrganizationButton
                   organizationSlug={organization.slug}
                   organizationName={organization.name}
                   following={following}
-                  accent={accent}
                 />
+              ) : null}
+            </div>
+          </div>
+
+          <div
+            className="storefront-hero-media"
+            aria-hidden={!branding.hero_image_url}
+          >
+            {branding.hero_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={branding.hero_image_url}
+                alt=""
+                width={1600}
+                height={1000}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="storefront-hero-placeholder">
+                <span>{theme.label}</span>
+                <strong>{events.length || "Soon"}</strong>
+                <span>published events</span>
               </div>
-            ) : null}
+            )}
           </div>
         </div>
       </section>
 
-      <div className="mb-8 flex flex-wrap items-center gap-1 border-b border-hairline pb-3">
-        <Link
-          href={basePath}
-          aria-current="page"
-          className="rounded-md px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
-          style={{ backgroundColor: accent }}
-        >
-          Events
-        </Link>
-        <Link
-          href={marketplacePath}
-          className="rounded-md px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Exchange
-        </Link>
-      </div>
-
-      <div className="mb-6">
-        <EventsFilterPanel
-          discovery={discovery}
-          hasActive={hasActiveFilters(discovery)}
-          basePath={basePath}
-        />
-      </div>
-
-      <div className="-mx-6 mb-10 flex gap-2 overflow-x-auto px-6 pb-2 [&::-webkit-scrollbar]:hidden">
-        {EVENT_QUICK_FILTERS.map((filter) => {
-          const href = filter.key === "all" ? basePath : `${basePath}?when=${filter.key}`;
-          const active = discovery.when === filter.key;
-          return (
+      <main id="events" className="container py-10 md:py-14">
+        <div className="mb-8 flex flex-col gap-5 border-b border-hairline pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="eyebrow">Program</p>
+            <h2 className="display mt-3 text-4xl text-foreground md:text-5xl">
+              Tickets on sale.
+            </h2>
+          </div>
+          <nav
+            className="storefront-tabbar"
+            aria-label={`${organization.name} storefront sections`}
+          >
             <Link
-              key={filter.key}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={
-                "shrink-0 rounded-full border px-4 py-1.5 font-mono text-[12px] font-medium uppercase tracking-[0.16em] transition-colors " +
-                (active
-                  ? "border-foreground bg-foreground text-ink"
-                  : "border-hairline bg-transparent text-muted-foreground hover:border-hairline-strong hover:text-foreground")
-              }
+              href={basePath}
+              aria-current="page"
+              className="storefront-tabbar-active"
             >
-              {filter.label}
+              Events
             </Link>
-          );
-        })}
-      </div>
-
-      {events.length ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {events.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              href={
-                event.slug
-                  ? storefrontPathForHost(
-                      organization.slug,
-                      organizationEventPath(organization.slug, event.slug),
-                      `/events/${event.slug}`,
-                      host,
-                    )
-                  : `/events/${event.id}`
-              }
-            />
-          ))}
+            <Link href={marketplacePath} className="storefront-tabbar-link">
+              Exchange
+            </Link>
+          </nav>
         </div>
-      ) : (
-        <EmptyState
-          title="No events match your filters"
-          description={
-            hasActiveFilters(discovery)
-              ? "Try clearing some filters or widening your search."
-              : "New ticket drops will be published soon."
-          }
-        />
-      )}
+
+        <div className="storefront-toolbar mb-6">
+          <EventsFilterPanel
+            discovery={discovery}
+            hasActive={hasActiveFilters(discovery)}
+            basePath={basePath}
+          />
+        </div>
+
+        <div className="-mx-6 mb-10 flex gap-2 overflow-x-auto px-6 pb-2 [&::-webkit-scrollbar]:hidden">
+          {EVENT_QUICK_FILTERS.map((filter) => {
+            const href =
+              filter.key === "all"
+                ? basePath
+                : `${basePath}?when=${filter.key}`;
+            const active = discovery.when === filter.key;
+            return (
+              <Link
+                key={filter.key}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={
+                  "shrink-0 rounded-full border px-4 py-2 font-mono text-[12px] font-medium uppercase tracking-[0.16em] transition-colors " +
+                  (active
+                    ? "border-signal bg-signal text-accent-foreground"
+                    : "border-hairline bg-card text-muted-foreground hover:border-hairline-strong hover:text-foreground")
+                }
+              >
+                {filter.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        {events.length ? (
+          <div className="storefront-event-grid">
+            {events.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                href={
+                  event.slug
+                    ? storefrontPathForHost(
+                        organization.slug,
+                        organizationEventPath(organization.slug, event.slug),
+                        `/events/${event.slug}`,
+                        host,
+                      )
+                    : `/events/${event.id}`
+                }
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="No events match your filters"
+            description={
+              hasActiveFilters(discovery)
+                ? "Try clearing some filters or widening your search."
+                : "New ticket drops will be published soon."
+            }
+          />
+        )}
+      </main>
 
       <BuyerAssistantWidget
         organizationId={organization.id}
