@@ -81,5 +81,9 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "ponytail@ponytail": true,
+    "context7@context7-marketplace": true
   }
 }

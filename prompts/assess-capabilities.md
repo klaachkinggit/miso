@@ -14,7 +14,8 @@ A description of the project, or the feature about to be built.
    (e.g. Vercel/Next.js, Docker, Stripe, Supabase, Sentry, AWS, Postgres, Figma).
 2. **Check what the base already covers — do NOT re-add these:**
    - Skills/prompts: grill-me, tdd, diagnose, zoom-out, security-scan, preflight, to-issues
-   - MCP servers: **github, filesystem, git, playwright, codegraph** are already configured
+   - MCP servers: **github, filesystem, git, playwright, codegraph, sequential-thinking** are already configured
+   - Plugins: Ponytail and Context7 are already configured where the tool supports plugins
    - Workflow: Codex subagents are available through tool discovery when explicitly requested
 3. **For genuine gaps, assess all three layers:**
    - **Skill?** Invoke `find-skills` / `npx skills find "<need>"`; check official/vendor sources first.

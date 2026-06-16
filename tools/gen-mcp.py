@@ -43,6 +43,12 @@ SERVERS = [
         "args": ["-y", "@playwright/mcp"],
         "env": None,
     },
+    {
+        "name": "sequential-thinking",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+        "env": None,
+    },
 ]
 
 if os.environ.get("DATABASE_URL"):
