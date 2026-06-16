@@ -33,3 +33,7 @@ The same 85-min stall came from a build agent running `npm install --legacy-peer
 ## 2026-06-16 - Visual QA should include glossary scan
 
 A storefront screenshot exposed buyer-facing "NFT tickets" copy even though implementation tests were green and the domain glossary forbids that term. Next time: when visually auditing public UI, scan rendered copy against `docs/CONTEXT.md` terms-to-avoid before final verification.
+
+## 2026-06-16 - Keep visual QA when the MCP browser is locked
+
+Playwright MCP can fail with a locked browser profile if another session owns the shared cache. Next time: run the repo's Playwright package directly with a fresh headless browser/context and save screenshots, instead of dropping the browser check.
