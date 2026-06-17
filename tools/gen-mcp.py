@@ -13,53 +13,25 @@ Env vars: GITHUB_TOKEN (required for github), DATABASE_URL (optional → adds db
 """
 import json
 import os
+import re
 import sys
 
 # ── Single source of truth ────────────────────────────────────
 # env: name of the environment variable this server needs (or None).
 SERVERS = [
-    {
-        "name": "github",
-        "command": "npx",
-        "args": ["-y", "@modelcontextprotocol/server-github"],
-        "env": "GITHUB_TOKEN",
-        "env_key": "GITHUB_PERSONAL_ACCESS_TOKEN",
-    },
-    {
-        "name": "filesystem",
-        "command": "npx",
-        "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
-        "env": None,
-    },
-    {
-        "name": "git",
-        "command": "npx",
-        "args": ["-y", "@modelcontextprotocol/server-git", "."],
-        "env": None,
-    },
-    {
-        "name": "playwright",
-        "command": "npx",
-        "args": ["-y", "@playwright/mcp"],
-        "env": None,
-    },
-    {
-        "name": "sequential-thinking",
-        "command": "npx",
-        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-        "env": None,
-    },
+    {"name": "github",     "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"], "env": "GITHUB_TOKEN", "env_key": "GITHUB_PERSONAL_ACCESS_TOKEN"},
+    {"name": "filesystem", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "."], "env": None},
+    {"name": "git",        "command": "uvx", "args": ["mcp-server-git", "--repository", "."], "env": None},
+    {"name": "playwright", "command": "npx", "args": ["-y", "@playwright/mcp"], "env": None},
+    {"name": "sequential-thinking", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"], "env": None},
 ]
 
 if os.environ.get("DATABASE_URL"):
-    SERVERS.append(
-        {
-            "name": "db",
-            "command": "npx",
-            "args": ["-y", "@bytebase/dbhub", "--dsn", os.environ["DATABASE_URL"]],
-            "env": None,
-        }
-    )
+    SERVERS.append({
+        "name": "db", "command": "npx",
+        "args": ["-y", "@bytebase/dbhub", "--dsn", os.environ["DATABASE_URL"]],
+        "env": None,
+    })
 
 
 def _json_servers(var_syntax):
@@ -74,7 +46,20 @@ def _json_servers(var_syntax):
 
 
 def emit_claude():
-    cfg = _json_servers(lambda v: "${%s}" % v)  # Claude: ${VAR}
+    cfg = _json_servers(lambda v: "${%s}" % v)               # Claude: ${VAR}
+    path = ".mcp.json"
+    if os.path.exists(path):
+        with open(path) as f:
+            existing = json.load(f)
+        existing.setdefault("mcpServers", {})
+        managed = {s["name"] for s in SERVERS}
+        existing["mcpServers"] = {
+            name: server
+            for name, server in existing["mcpServers"].items()
+            if name not in managed
+        }
+        existing["mcpServers"].update(cfg["mcpServers"])
+        cfg = existing
     _write(".mcp.json", json.dumps(cfg, indent=2))
 
 
@@ -91,22 +76,32 @@ def emit_codex():
         lines.append("")
     os.makedirs(".codex", exist_ok=True)
     body = "\n".join(lines)
-    # Append to .codex/config.toml if present, else create.
     path = ".codex/config.toml"
     existing = ""
     if os.path.exists(path):
         with open(path) as f:
             existing = f.read()
-        if "[mcp_servers." in existing:
-            print(
-                "  %s already has mcp_servers — printing block to merge manually:\n"
-                % path
-            )
-            print(body)
-            return
+        existing = _without_managed_codex_servers(existing)
     with open(path, "w") as f:
-        f.write((existing + "\n" if existing else "") + body)
+        f.write((existing.rstrip() + "\n\n" if existing.strip() else "") + body + "\n")
     print("  wrote %s" % path)
+
+
+def _without_managed_codex_servers(text):
+    managed = {s["name"] for s in SERVERS}
+    kept = []
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        match = re.match(r"\[mcp_servers\.([^\]]+)\]", lines[i])
+        if match and match.group(1) in managed:
+            i += 1
+            while i < len(lines) and not lines[i].startswith("["):
+                i += 1
+            continue
+        kept.append(lines[i])
+        i += 1
+    return "\n".join(kept)
 
 
 def _write(path, content):
@@ -116,8 +111,7 @@ def _write(path, content):
 
 
 EMITTERS = {
-    "claude": emit_claude,
-    "codex": emit_codex,
+    "claude": emit_claude, "codex": emit_codex,
 }
 
 if __name__ == "__main__":
@@ -126,8 +120,5 @@ if __name__ == "__main__":
         print("Usage: gen-mcp.py <%s>" % "|".join(EMITTERS), file=sys.stderr)
         sys.exit(1)
     if not os.environ.get("GITHUB_TOKEN"):
-        print(
-            "  note: GITHUB_TOKEN not set — github MCP will fail until you set it in .env",
-            file=sys.stderr,
-        )
+        print("  note: GITHUB_TOKEN not set — github MCP will fail until you set it in .env", file=sys.stderr)
     EMITTERS[tool]()

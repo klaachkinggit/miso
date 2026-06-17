@@ -1,5 +1,4 @@
 {
-  "_comment": "Codex CLI hooks. Scripts are vendored under .codex/hooks and read tool input JSON on stdin. They exit 2 to block dangerous actions.",
   "hooks": {
     "Stop": [
       {
@@ -17,6 +16,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/project-scope.sh\""
+          },
+          {
+            "type": "command",
             "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/protect-secrets.sh\""
           }
         ]
@@ -24,6 +27,10 @@
       {
         "matcher": "^Bash$|^Shell$",
         "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/project-scope.sh\""
+          },
           {
             "type": "command",
             "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/block-dangerous.sh\""

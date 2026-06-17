@@ -13,16 +13,20 @@
       "Bash(mkdir:*)",
       "Bash(cp:*)",
       "Bash(mv:*)",
+      "Bash(touch:*)",
       "Bash(chmod:*)",
       "Bash(curl:*)",
       "Bash(jq:*)",
       "Bash(cat:*)",
+      "Bash(echo:*)",
       "Bash(sed:*)",
       "Bash(pwd:*)",
       "Bash(which:*)",
       "Bash(env:*)"
     ],
-    "deny": ["Bash(sudo:*)"]
+    "deny": [
+      "Bash(sudo:*)"
+    ]
   },
   "hooks": {
     "Stop": [
@@ -41,6 +45,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/project-scope.sh\""
+          },
+          {
+            "type": "command",
             "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/protect-secrets.sh\""
           }
         ]
@@ -48,6 +56,10 @@
       {
         "matcher": "Bash",
         "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/project-scope.sh\""
+          },
           {
             "type": "command",
             "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/block-dangerous.sh\""
