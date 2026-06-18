@@ -58,7 +58,7 @@ const TERMINAL_FULFILLMENT_PATTERNS = [
   /Listing disappeared/i,
   /Cannot buy your own listing/i,
   /Ticket has no on-chain identity/i,
-  /Seller smart account missing/i,
+  /Seller on-chain owner address missing/i,
   /Ticket no longer listable/i,
   /Ticket not in a transferable state/i,
   /Ticket cannot be transferred/i,
@@ -386,7 +386,10 @@ async function sendSettlementEmails(
     if (payment.kind === "primary") {
       const items = await loadPrimaryItemPurchases(sb, payment);
       const firstTicketId = items[0]?.ticket_id;
-      const { eventName, category } = await loadTicketDisplay(sb, firstTicketId);
+      const { eventName, category } = await loadTicketDisplay(
+        sb,
+        firstTicketId,
+      );
       await sendPurchaseReceipt({
         buyerUserId: payment.buyer_user_id,
         eventName,

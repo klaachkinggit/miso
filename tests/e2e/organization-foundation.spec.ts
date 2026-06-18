@@ -16,7 +16,10 @@ function serviceSb(): SupabaseClient {
   );
 }
 
-async function authedSb(email: string, password: string): Promise<SupabaseClient> {
+async function authedSb(
+  email: string,
+  password: string,
+): Promise<SupabaseClient> {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!anonKey) test.skip(true, "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
@@ -34,7 +37,8 @@ async function getMisoOrganizationId(client: SupabaseClient): Promise<string> {
     .select("id")
     .eq("slug", "miso")
     .single<{ id: string }>();
-  if (error || !data) throw new Error(`Missing Miso organization: ${error?.message}`);
+  if (error || !data)
+    throw new Error(`Missing Miso organization: ${error?.message}`);
   return data.id;
 }
 
@@ -51,7 +55,9 @@ test.describe("Organization foundation", () => {
       .eq("organization_id", organizationId)
       .returns<Array<{ role: string; profiles: { email: string } }>>();
 
-    const rolesByEmail = new Map((memberships ?? []).map((row) => [row.profiles.email, row.role]));
+    const rolesByEmail = new Map(
+      (memberships ?? []).map((row) => [row.profiles.email, row.role]),
+    );
     expect(rolesByEmail.get("organizer@miso.local")).toBe("admin");
     expect(rolesByEmail.get("admin@miso.local")).toBe("admin");
     expect(rolesByEmail.get("controller@miso.local")).toBe("controller");
@@ -59,8 +65,18 @@ test.describe("Organization foundation", () => {
     const { data: events } = await client
       .from("events")
       .select("name, organization_id, slug")
-      .in("name", ["Midnight Frequency", "Berlin Boiler Set", "London Skyline Sessions"])
-      .returns<Array<{ name: string; organization_id: string | null; slug: string | null }>>();
+      .in("name", [
+        "Midnight Frequency",
+        "Berlin Boiler Set",
+        "London Skyline Sessions",
+      ])
+      .returns<
+        Array<{
+          name: string;
+          organization_id: string | null;
+          slug: string | null;
+        }>
+      >();
 
     expect(events?.length ?? 0).toBeGreaterThan(0);
     for (const event of events ?? []) {
@@ -69,26 +85,23 @@ test.describe("Organization foundation", () => {
     }
   });
 
-  test("legacy event insert still works until app code is fully organization-aware", async () => {
+  test("event inserts require organization scope", async () => {
     const client = serviceSb();
-    const { data: event, error } = await client
+    const { error } = await client
       .from("events")
       .insert({
-        name: `Legacy Compatibility ${Date.now()}`,
+        name: `Missing Organization ${Date.now()}`,
         date: new Date(Date.now() + 86_400_000).toISOString(),
         venue_name: "Test",
         city: "Test",
         capacity: 1,
         status: "draft",
       })
-      .select("id, organization_id, slug")
-      .single<{ id: string; organization_id: string | null; slug: string | null }>();
+      .select("id")
+      .single();
 
-    expect(error).toBeFalsy();
-    expect(event?.organization_id).toBeNull();
-    expect(event?.slug).toBeNull();
-
-    await client.from("events").delete().eq("id", event!.id);
+    expect(error, "events.organization_id is required").toBeTruthy();
+    expect(error?.code).toBe("23502");
   });
 
   test("organization slug uniqueness is enforced", async () => {
@@ -97,7 +110,10 @@ test.describe("Organization foundation", () => {
       .from("organizations")
       .insert({ name: "Duplicate Miso", slug: "miso" });
 
-    expect(duplicate.error, "duplicate organization slug must violate unique constraint").toBeTruthy();
+    expect(
+      duplicate.error,
+      "duplicate organization slug must violate unique constraint",
+    ).toBeTruthy();
     expect(duplicate.error?.code).toMatch(/23505/);
   });
 
@@ -123,7 +139,10 @@ test.describe("Organization foundation", () => {
     expect(organizerRead.error).toBeFalsy();
     expect(organizerRead.data?.id).toBe(organizationId);
 
-    const controller = await authedSb("controller@miso.local", "misocontroller");
+    const controller = await authedSb(
+      "controller@miso.local",
+      "misocontroller",
+    );
     const controllerUpdate = await controller
       .from("organizations")
       .update({ branding: { blocked: true } })
@@ -143,16 +162,14 @@ test.describe("Organization foundation", () => {
       .single<{ id: string }>();
     expect(buyerProfile).toBeTruthy();
 
-    await service
-      .from("organization_memberships")
-      .upsert(
-        {
-          organization_id: organizationId,
-          user_id: buyerProfile!.id,
-          role: "controller",
-        },
-        { onConflict: "organization_id,user_id" },
-      );
+    await service.from("organization_memberships").upsert(
+      {
+        organization_id: organizationId,
+        user_id: buyerProfile!.id,
+        role: "controller",
+      },
+      { onConflict: "organization_id,user_id" },
+    );
 
     const buyer = await authedSb("buyer@miso.local", "misobuyer");
     const controllerUpdate = await buyer
@@ -218,8 +235,19 @@ test.describe("Organization foundation", () => {
     const { data: tickets } = await client
       .from("tickets")
       .insert([
-        { event_id: event!.id, category_id: category!.id, serial_number: 1, status: "reserved" },
-        { event_id: event!.id, category_id: category!.id, serial_number: 2, status: "sold", owner_user_id: seller!.id },
+        {
+          event_id: event!.id,
+          category_id: category!.id,
+          serial_number: 1,
+          status: "reserved",
+        },
+        {
+          event_id: event!.id,
+          category_id: category!.id,
+          serial_number: 2,
+          status: "sold",
+          owner_user_id: seller!.id,
+        },
       ])
       .select("id")
       .returns<Array<{ id: string }>>();

@@ -15,8 +15,9 @@ on Base Sepolia (Thirdweb); payments run on Stripe Connect.
 - Resend (transactional email), Upstash Redis (rate limiting), Sentry (monitoring)
 - Vitest (unit) + Playwright (e2e)
 
-See `docs/CONTEXT.md` for the domain glossary (authoritative) and `docs/adr/` for
-key decisions.
+See `docs/FEATURES.md` for the code-derived feature inventory,
+`docs/CONTEXT.md` for the domain glossary (authoritative), `docs/adr/` for key
+decisions, and `docs/ENVIRONMENT.md` for the current key/secret inventory.
 
 ## Agent harness
 
@@ -103,8 +104,12 @@ npm run lint
 npm run build
 npm run test:unit        # vitest
 npm run test:e2e         # playwright (run `npm run test:e2e:install` once)
-# or everything: npm run test:all
+# standard local suite: npm run test:all
 ```
+
+`npm run test:all` runs typecheck, lint, unit tests, and default e2e. Release
+validation also includes `npm run build`, `npm run test:e2e:all-local`, and the
+live-chain smoke when credentials are available; see `tests/README.md`.
 
 ## Deploy
 

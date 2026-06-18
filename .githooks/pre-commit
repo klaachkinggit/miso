@@ -11,6 +11,7 @@ STAGED=$(git diff --cached --name-only --diff-filter=ACM)
 while IFS= read -r f; do
   [ -z "$f" ] && continue
   case "$f" in
+    .env.example) continue ;;
     *.env|*.env.*|*.pem|*.key|*.p12|*.pfx|*id_rsa*|*id_ed25519*|*credentials.json|*.netrc)
       echo "pre-commit BLOCKED: refusing to commit sensitive file: $f" >&2
       echo "  Remove it from staging, or override with: git commit --no-verify" >&2

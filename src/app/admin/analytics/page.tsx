@@ -27,9 +27,9 @@ import { RevenueChart } from "./_components/revenue-chart";
 import { parseAnalyticsSearchParams } from "@/lib/analytics/search-params";
 
 const SALES_CHANNELS: Array<{ id: string; label: string }> = [
-  { id: "primary", label: "Primary" },
+  { id: "mini_site", label: "Primary mini-site" },
   { id: "marketplace", label: "Marketplace" },
-  { id: "qr", label: "QR / mini-site" },
+  { id: "qr", label: "QR" },
   { id: "widget", label: "Embed widget" },
   { id: "ticket_office", label: "Ticket office" },
   { id: "invitation", label: "Invitation" },
@@ -46,13 +46,19 @@ export default async function OrganizationAnalyticsPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [raw, profile] = await Promise.all([
-    searchParams ?? Promise.resolve({} as Record<string, string | string[] | undefined>),
+    searchParams ??
+      Promise.resolve({} as Record<string, string | string[] | undefined>),
     requireOrganizerWorkspace(),
   ]);
-  let organizations: Awaited<ReturnType<typeof requireActiveAdminOrganization>>["organizations"];
-  let activeOrganization: Awaited<ReturnType<typeof requireActiveAdminOrganization>>["activeOrganization"];
+  let organizations: Awaited<
+    ReturnType<typeof requireActiveAdminOrganization>
+  >["organizations"];
+  let activeOrganization: Awaited<
+    ReturnType<typeof requireActiveAdminOrganization>
+  >["activeOrganization"];
   try {
-    ({ organizations, activeOrganization } = await requireActiveAdminOrganization(profile));
+    ({ organizations, activeOrganization } =
+      await requireActiveAdminOrganization(profile));
   } catch (error) {
     if (error instanceof ActiveAdminOrganizationRequired) redirect("/admin");
     throw error;
@@ -99,11 +105,13 @@ export default async function OrganizationAnalyticsPage({
       <div className="mb-8 space-y-4">
         <RangePicker current={parsed.range.preset} compare={parsed.compare} />
         <p className="text-xs text-muted-foreground">
-          {formatDateShort(parsed.range.from.toISOString())} → {formatDateShort(parsed.range.to.toISOString())}
+          {formatDateShort(parsed.range.from.toISOString())} →{" "}
+          {formatDateShort(parsed.range.to.toISOString())}
           {parsed.prior ? (
             <>
               {" "}
-              vs {formatDateShort(parsed.prior.from.toISOString())} → {formatDateShort(parsed.prior.to.toISOString())}
+              vs {formatDateShort(parsed.prior.from.toISOString())} →{" "}
+              {formatDateShort(parsed.prior.to.toISOString())}
             </>
           ) : null}
         </p>
@@ -113,7 +121,10 @@ export default async function OrganizationAnalyticsPage({
         <KpiTile
           icon={CircleDollarSign}
           label="Gross revenue"
-          value={formatPrice(analytics.totals.gross_revenue, analytics.totals.currency)}
+          value={formatPrice(
+            analytics.totals.gross_revenue,
+            analytics.totals.currency,
+          )}
           hint={`${analytics.totals.tickets_sold} tickets paid`}
           current={analytics.totals.gross_revenue}
           prior={analytics.priorTotals?.gross_revenue ?? null}
@@ -150,18 +161,25 @@ export default async function OrganizationAnalyticsPage({
           <div className="mb-4 flex items-baseline justify-between">
             <div>
               <p className="eyebrow">Revenue over time</p>
-              <h2 className="display mt-1.5 text-xl text-foreground">Sales velocity.</h2>
+              <h2 className="display mt-1.5 text-xl text-foreground">
+                Sales velocity.
+              </h2>
             </div>
             <span className="text-xs text-muted-foreground">
               {analytics.timeseries.length} buckets
             </span>
           </div>
-          <RevenueChart series={analytics.timeseries} currency={analytics.totals.currency} />
+          <RevenueChart
+            series={analytics.timeseries}
+            currency={analytics.totals.currency}
+          />
         </section>
         <section className="rounded-md border border-hairline bg-ink-raised p-6">
           <div className="mb-4">
             <p className="eyebrow">Channel mix</p>
-            <h2 className="display mt-1.5 text-xl text-foreground">Where it sold.</h2>
+            <h2 className="display mt-1.5 text-xl text-foreground">
+              Where it sold.
+            </h2>
           </div>
           <ChannelBars
             channels={analytics.salesChannelBreakdown}
@@ -175,7 +193,9 @@ export default async function OrganizationAnalyticsPage({
           <section className="rounded-md border border-hairline bg-ink-raised p-6">
             <div className="mb-4">
               <p className="eyebrow">Top categories</p>
-              <h2 className="display mt-1.5 text-xl text-foreground">By revenue.</h2>
+              <h2 className="display mt-1.5 text-xl text-foreground">
+                By revenue.
+              </h2>
             </div>
             <CategoryTable rows={analytics.categoryBreakdown} />
           </section>
@@ -185,10 +205,15 @@ export default async function OrganizationAnalyticsPage({
       <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_3fr]">
         <aside className="rounded-md border border-hairline bg-ink-raised p-6">
           <p className="eyebrow">Filters</p>
-          <h2 className="display mt-1.5 text-xl text-foreground">Narrow down.</h2>
+          <h2 className="display mt-1.5 text-xl text-foreground">
+            Narrow down.
+          </h2>
           <div className="mt-4">
             <FilterChips
-              events={(allEventsForFilter ?? []).map((e) => ({ id: e.id, label: e.name }))}
+              events={(allEventsForFilter ?? []).map((e) => ({
+                id: e.id,
+                label: e.name,
+              }))}
               channels={SALES_CHANNELS}
               selectedEvents={parsed.filters.eventIds ?? []}
               selectedChannels={parsed.filters.salesChannels ?? []}
@@ -199,7 +224,9 @@ export default async function OrganizationAnalyticsPage({
           <div className="mb-4 flex items-baseline justify-between">
             <div>
               <p className="eyebrow">Per-event performance</p>
-              <h2 className="display mt-1.5 text-xl text-foreground">Live ledger.</h2>
+              <h2 className="display mt-1.5 text-xl text-foreground">
+                Live ledger.
+              </h2>
             </div>
             <div className="flex items-center gap-3">
               <a
@@ -220,7 +247,8 @@ export default async function OrganizationAnalyticsPage({
 
       {organizations.length > 1 ? (
         <p className="mt-12 inline-flex items-center gap-2 text-xs text-muted-foreground">
-          <BarChart3 className="h-3 w-3" /> Switch the active organization in the top nav to view another scope.
+          <BarChart3 className="h-3 w-3" /> Switch the active organization in
+          the top nav to view another scope.
         </p>
       ) : null}
     </div>

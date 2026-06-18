@@ -8,19 +8,19 @@ Stripe Connect marketplace rails.
 
 ## Chain Model
 
-| Term                | Definition                                                                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Chain               | Base Sepolia (`84532`) for the current deployment. Base mainnet (`8453`) is a future env change.                                                  |
-| MisoTicket contract | Custom ERC-721 deployed per Event. Source lives in `contracts/MisoTicket.sol`.                                                                    |
-| Contract address    | Event-specific MisoTicket address stored in `events.nft_contract_address`.                                                                        |
-| Token id            | ERC-721 token id for one Ticket. It matches the Ticket serial number within its Event contract and is stored in `tickets.nft_token_id`.           |
-| Smart account       | Thirdweb In-App Wallet smart account generated from a holder email. NFTs are owned by this address and stored in `wallets.smart_account_address`. |
-| Backend wallet      | Thirdweb Server Wallet that signs deploy, mint, metadata, and admin-transfer transactions.                                                        |
-| Mint                | Backend call to `mintTo(smartAccount, tokenId, metadataUri)` during ticket fulfillment.                                                           |
-| Admin transfer      | Backend call to `adminTransfer(seller, buyer, tokenId)` during resale after off-chain seller authorization.                                       |
-| Redeemed attribute  | On-chain `Redeemed=true` attribute written after successful gate redemption.                                                                      |
-| Metadata IPFS URI   | Ticket metadata JSON pinned through Thirdweb Storage and stored in `tickets.metadata_uri`.                                                        |
-| Tx hash             | Base Sepolia transaction hash stored on the Ticket row after mint, redemption, or transfer.                                                       |
+| Term                | Definition                                                                                                                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chain               | Base Sepolia (`84532`) for the current deployment. Base mainnet (`8453`) is a future env change.                                                                                                               |
+| MisoTicket contract | Custom ERC-721 deployed per Event. Source lives in `contracts/MisoTicket.sol`.                                                                                                                                 |
+| Contract address    | Event-specific MisoTicket address stored in `events.nft_contract_address`.                                                                                                                                     |
+| Token id            | ERC-721 token id for one Ticket. It matches the Ticket serial number within its Event contract and is stored in `tickets.nft_token_id`.                                                                        |
+| User EOA wallet     | Thirdweb In-App Wallet EOA generated from a holder email. NFTs are owned by this address and stored in `wallets.evm_address`; `wallets.smart_account_address` mirrors it until account abstraction is enabled. |
+| Backend wallet      | Thirdweb Server Wallet/smart wallet that signs deploy, mint, metadata, and admin-transfer transactions. Admin roles must match the backend smart wallet used as `from`.                                        |
+| Mint                | Backend call to `mintTo(userEoaWallet, tokenId, metadataUri)` during ticket fulfillment.                                                                                                                       |
+| Admin transfer      | Backend call to `adminTransfer(seller, buyer, tokenId)` during resale after off-chain seller authorization.                                                                                                    |
+| Redeemed attribute  | On-chain `Redeemed=true` attribute written after successful gate redemption.                                                                                                                                   |
+| Metadata IPFS URI   | Ticket metadata JSON pinned through Thirdweb Storage and stored in `tickets.metadata_uri`.                                                                                                                     |
+| Tx hash             | Base Sepolia transaction hash stored on the Ticket row after mint, redemption, or transfer.                                                                                                                    |
 
 ## App Model
 
@@ -117,7 +117,7 @@ fees; the seller still receives the listing price.
 - Paid checkout is blocked until the Organization has completed Stripe onboarding and can accept charges.
 - Checkout retries must be idempotent and must not duplicate mints, transfers, PaymentIntents, marketplace payments, or free claims.
 - Backend wallet authority is issuer-controlled: compromise of that wallet means compromise of all event contracts it administers.
-- User smart accounts hold NFTs, but users do not sign on-chain transactions in the current product model.
+- User EOA wallets hold NFTs, but users do not sign on-chain transactions in the current product model.
 - Stripe refunds are issued via the API when fulfillment fails after a confirmed payment.
 
 ## Terms To Avoid

@@ -14,7 +14,11 @@ import {
 
 const REF_NOW = new Date("2026-06-11T12:00:00.000Z");
 
-function range(preset: AnalyticsRange["preset"], from: string, to: string): AnalyticsRange {
+function range(
+  preset: AnalyticsRange["preset"],
+  from: string,
+  to: string,
+): AnalyticsRange {
   return { preset, from: new Date(from), to: new Date(to) };
 }
 
@@ -51,15 +55,57 @@ function makeRows(): {
   ];
   const purchases: AnalyticsPurchaseRow[] = [
     // in-range, paid
-    { event_id: "e1", amount: 50, currency: "EUR", status: "paid", sales_channel: "primary", created_at: "2026-06-05T10:00:00Z" },
-    { event_id: "e1", amount: 80, currency: "EUR", status: "paid", sales_channel: "primary", created_at: "2026-06-06T10:00:00Z" },
-    { event_id: "e2", amount: 60, currency: "EUR", status: "paid", sales_channel: "marketplace", created_at: "2026-06-07T10:00:00Z" },
+    {
+      event_id: "e1",
+      amount: 50,
+      currency: "EUR",
+      status: "paid",
+      sales_channel: "mini_site",
+      created_at: "2026-06-05T10:00:00Z",
+    },
+    {
+      event_id: "e1",
+      amount: 80,
+      currency: "EUR",
+      status: "paid",
+      sales_channel: "mini_site",
+      created_at: "2026-06-06T10:00:00Z",
+    },
+    {
+      event_id: "e2",
+      amount: 60,
+      currency: "EUR",
+      status: "paid",
+      sales_channel: "marketplace",
+      created_at: "2026-06-07T10:00:00Z",
+    },
     // in-range, refunded
-    { event_id: "e1", amount: 50, currency: "EUR", status: "refunded", sales_channel: "primary", created_at: "2026-06-07T10:00:00Z" },
+    {
+      event_id: "e1",
+      amount: 50,
+      currency: "EUR",
+      status: "refunded",
+      sales_channel: "mini_site",
+      created_at: "2026-06-07T10:00:00Z",
+    },
     // before range — prior period
-    { event_id: "e1", amount: 40, currency: "EUR", status: "paid", sales_channel: "primary", created_at: "2026-05-30T10:00:00Z" },
+    {
+      event_id: "e1",
+      amount: 40,
+      currency: "EUR",
+      status: "paid",
+      sales_channel: "mini_site",
+      created_at: "2026-05-30T10:00:00Z",
+    },
     // after range
-    { event_id: "e1", amount: 99, currency: "EUR", status: "paid", sales_channel: "primary", created_at: "2026-06-20T10:00:00Z" },
+    {
+      event_id: "e1",
+      amount: 99,
+      currency: "EUR",
+      status: "paid",
+      sales_channel: "mini_site",
+      created_at: "2026-06-20T10:00:00Z",
+    },
   ];
   const tickets: AnalyticsTicketRow[] = [
     { event_id: "e1", status: "used" },
@@ -83,12 +129,18 @@ describe("aggregateOrganizationAnalytics", () => {
     expect(result.totals.refund_rate).toBe(0);
     expect(result.events).toEqual([]);
     expect(result.timeseries.length).toBeGreaterThan(0);
-    expect(result.timeseries.every((b) => b.revenue === 0 && b.tickets === 0)).toBe(true);
+    expect(
+      result.timeseries.every((b) => b.revenue === 0 && b.tickets === 0),
+    ).toBe(true);
   });
 
   it("sums only paid purchases inside the range for gross revenue", () => {
     const rows = makeRows();
-    const result = aggregateOrganizationAnalytics(rows, { range: r, prior: null, filters: {} });
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: null,
+      filters: {},
+    });
     // paid in range: 50 + 80 + 60 = 190
     expect(result.totals.gross_revenue).toBe(190);
     expect(result.totals.tickets_sold).toBe(3);
@@ -97,33 +149,58 @@ describe("aggregateOrganizationAnalytics", () => {
 
   it("computes refund rate from in-range paid + refunded", () => {
     const rows = makeRows();
-    const result = aggregateOrganizationAnalytics(rows, { range: r, prior: null, filters: {} });
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: null,
+      filters: {},
+    });
     // 3 paid + 1 refunded → 1/4 = 0.25
     expect(result.totals.refund_rate).toBeCloseTo(0.25, 5);
   });
 
   it("computes sellout rate from category supply, range-independent", () => {
     const rows = makeRows();
-    const result = aggregateOrganizationAnalytics(rows, { range: r, prior: null, filters: {} });
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: null,
+      filters: {},
+    });
     // sold: 90+20+30 = 140; supply: 150+50+100 = 300 → 140/300
     expect(result.totals.sellout_rate).toBeCloseTo(140 / 300, 5);
   });
 
   it("buckets time series by day for 7-day range", () => {
     const rows = makeRows();
-    const result = aggregateOrganizationAnalytics(rows, { range: r, prior: null, filters: {} });
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: null,
+      filters: {},
+    });
     expect(result.timeseries).toHaveLength(7);
-    const totalRevenue = result.timeseries.reduce((acc, b) => acc + b.revenue, 0);
+    const totalRevenue = result.timeseries.reduce(
+      (acc, b) => acc + b.revenue,
+      0,
+    );
     expect(totalRevenue).toBe(190);
-    const day5 = result.timeseries.find((b) => b.bucket.startsWith("2026-06-05"));
+    const day5 = result.timeseries.find((b) =>
+      b.bucket.startsWith("2026-06-05"),
+    );
     expect(day5?.revenue).toBe(50);
   });
 
   it("groups paid purchases by sales channel and computes share", () => {
     const rows = makeRows();
-    const result = aggregateOrganizationAnalytics(rows, { range: r, prior: null, filters: {} });
-    const primary = result.salesChannelBreakdown.find((c) => c.channel === "primary");
-    const marketplace = result.salesChannelBreakdown.find((c) => c.channel === "marketplace");
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: null,
+      filters: {},
+    });
+    const primary = result.salesChannelBreakdown.find(
+      (c) => c.channel === "mini_site",
+    );
+    const marketplace = result.salesChannelBreakdown.find(
+      (c) => c.channel === "marketplace",
+    );
     expect(primary?.revenue).toBe(130);
     expect(primary?.tickets).toBe(2);
     expect(primary?.share).toBeCloseTo(130 / 190, 5);
@@ -133,8 +210,16 @@ describe("aggregateOrganizationAnalytics", () => {
 
   it("computes prior-period totals separately when prior range supplied", () => {
     const rows = makeRows();
-    const priorRange = range("7d", "2026-05-28T00:00:00Z", "2026-06-04T00:00:00Z");
-    const result = aggregateOrganizationAnalytics(rows, { range: r, prior: priorRange, filters: {} });
+    const priorRange = range(
+      "7d",
+      "2026-05-28T00:00:00Z",
+      "2026-06-04T00:00:00Z",
+    );
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: priorRange,
+      filters: {},
+    });
     // prior paid: 40
     expect(result.priorTotals?.gross_revenue).toBe(40);
     expect(result.priorTotals?.tickets_sold).toBe(1);
@@ -142,7 +227,11 @@ describe("aggregateOrganizationAnalytics", () => {
 
   it("returns null priorTotals when prior range omitted", () => {
     const rows = makeRows();
-    const result = aggregateOrganizationAnalytics(rows, { range: r, prior: null, filters: {} });
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: null,
+      filters: {},
+    });
     expect(result.priorTotals).toBeNull();
   });
 
@@ -174,7 +263,11 @@ describe("aggregateOrganizationAnalytics", () => {
 
   it("populates per-event stats with sellout + attendance", () => {
     const rows = makeRows();
-    const result = aggregateOrganizationAnalytics(rows, { range: r, prior: null, filters: {} });
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: null,
+      filters: {},
+    });
     const e1 = result.events.find((e) => e.event_id === "e1");
     expect(e1).toBeDefined();
     expect(e1?.tickets_sold).toBe(110); // 90+20
@@ -213,7 +306,11 @@ describe("computePriorRange", () => {
   });
 
   it("returns null for an all-time range (no prior window defined)", () => {
-    const current = range("all", "2000-01-01T00:00:00Z", "2026-06-11T00:00:00Z");
+    const current = range(
+      "all",
+      "2000-01-01T00:00:00Z",
+      "2026-06-11T00:00:00Z",
+    );
     expect(computePriorRange(current)).toBeNull();
   });
 });
@@ -221,9 +318,33 @@ describe("computePriorRange", () => {
 describe("aggregateCategoryBreakdown", () => {
   function makeCategories(): AnalyticsCategoryRow[] {
     return [
-      { id: "c1", event_id: "e1", name: "VIP", supply: 50, sold_count: 30, currency: "EUR", price: 100 },
-      { id: "c2", event_id: "e1", name: "General", supply: 150, sold_count: 80, currency: "EUR", price: 20 },
-      { id: "c3", event_id: "e2", name: "Early Bird", supply: 100, sold_count: 40, currency: "EUR", price: 15 },
+      {
+        id: "c1",
+        event_id: "e1",
+        name: "VIP",
+        supply: 50,
+        sold_count: 30,
+        currency: "EUR",
+        price: 100,
+      },
+      {
+        id: "c2",
+        event_id: "e1",
+        name: "General",
+        supply: 150,
+        sold_count: 80,
+        currency: "EUR",
+        price: 20,
+      },
+      {
+        id: "c3",
+        event_id: "e2",
+        name: "Early Bird",
+        supply: 100,
+        sold_count: 40,
+        currency: "EUR",
+        price: 15,
+      },
     ];
   }
 
@@ -257,8 +378,23 @@ describe("aggregateCategoryBreakdown", () => {
 
   it("excludes categories without an id", () => {
     const cats: AnalyticsCategoryRow[] = [
-      { event_id: "e1", name: "No ID", supply: 100, sold_count: 50, currency: "EUR", price: 10 },
-      { id: "c1", event_id: "e1", name: "Has ID", supply: 50, sold_count: 10, currency: "EUR", price: 20 },
+      {
+        event_id: "e1",
+        name: "No ID",
+        supply: 100,
+        sold_count: 50,
+        currency: "EUR",
+        price: 10,
+      },
+      {
+        id: "c1",
+        event_id: "e1",
+        name: "Has ID",
+        supply: 50,
+        sold_count: 10,
+        currency: "EUR",
+        price: 20,
+      },
     ];
     const result = aggregateCategoryBreakdown(cats, "EUR");
     expect(result).toHaveLength(1);
@@ -267,7 +403,14 @@ describe("aggregateCategoryBreakdown", () => {
 
   it("treats missing price as zero revenue", () => {
     const cats: AnalyticsCategoryRow[] = [
-      { id: "c1", event_id: "e1", name: "Free", supply: 50, sold_count: 20, currency: "EUR" },
+      {
+        id: "c1",
+        event_id: "e1",
+        name: "Free",
+        supply: 50,
+        sold_count: 20,
+        currency: "EUR",
+      },
     ];
     const result = aggregateCategoryBreakdown(cats, "EUR");
     expect(result[0].revenue).toBe(0);

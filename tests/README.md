@@ -38,7 +38,8 @@ to verify UI/database behavior without broadcasting Thirdweb txs.
 
 ```
 supabase start
-supabase migration up
+supabase db reset
+npm run supabase:types
 npm run demo:seed
 npm run test:e2e:all-local
 ```
@@ -56,9 +57,8 @@ wallet and live API credentials.
 
 ```
 LIVE_CHAIN=true \
-THIRDWEB_CLIENT_ID=... \
 THIRDWEB_SECRET_KEY=... \
-THIRDWEB_BACKEND_WALLET_ADDRESS=0x1860Ef4CdB6EFf2E06C9D3cC4b6530eb2822bAC5 \
+THIRDWEB_BACKEND_SMART_WALLET_ADDRESS=0x... \
 CHAIN_ID=84532 \
 npx playwright test tests/e2e/live-chain.spec.ts
 ```

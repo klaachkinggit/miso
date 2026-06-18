@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  serializeAnalyticsCsv,
-  escapeCsvField,
-} from "@/lib/analytics/csv";
+import { serializeAnalyticsCsv, escapeCsvField } from "@/lib/analytics/csv";
 import type { OrganizationAnalytics } from "@/lib/analytics/organization";
 
 function makeAnalytics(): OrganizationAnalytics {
   return {
-    range: { preset: "7d", from: new Date("2026-06-04T00:00:00Z"), to: new Date("2026-06-11T00:00:00Z") },
-    prior: { preset: "7d", from: new Date("2026-05-28T00:00:00Z"), to: new Date("2026-06-04T00:00:00Z") },
+    range: {
+      preset: "7d",
+      from: new Date("2026-06-04T00:00:00Z"),
+      to: new Date("2026-06-11T00:00:00Z"),
+    },
+    prior: {
+      preset: "7d",
+      from: new Date("2026-05-28T00:00:00Z"),
+      to: new Date("2026-06-04T00:00:00Z"),
+    },
     totals: {
       gross_revenue: 190,
       tickets_sold: 3,
@@ -31,7 +36,7 @@ function makeAnalytics(): OrganizationAnalytics {
       { bucket: "2026-06-07", revenue: 60, tickets: 1 },
     ],
     salesChannelBreakdown: [
-      { channel: "primary", revenue: 130, tickets: 2, share: 0.684 },
+      { channel: "mini_site", revenue: 130, tickets: 2, share: 0.684 },
       { channel: "marketplace", revenue: 60, tickets: 1, share: 0.316 },
     ],
     events: [
@@ -52,7 +57,13 @@ function makeAnalytics(): OrganizationAnalytics {
       },
     ],
     categoryBreakdown: [
-      { category_id: "c1", name: "General Admission", tickets_sold: 110, revenue: 130, currency: "EUR" },
+      {
+        category_id: "c1",
+        name: "General Admission",
+        tickets_sold: 110,
+        revenue: 130,
+        currency: "EUR",
+      },
     ],
   };
 }
@@ -124,7 +135,8 @@ describe("serializeAnalyticsCsv", () => {
 
   it("renders the time series block with bucket, revenue, tickets columns", () => {
     const csv = serializeAnalyticsCsv(makeAnalytics());
-    const block = csv.split("\n\n").find((b) => b.startsWith("# Time series")) ?? "";
+    const block =
+      csv.split("\n\n").find((b) => b.startsWith("# Time series")) ?? "";
     const lines = block.split("\n");
     expect(lines[1]).toBe("bucket,revenue,tickets");
     expect(lines).toContain("2026-06-05,50,1");
