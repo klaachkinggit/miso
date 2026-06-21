@@ -5,10 +5,19 @@ import { Footer } from "@/components/site/footer";
 import { BottomNav } from "@/components/site/bottom-nav";
 import { SmoothScroll } from "@/components/site/smooth-scroll";
 import { Toaster } from "@/components/ui/toaster";
+import { getConfiguredAppUrl } from "@/lib/url";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
@@ -16,11 +25,7 @@ const fraunces = Fraunces({
   axes: ["opsz", "SOFT"],
 });
 
-const siteUrl =
-  (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3002").replace(
-    /\/+$/,
-    "",
-  );
+const siteUrl = getConfiguredAppUrl();
 
 const description =
   "MISO Tickets helps fans discover concerts, festivals, nightlife, and cultural events with verified digital tickets, secure checkout, QR door access, and official anti-scalping resale.";
@@ -83,7 +88,11 @@ export const viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"

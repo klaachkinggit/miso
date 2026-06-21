@@ -24,6 +24,7 @@
 
 - Stay inside the project root for file and shell access. Internet access is allowed, but do not read, list, write, or operate on machine files outside the current repo/project unless the user explicitly names that external path.
 - Before any non-trivial feature, assess whether a skill, MCP server, or plugin would help (`prompts/assess-capabilities.md` / `find-skills`); vet before adding anything, and do not vendor tools that the base environment already provides.
+- Use `sequential-thinking` for complex planning/debugging, multi-step refactors, ambiguous failures, or architecture choices. Use `context7` before relying on memory for version-sensitive library, framework, SDK, or API behavior.
 - Front-end / UI work → use the compact design skills in the provider-local mirror (`.codex/skills/` for Codex, `.claude/skills/` for Claude): `frontend-design` (bold, anti-generic UI), `ui-ux-pro-max` (UX/a11y/layout checklist), `impeccable` (anti-slop self-audit), `web-design-guidelines` (a11y / Web Interface Guidelines review), `awesome-design-md` (drop-in design systems). Commit to one aesthetic direction; audit before shipping.
 - Use `prompts/grill-me.md` before any large implementation — uncover all decision branches first.
 - Multi-file behavior change → run `prompts/sparc.md` (Spec → Pseudocode → Architecture → Refinement → Completion). Skip for typo/single-line/bump.
@@ -52,8 +53,8 @@
 
 ## Token economy
 
-- **Navigate with the code graph, not blind sweeps.** Use the CodeGraph MCP (`codegraph_search`, `codegraph_explore`, `codegraph_node`) to find symbols, callers, and blast radius before reading files — it replaces multi-call grep/read fans (~−47% tokens, −58% tool calls; 100% local). Build/refresh per repo with `codegraph init`; it auto-syncs on edits.
-- **Use optional capabilities deliberately.** Sequential-thinking is available for complex planning; stack MCPs and docs plugins should be added only per project when they clearly help.
+- **Navigate with the code graph when indexed, not blind sweeps.** If `.codegraph/` exists and CodeGraph MCP tools are available, use `codegraph_search`, `codegraph_explore`, or `codegraph_node` to find symbols, callers, and blast radius before reading files. Build/refresh per repo with `codegraph init`; it auto-syncs on edits.
+- **Use optional capabilities deliberately.** Sequential-thinking is available for complex planning; Context7 is available for current library/API docs; stack MCPs should be added only per project when they clearly help.
 - **Read semantically, not wholesale.** Prefer graph/symbol lookups and scoped reads (offset/limit) over whole-file dumps; for one-shot whole-repo context use `repomix`.
 - **Route by cost.** Cheap model (mini tier) for search, summaries, bounded lookups; reserve the strong model for design, architecture, and review.
 - **Keep the cache warm.** Rules files load every turn and are prompt-cached — keep them stable; don't mutate per-session. Heavy procedures live in skills/prompts (lazy-loaded), not here.

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
-import { requireOrganizerWorkspace } from "@/lib/auth";
+import { requireOrganizerWorkspace, requireRole } from "@/lib/auth";
 import {
   cancelEventSetup,
   cancelUnsoldInventory,
@@ -14,9 +14,7 @@ import {
   unpublishEventSetup,
   updateEventDetails,
 } from "@/lib/events/setup";
-import {
-  canManageEvent,
-} from "@/lib/organizations/auth";
+import { canManageEvent } from "@/lib/organizations/auth";
 import {
   getActiveAdminOrganization,
   setActiveAdminOrganization,
@@ -132,11 +130,18 @@ export async function createEvent(formData: FormData) {
   const { activeOrganization } = await getActiveAdminOrganization(admin);
   const organizationId = activeOrganization?.id ?? null;
   if (!organizationId) {
-    fail("/admin/events/new", "Select an organization before creating an event.");
+    fail(
+      "/admin/events/new",
+      "Select an organization before creating an event.",
+    );
   }
   const parsed = CreateEventSchema.safeParse(eventFormPayload(formData));
 
-  if (!parsed.success) fail("/admin/events/new", parsed.error.issues[0]?.message ?? "Invalid event.");
+  if (!parsed.success)
+    fail(
+      "/admin/events/new",
+      parsed.error.issues[0]?.message ?? "Invalid event.",
+    );
 
   let event: { id: string };
   try {
@@ -147,7 +152,10 @@ export async function createEvent(formData: FormData) {
       organizationId,
     });
   } catch (error) {
-    fail("/admin/events/new", errorMessage(error, "Event could not be created."));
+    fail(
+      "/admin/events/new",
+      errorMessage(error, "Event could not be created."),
+    );
   }
   redirect(`/admin/events/${event.id}`);
 }
@@ -158,7 +166,10 @@ export async function createOrganization(formData: FormData) {
     name: formData.get("name"),
   });
   if (!parsed.success) {
-    fail("/admin/organizations/new", parsed.error.issues[0]?.message ?? "Invalid organization.");
+    fail(
+      "/admin/organizations/new",
+      parsed.error.issues[0]?.message ?? "Invalid organization.",
+    );
   }
 
   let organization: { id: string; name: string };
@@ -168,13 +179,18 @@ export async function createOrganization(formData: FormData) {
       adminUserId: admin.id,
     });
   } catch (error) {
-    fail("/admin/organizations/new", errorMessage(error, "Organization could not be created."));
+    fail(
+      "/admin/organizations/new",
+      errorMessage(error, "Organization could not be created."),
+    );
   }
 
   await setActiveAdminOrganization(admin.id, organization.id);
   revalidatePath("/admin");
   revalidatePath("/admin/events");
-  redirect(`/admin?success=${encodeURIComponent(`${organization.name} selected.`)}`);
+  redirect(
+    `/admin?success=${encodeURIComponent(`${organization.name} selected.`)}`,
+  );
 }
 
 export async function switchOrganization(formData: FormData) {
@@ -184,8 +200,12 @@ export async function switchOrganization(formData: FormData) {
   });
   if (!parsed.success) fail("/admin", "Invalid organization.");
 
-  const switched = await setActiveAdminOrganization(admin.id, parsed.data.organization_id);
-  if (!switched) fail("/admin", "You can only switch to organizations you administer.");
+  const switched = await setActiveAdminOrganization(
+    admin.id,
+    parsed.data.organization_id,
+  );
+  if (!switched)
+    fail("/admin", "You can only switch to organizations you administer.");
 
   revalidatePath("/admin");
   revalidatePath("/admin/events");
@@ -195,7 +215,8 @@ export async function switchOrganization(formData: FormData) {
 export async function updateOrganizationBranding(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
   const { activeOrganization } = await getActiveAdminOrganization(admin);
-  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+  if (!activeOrganization)
+    fail("/admin/settings", "Select an organization first.");
 
   const parsed = OrganizationBrandingSchema.safeParse({
     tagline: optionalString(formData, "tagline"),
@@ -204,7 +225,10 @@ export async function updateOrganizationBranding(formData: FormData) {
     hero_image_url: optionalString(formData, "hero_image_url"),
   });
   if (!parsed.success) {
-    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid branding.");
+    fail(
+      "/admin/settings",
+      parsed.error.issues[0]?.message ?? "Invalid branding.",
+    );
   }
 
   const branding = normalizeOrganizationBranding(parsed.data);
@@ -233,17 +257,23 @@ export async function updateOrganizationBranding(formData: FormData) {
 export async function updateOrganizationRoyalty(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
   const { activeOrganization } = await getActiveAdminOrganization(admin);
-  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+  if (!activeOrganization)
+    fail("/admin/settings", "Select an organization first.");
 
   const parsed = OrganizationRoyaltySchema.safeParse({
     resale_royalty_enabled: checkbox(formData, "resale_royalty_enabled"),
     resale_royalty_bps: formData.get("resale_royalty_bps") || 0,
   });
   if (!parsed.success) {
-    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid royalty settings.");
+    fail(
+      "/admin/settings",
+      parsed.error.issues[0]?.message ?? "Invalid royalty settings.",
+    );
   }
 
-  const bps = parsed.data.resale_royalty_enabled ? parsed.data.resale_royalty_bps : 0;
+  const bps = parsed.data.resale_royalty_enabled
+    ? parsed.data.resale_royalty_bps
+    : 0;
   const sb = createServiceClient();
   const { error } = await sb
     .from("organizations")
@@ -273,14 +303,18 @@ export async function updateOrganizationRoyalty(formData: FormData) {
 export async function addOrganizationMember(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
   const { activeOrganization } = await getActiveAdminOrganization(admin);
-  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+  if (!activeOrganization)
+    fail("/admin/settings", "Select an organization first.");
 
   const parsed = OrganizationMemberSchema.safeParse({
     email: formData.get("email"),
     role: formData.get("role"),
   });
   if (!parsed.success) {
-    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid team member.");
+    fail(
+      "/admin/settings",
+      parsed.error.issues[0]?.message ?? "Invalid team member.",
+    );
   }
 
   const { email, role } = parsed.data;
@@ -298,7 +332,10 @@ export async function addOrganizationMember(formData: FormData) {
       role,
     });
   } catch (error) {
-    fail("/admin/settings", errorMessage(error, "Team member could not be saved."));
+    fail(
+      "/admin/settings",
+      errorMessage(error, "Team member could not be saved."),
+    );
   }
 
   await audit({
@@ -316,13 +353,17 @@ export async function addOrganizationMember(formData: FormData) {
 export async function transferOrganization(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
   const { activeOrganization } = await getActiveAdminOrganization(admin);
-  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+  if (!activeOrganization)
+    fail("/admin/settings", "Select an organization first.");
 
   const parsed = TransferOrganizationSchema.safeParse({
     email: formData.get("email"),
   });
   if (!parsed.success) {
-    fail("/admin/settings", parsed.error.issues[0]?.message ?? "Invalid transfer recipient.");
+    fail(
+      "/admin/settings",
+      parsed.error.issues[0]?.message ?? "Invalid transfer recipient.",
+    );
   }
 
   try {
@@ -332,7 +373,10 @@ export async function transferOrganization(formData: FormData) {
       recipientEmail: parsed.data.email,
     });
   } catch (error) {
-    fail("/admin/settings", errorMessage(error, "Organization transfer could not be saved."));
+    fail(
+      "/admin/settings",
+      errorMessage(error, "Organization transfer could not be saved."),
+    );
   }
 
   revalidatePath("/admin");
@@ -343,7 +387,8 @@ export async function transferOrganization(formData: FormData) {
 export async function deleteOrganization(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
   const { activeOrganization } = await getActiveAdminOrganization(admin);
-  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+  if (!activeOrganization)
+    fail("/admin/settings", "Select an organization first.");
 
   const parsed = DeleteOrganizationSchema.safeParse({
     organization_id: formData.get("organization_id"),
@@ -359,7 +404,10 @@ export async function deleteOrganization(formData: FormData) {
       confirmedName: parsed.data.confirm_name,
     });
   } catch (error) {
-    fail("/admin/settings", errorMessage(error, "Organization could not be deleted."));
+    fail(
+      "/admin/settings",
+      errorMessage(error, "Organization could not be deleted."),
+    );
   }
 
   revalidatePath("/admin");
@@ -371,7 +419,8 @@ export async function deleteOrganization(formData: FormData) {
 export async function removeOrganizationMember(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
   const { activeOrganization } = await getActiveAdminOrganization(admin);
-  if (!activeOrganization) fail("/admin/settings", "Select an organization first.");
+  if (!activeOrganization)
+    fail("/admin/settings", "Select an organization first.");
 
   const parsed = RemoveOrganizationMemberSchema.safeParse({
     membership_id: formData.get("membership_id"),
@@ -385,7 +434,10 @@ export async function removeOrganizationMember(formData: FormData) {
       membershipId: parsed.data.membership_id,
     });
   } catch (error) {
-    fail("/admin/settings", errorMessage(error, "Team member could not be removed."));
+    fail(
+      "/admin/settings",
+      errorMessage(error, "Team member could not be removed."),
+    );
   }
 
   await audit({
@@ -407,7 +459,11 @@ export async function updateEvent(formData: FormData) {
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   const parsed = CreateEventSchema.safeParse(eventFormPayload(formData));
-  if (!parsed.success) fail(`/admin/events/${eventId}`, parsed.error.issues[0]?.message ?? "Invalid event.");
+  if (!parsed.success)
+    fail(
+      `/admin/events/${eventId}`,
+      parsed.error.issues[0]?.message ?? "Invalid event.",
+    );
 
   try {
     await updateEventDetails({
@@ -416,7 +472,10 @@ export async function updateEvent(formData: FormData) {
       actorUserId: admin.id,
     });
   } catch (error) {
-    fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be updated."));
+    fail(
+      `/admin/events/${eventId}`,
+      errorMessage(error, "Event could not be updated."),
+    );
   }
   revalidatePath(`/admin/events/${eventId}`);
   revalidatePath("/admin");
@@ -426,20 +485,26 @@ export async function updateEvent(formData: FormData) {
 }
 
 export async function updateSiteSettings(formData: FormData) {
-  await requireOrganizerWorkspace();
+  await requireRole("admin");
   const parsed = SiteSettingsSchema.safeParse({
     landing_hero_bg_url: optionalString(formData, "landing_hero_bg_url"),
     landing_audience_url: optionalString(formData, "landing_audience_url"),
     landing_dashboard_url: optionalString(formData, "landing_dashboard_url"),
   });
   if (!parsed.success) {
-    fail("/admin/site", parsed.error.issues[0]?.message ?? "Invalid landing media.");
+    fail(
+      "/admin/site",
+      parsed.error.issues[0]?.message ?? "Invalid landing media.",
+    );
   }
 
   try {
     await saveSiteSettings(parsed.data);
   } catch (error) {
-    fail("/admin/site", errorMessage(error, "Landing media could not be saved."));
+    fail(
+      "/admin/site",
+      errorMessage(error, "Landing media could not be saved."),
+    );
   }
 
   revalidatePath("/");
@@ -456,7 +521,10 @@ export async function cancelEvent(formData: FormData) {
   try {
     await cancelEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
-    fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be canceled."));
+    fail(
+      `/admin/events/${eventId}`,
+      errorMessage(error, "Event could not be canceled."),
+    );
   }
   revalidatePath("/admin");
   revalidatePath("/admin/events");
@@ -468,13 +536,17 @@ export async function removeCategory(formData: FormData) {
   const admin = await requireOrganizerWorkspace();
   const categoryId = String(formData.get("category_id") ?? "");
   const eventId = String(formData.get("event_id") ?? "");
-  if (!categoryId || !eventId) fail(`/admin/events/${eventId}`, "Missing category or event id.");
+  if (!categoryId || !eventId)
+    fail(`/admin/events/${eventId}`, "Missing category or event id.");
   await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
 
   try {
     await removeEmptyCategory({ eventId, categoryId, actorUserId: admin.id });
   } catch (error) {
-    fail(`/admin/events/${eventId}`, errorMessage(error, "Category could not be removed."));
+    fail(
+      `/admin/events/${eventId}`,
+      errorMessage(error, "Category could not be removed."),
+    );
   }
   revalidatePath(`/admin/events/${eventId}`);
   redirect(`/admin/events/${eventId}`);
@@ -494,7 +566,10 @@ export async function cancelUnsoldTickets(formData: FormData) {
       actorUserId: admin.id,
     });
   } catch (error) {
-    fail(`/admin/events/${eventId}`, errorMessage(error, "Tickets could not be canceled."));
+    fail(
+      `/admin/events/${eventId}`,
+      errorMessage(error, "Tickets could not be canceled."),
+    );
   }
   revalidatePath(`/admin/events/${eventId}`);
   redirect(`/admin/events/${eventId}`);
@@ -507,7 +582,10 @@ export async function publishEvent(formData: FormData) {
   try {
     await publishEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
-    fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be published."));
+    fail(
+      `/admin/events/${eventId}`,
+      errorMessage(error, "Event could not be published."),
+    );
   }
   revalidatePath(`/admin/events/${eventId}`);
   revalidatePath("/events");
@@ -520,7 +598,10 @@ export async function unpublishEvent(formData: FormData) {
   try {
     await unpublishEventSetup({ eventId, actorUserId: admin.id });
   } catch (error) {
-    fail(`/admin/events/${eventId}`, errorMessage(error, "Event could not be unpublished."));
+    fail(
+      `/admin/events/${eventId}`,
+      errorMessage(error, "Event could not be unpublished."),
+    );
   }
   revalidatePath(`/admin/events/${eventId}`);
   revalidatePath("/events");
@@ -539,7 +620,10 @@ export async function createCategory(formData: FormData) {
     max_resale_price: formData.get("max_resale_price") || null,
     sales_enabled: checkbox(formData, "sales_enabled"),
     resale_enabled: checkbox(formData, "resale_enabled"),
-    public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
+    public_sales_counter_enabled: checkbox(
+      formData,
+      "public_sales_counter_enabled",
+    ),
     benefits: formData.get("benefits") || null,
     image_url: formData.get("image_url") || null,
     online_advance: formData.get("online_advance") || null,
@@ -549,8 +633,13 @@ export async function createCategory(formData: FormData) {
     max_extra_guests: formData.get("max_extra_guests") || null,
     color_hex: formData.get("color_hex") || null,
   });
-  if (!parsed.success) fail("/admin", parsed.error.issues[0]?.message ?? "Invalid category.");
-  await assertCanManageEvent(admin, parsed.data.event_id, `/admin/events/${parsed.data.event_id}`);
+  if (!parsed.success)
+    fail("/admin", parsed.error.issues[0]?.message ?? "Invalid category.");
+  await assertCanManageEvent(
+    admin,
+    parsed.data.event_id,
+    `/admin/events/${parsed.data.event_id}`,
+  );
 
   try {
     await createTicketCategory({
@@ -558,7 +647,10 @@ export async function createCategory(formData: FormData) {
       actorUserId: admin.id,
     });
   } catch (error) {
-    fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Category could not be created."));
+    fail(
+      `/admin/events/${parsed.data.event_id}`,
+      errorMessage(error, "Category could not be created."),
+    );
   }
   revalidatePath(`/admin/events/${parsed.data.event_id}`);
 }
@@ -569,8 +661,16 @@ export async function inviteController(formData: FormData) {
     event_id: formData.get("event_id"),
     email: formData.get("email"),
   });
-  if (!parsed.success) fail("/admin", parsed.error.issues[0]?.message ?? "Invalid controller invite.");
-  await assertCanManageEvent(admin, parsed.data.event_id, `/admin/events/${parsed.data.event_id}`);
+  if (!parsed.success)
+    fail(
+      "/admin",
+      parsed.error.issues[0]?.message ?? "Invalid controller invite.",
+    );
+  await assertCanManageEvent(
+    admin,
+    parsed.data.event_id,
+    `/admin/events/${parsed.data.event_id}`,
+  );
 
   const sb = createServiceClient();
   const email = parsed.data.email.toLowerCase();
@@ -592,9 +692,16 @@ export async function inviteController(formData: FormData) {
     try {
       userId = await findOrInvitePlatformAccount(email);
     } catch (error) {
-      fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Invite could not be sent."));
+      fail(
+        `/admin/events/${parsed.data.event_id}`,
+        errorMessage(error, "Invite could not be sent."),
+      );
     }
-  } else if (!event.organization_id && existingProfile?.role !== "admin" && existingProfile?.role !== "organizer") {
+  } else if (
+    !event.organization_id &&
+    existingProfile?.role !== "admin" &&
+    existingProfile?.role !== "organizer"
+  ) {
     await sb.from("profiles").update({ role: "controller" }).eq("id", userId);
   }
 
@@ -605,7 +712,10 @@ export async function inviteController(formData: FormData) {
         userId,
       });
     } catch (error) {
-      fail(`/admin/events/${parsed.data.event_id}`, errorMessage(error, "Controller could not be added to Organization."));
+      fail(
+        `/admin/events/${parsed.data.event_id}`,
+        errorMessage(error, "Controller could not be added to Organization."),
+      );
     }
   }
 
@@ -631,7 +741,11 @@ export async function refundTicketAction(formData: FormData) {
     ticket_id: formData.get("ticket_id"),
     reason: formData.get("reason") || undefined,
   });
-  if (!parsed.success) fail("/admin", parsed.error.issues[0]?.message ?? "Invalid refund request.");
+  if (!parsed.success)
+    fail(
+      "/admin",
+      parsed.error.issues[0]?.message ?? "Invalid refund request.",
+    );
 
   const sb = createServiceClient();
   const { data: ticket } = await sb
@@ -640,7 +754,11 @@ export async function refundTicketAction(formData: FormData) {
     .eq("id", parsed.data.ticket_id)
     .maybeSingle<Ticket>();
   if (!ticket) fail("/admin", "Ticket not found.");
-  await assertCanManageEvent(admin, ticket.event_id, `/admin/events/${ticket.event_id}`);
+  await assertCanManageEvent(
+    admin,
+    ticket.event_id,
+    `/admin/events/${ticket.event_id}`,
+  );
 
   await refundTicket({
     ticketId: parsed.data.ticket_id,
@@ -655,7 +773,11 @@ export async function duplicateEventAction(formData: FormData) {
   const eventId = String(formData.get("event_id") ?? "");
   if (!eventId) fail("/admin/events", "Missing event id.");
 
-  const source = await assertCanManageEvent(admin, eventId, `/admin/events/${eventId}`);
+  const source = await assertCanManageEvent(
+    admin,
+    eventId,
+    `/admin/events/${eventId}`,
+  );
 
   const sb = createServiceClient();
 
@@ -687,7 +809,10 @@ export async function duplicateEventAction(formData: FormData) {
     .single<{ id: string }>();
 
   if (insertError || !newEvent) {
-    fail(`/admin/events/${eventId}`, insertError?.message ?? "Event could not be duplicated.");
+    fail(
+      `/admin/events/${eventId}`,
+      insertError?.message ?? "Event could not be duplicated.",
+    );
   }
 
   const { data: sourceCategories } = await sb
@@ -719,7 +844,9 @@ export async function duplicateEventAction(formData: FormData) {
       color_hex: cat.color_hex,
       min_spending: cat.min_spending,
     }));
-    const { error: catError } = await sb.from("ticket_categories").insert(categoryRows);
+    const { error: catError } = await sb
+      .from("ticket_categories")
+      .insert(categoryRows);
     if (catError) {
       await sb.from("events").delete().eq("id", newEvent.id);
       fail(`/admin/events/${eventId}`, catError.message);
@@ -751,7 +878,8 @@ export async function refundMarketplacePaymentAction(formData: FormData) {
     .select("*")
     .eq("id", paymentId)
     .maybeSingle<MarketplacePaymentRow>();
-  if (!payment) fail(`/admin/events/${eventId}`, "Marketplace payment not found.");
+  if (!payment)
+    fail(`/admin/events/${eventId}`, "Marketplace payment not found.");
 
   // Authorize against the event the payment actually belongs to, derived
   // server-side — never against the form's event_id, which any organizer
@@ -760,23 +888,23 @@ export async function refundMarketplacePaymentAction(formData: FormData) {
   if (payment.kind === "primary") {
     // Multi-item primary payments carry purchase_id = null and link via
     // marketplace_payment_items; legacy rows still carry a single purchase_id.
-    let purchaseId = payment.purchase_id;
-    if (!purchaseId) {
-      const { data: item } = await sb
-        .from("marketplace_payment_items")
-        .select("purchase_id")
-        .eq("marketplace_payment_id", payment.id)
-        .limit(1)
-        .maybeSingle<{ purchase_id: string }>();
-      purchaseId = item?.purchase_id ?? null;
-    }
-    if (purchaseId) {
+    if (payment.purchase_id) {
       const { data: purchase } = await sb
         .from("purchases")
         .select("event_id")
-        .eq("id", purchaseId)
+        .eq("id", payment.purchase_id)
         .maybeSingle<{ event_id: string }>();
       paymentEventId = purchase?.event_id ?? null;
+    } else {
+      const { data: items } = await sb
+        .from("marketplace_payment_items")
+        .select("purchases(event_id)")
+        .eq("marketplace_payment_id", payment.id)
+        .returns<Array<{ purchases: { event_id: string } | null }>>();
+      const eventIds = new Set(
+        (items ?? []).flatMap((item) => item.purchases?.event_id ?? []),
+      );
+      paymentEventId = eventIds.size === 1 ? [...eventIds][0] : null;
     }
   } else if (payment.resale_listing_id) {
     const { data: listing } = await sb
@@ -802,7 +930,10 @@ export async function refundMarketplacePaymentAction(formData: FormData) {
   try {
     await manuallyRefundPayment({ payment });
   } catch (error) {
-    fail(`/admin/events/${eventId}`, errorMessage(error, "Refund could not be processed."));
+    fail(
+      `/admin/events/${eventId}`,
+      errorMessage(error, "Refund could not be processed."),
+    );
   }
 
   revalidatePath(`/admin/events/${eventId}`);

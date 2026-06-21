@@ -1,97 +1,11 @@
 {
   "version": 1,
-  "layout": ".codex/skills",
-  "mirrors": [".claude/skills"],
   "skills": {
-    "awesome-design-md": {
-      "source": "repo-vendored",
-      "sourceType": "local",
-      "skillPath": ".codex/skills/awesome-design-md/SKILL.md",
-      "computedHash": "bc92379dfcb27bb8c0352ad0598cfa47b836d26de6e5add3147e3af185573363"
-    },
-    "deploy-to-vercel": {
-      "source": "vercel-labs/agent-skills",
+    "ponytail-review": {
+      "source": "dietrichgebert/ponytail",
       "sourceType": "github",
-      "skillPath": ".codex/skills/deploy-to-vercel/SKILL.md",
-      "computedHash": "8001265e56ef2028d842efe31bd8e6dd09f38aef31997fc7e592a37f05966657"
-    },
-    "find-skills": {
-      "source": "vercel-labs/skills",
-      "sourceType": "github",
-      "skillPath": ".codex/skills/find-skills/SKILL.md",
-      "computedHash": "1e85f6f9686e145aca4a124e3b704b9bbea9aa87e08515c1e352eee70f6e6e7a"
-    },
-    "frontend-design": {
-      "source": "repo-vendored",
-      "sourceType": "local",
-      "skillPath": ".codex/skills/frontend-design/SKILL.md",
-      "computedHash": "8827600a53d3dbd93fd34858d92b219381b14135aeed0362db1e1c310c693375"
-    },
-    "impeccable": {
-      "source": "repo-vendored",
-      "sourceType": "local",
-      "skillPath": ".codex/skills/impeccable/SKILL.md",
-      "computedHash": "9cbf6e7e1a5360756f1f07f3ccb113afa62318e32b72856fdf7d2eea0667ec3c"
-    },
-    "setup-solidity-contracts": {
-      "source": "openzeppelin/openzeppelin-skills",
-      "sourceType": "github",
-      "skillPath": ".codex/skills/setup-solidity-contracts/SKILL.md",
-      "computedHash": "1173e734862065bc048c8efb8fbd74596861e2dc9d776871e859a91a8a1cec98"
-    },
-    "solidity-security": {
-      "source": "wshobson/agents",
-      "sourceType": "github",
-      "skillPath": ".codex/skills/solidity-security/SKILL.md",
-      "computedHash": "ce1b1bce04f868cbe48b4a765839d3f589e5f15c2c47f52b4b1ca9a1306ae779"
-    },
-    "stripe-best-practices": {
-      "source": "docs.stripe.com",
-      "sourceType": "well-known",
-      "skillPath": ".codex/skills/stripe-best-practices/SKILL.md",
-      "computedHash": "095d18610be432040e7abbede36e59d8bc5876a84534cb69f895300e43e5dc1f"
-    },
-    "stripe-projects": {
-      "source": "projects.dev/providers",
-      "sourceType": "well-known",
-      "skillPath": ".codex/skills/stripe-projects/SKILL.md",
-      "computedHash": "0a6dbc7cb06aab6c49629ee62d7cd8bc88c016c675ae0eaf2efc17694dbd7718"
-    },
-    "supabase": {
-      "source": "supabase/agent-skills",
-      "sourceType": "github",
-      "skillPath": ".codex/skills/supabase/SKILL.md",
-      "computedHash": "41f4694e5e8114215fb2c4b1b72f373dddec52eb784ec92ed8d8a6885cb0f197"
-    },
-    "supabase-postgres-best-practices": {
-      "source": "supabase/agent-skills",
-      "sourceType": "github",
-      "skillPath": ".codex/skills/supabase-postgres-best-practices/SKILL.md",
-      "computedHash": "ccd6e4596bd51cf344fe76c464867c541ccc16b6d90ae7a9db449fb17588613b"
-    },
-    "ui-ux-pro-max": {
-      "source": "repo-vendored",
-      "sourceType": "local",
-      "skillPath": ".codex/skills/ui-ux-pro-max/SKILL.md",
-      "computedHash": "9bd26c52dfd10dfd613dd3cc85df217dc25a172e380bde41fdfa6fedda288b2a"
-    },
-    "upgrade-stripe": {
-      "source": "docs.stripe.com",
-      "sourceType": "well-known",
-      "skillPath": ".codex/skills/upgrade-stripe/SKILL.md",
-      "computedHash": "150c420efffb9eea65c7950848d5172d77e8f96b2b7bbec20ee76006bae56a32"
-    },
-    "vercel-react-best-practices": {
-      "source": "vercel-labs/agent-skills",
-      "sourceType": "github",
-      "skillPath": ".codex/skills/vercel-react-best-practices/SKILL.md",
-      "computedHash": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355"
-    },
-    "web-design-guidelines": {
-      "source": "vercel-labs/agent-skills",
-      "sourceType": "github",
-      "skillPath": ".codex/skills/web-design-guidelines/SKILL.md",
-      "computedHash": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f"
+      "skillPath": "skills/ponytail-review/SKILL.md",
+      "computedHash": "4646594fcd75455533f7ff1425f4f1c5ba0fa65f88241bf262b1c4fc275f049a"
     }
   }
 }

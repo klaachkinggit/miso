@@ -8,7 +8,7 @@ const ITEMS = [
   { value: "0%", unit: "scalping markup" },
   { value: "31", unit: "EU cities" },
   { value: "T+1", unit: "payouts" },
-  { value: "On-chain", unit: "tickets" },
+  { value: "Digital", unit: "tickets" },
 ];
 
 export function ProofStrip() {
@@ -25,10 +25,7 @@ export function ProofStrip() {
           aria-label="Live network stats"
         >
           <span className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="ticker-mark"
-            />
+            <span aria-hidden className="ticker-mark" />
             LIVE&nbsp;NETWORK
           </span>
         </div>
@@ -39,7 +36,9 @@ export function ProofStrip() {
         {/* Screen-reader-only list of stats — the scrolling track below is aria-hidden */}
         <ul aria-label="Live network stats" className="sr-only">
           {ITEMS.map((item) => (
-            <li key={item.value}>{item.value} {item.unit}</li>
+            <li key={item.value}>
+              {item.value} {item.unit}
+            </li>
           ))}
         </ul>
 
@@ -55,10 +54,7 @@ export function ProofStrip() {
             className="flex w-max items-center gap-0 whitespace-nowrap"
           >
             {loop.map((item, i) => (
-              <span
-                key={`${item.value}-${i}`}
-                className="flex items-center"
-              >
+              <span key={`${item.value}-${i}`} className="flex items-center">
                 {/* Value / unit pair */}
                 <span className="flex items-baseline gap-1.5 px-8 py-5">
                   <span className="font-mono text-sm font-semibold text-foreground tabular-nums">

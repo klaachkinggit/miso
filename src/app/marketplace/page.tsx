@@ -14,7 +14,8 @@ export default async function MarketplacePage() {
           Official exchange<span className="display-italic">.</span>
         </h1>
         <p className="mt-3 max-w-md text-muted-foreground">
-          Verified digital tickets listed by members. Anti-scalping rules enforced on-chain.
+          Verified digital tickets listed by members. Anti-scalping rules are
+          enforced before checkout.
         </p>
       </header>
       <ResaleListingList

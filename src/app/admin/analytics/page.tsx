@@ -95,10 +95,7 @@ export default async function OrganizationAnalyticsPage({
           </p>
         </div>
         <div className="flex items-end gap-2">
-          <ExportButton
-            organizationId={activeOrganization.id}
-            organizationSlug={activeOrganization.slug ?? "organization"}
-          />
+          <ExportButton />
         </div>
       </div>
 

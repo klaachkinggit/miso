@@ -1,3 +1,7 @@
+---
+name: awesome-design-md
+description: Provides a curated collection of DESIGN.md references and examples for borrowing concrete visual systems when a project needs a specific UI aesthetic direction.
+---
 
 <a href="https://github.com/VoltAgent/voltagent">
      <img width="1500"  alt="claude-skills" src="https://cdn.voltagent.dev/awesome-repo/logo.json.svg" />

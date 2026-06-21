@@ -1,6 +1,12 @@
 "use client";
 
-import { motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
+import {
+  motion,
+  useInView,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "motion/react";
 import { useRef } from "react";
 
 type Row = {
@@ -23,7 +29,7 @@ const ROWS: Row[] = [
   {
     n: "03",
     title: "Anti-scalping resale.",
-    body: "Official exchange with price caps and verified ERC-721 transfer. Listings above the cap are rejected at submit.",
+    body: "Official exchange with price caps and verified digital transfer. Listings above the cap are rejected at submit.",
   },
   {
     n: "04",
@@ -60,19 +66,30 @@ export function Capabilities() {
               className="eyebrow"
             >
               {/* Editorial index — aria-hidden so screen readers skip the decoration */}
-              <span aria-hidden className="mr-2 font-mono text-muted-foreground">§03 / 06</span>
+              <span
+                aria-hidden
+                className="mr-2 font-mono text-muted-foreground"
+              >
+                §03 / 06
+              </span>
               Capabilities · 01 — 05
             </motion.p>
             <motion.h2
               initial={reduced ? false : { opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-15% 0px" }}
-              transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 0.72, 0.18, 1] }}
+              transition={{
+                duration: 0.9,
+                delay: 0.1,
+                ease: [0.22, 0.72, 0.18, 1],
+              }}
               className="display mt-6 text-4xl text-foreground md:text-5xl lg:text-6xl"
             >
               Everything an organizer needs.
               <br />
-              <span className="display-italic text-muted-foreground">Nothing they don&apos;t.</span>
+              <span className="display-italic text-muted-foreground">
+                Nothing they don&apos;t.
+              </span>
             </motion.h2>
             <motion.p
               initial={reduced ? false : { opacity: 0, y: 16 }}
@@ -81,15 +98,18 @@ export function Capabilities() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground"
             >
-              One workspace per organization. Bring your team, configure payouts, design your
-              storefront, and sell directly to fans.
+              One workspace per organization. Bring your team, configure
+              payouts, design your storefront, and sell directly to fans.
             </motion.p>
           </div>
 
           {/* Right column: scroll-tracked rail + rows */}
           <div ref={ref} className="relative">
             {/* Static hairline rail */}
-            <div aria-hidden className="absolute left-0 top-0 bottom-0 hidden w-px bg-hairline md:block" />
+            <div
+              aria-hidden
+              className="absolute left-0 top-0 bottom-0 hidden w-px bg-hairline md:block"
+            />
             {/* Signal rail: fills as user scrolls */}
             <motion.div
               aria-hidden
@@ -151,8 +171,12 @@ function CapabilityRow({ row, index }: { row: Row; index: number }) {
       <div>
         {/* Screen-reader-only number so the list item has a meaningful ordinal */}
         <span className="sr-only">{row.n}.</span>
-        <h3 className="display text-[22px] text-foreground md:text-[26px]">{row.title}</h3>
-        <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">{row.body}</p>
+        <h3 className="display text-[22px] text-foreground md:text-[26px]">
+          {row.title}
+        </h3>
+        <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
+          {row.body}
+        </p>
       </div>
     </motion.li>
   );

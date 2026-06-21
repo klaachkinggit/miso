@@ -3,6 +3,8 @@ import type Stripe from "stripe";
 import { audit } from "@/lib/audit";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendRefundNotice } from "@/lib/email/send";
+import { markPurchaseRefunded } from "@/lib/payments/settlement";
+import { markTicketRefunded } from "@/lib/tickets/lifecycle";
 import { stripeClient } from "./client";
 import { WebhookSignatureError } from "./errors";
 import type { MarketplacePaymentRow } from "./payments";
@@ -46,8 +48,7 @@ export async function manuallyRefundPayment(
     throw new Error("payment has no stripe_charge_id");
   }
 
-  const maxRefundable =
-    payment.amount_total_cents - payment.marketplace_fee_cents;
+  const maxRefundable = refundableSellerShare(payment);
   const refundCents = Math.min(
     input.refundCents ?? maxRefundable,
     maxRefundable,
@@ -58,10 +59,15 @@ export async function manuallyRefundPayment(
 
   await transitionPayment(payment.id, { type: "REFUND_PENDING" });
 
+  if (refundCents >= maxRefundable) {
+    await assertFullRefundLifecycleCanFinalize(payment);
+  }
+
   const reversedTransferIds = await proRateReversals({
     payment,
-    refundCents,
+    targetSellerShareCents: refundCents,
     auditActor: payment.buyer_user_id,
+    refundKey: `manual_${payment.id}_${refundCents}`,
   });
 
   // Issue Stripe refund AT the charge level. `reverse_transfer:false`
@@ -80,6 +86,9 @@ export async function manuallyRefundPayment(
   );
 
   await transitionPayment(payment.id, { type: "REFUNDED" });
+  if (refundCents >= maxRefundable) {
+    await finalizeFullRefundLifecycle(payment);
+  }
 
   await audit({
     actorUserId: payment.buyer_user_id,
@@ -111,44 +120,41 @@ export async function manuallyRefundPayment(
 export async function recordExternalChargeRefund(input: {
   payment: MarketplacePaymentRow;
   refund: Stripe.Refund;
+  cumulativeRefundedCents?: number;
 }): Promise<void> {
   const { payment, refund } = input;
   const refundAmountCents = refund.amount ?? 0;
-  if (refundAmountCents <= 0) {
-    // Status untouched, but could touch last_webhook_at.
+  const cumulativeRefundedCents =
+    input.cumulativeRefundedCents ?? refundAmountCents;
+  if (cumulativeRefundedCents <= 0) {
     return;
   }
 
   await transitionPayment(payment.id, { type: "REFUND_PENDING" });
 
-  // Cap reversal at the seller-proceeds portion of the refund. The
-  // marketplace fee is non-refundable so any refund amount up to
-  // marketplace_fee_cents claws back zero from sellers; anything above
-  // that prorates against connected-account transfers.
+  const maxRefundable = refundableSellerShare(payment);
   const sellerShare = Math.max(
     0,
-    Math.min(
-      refundAmountCents,
-      payment.amount_total_cents - payment.marketplace_fee_cents,
-    ),
+    Math.min(cumulativeRefundedCents, maxRefundable),
   );
 
   let reversedTransferIds: string[] = [];
   if (sellerShare > 0) {
     reversedTransferIds = await proRateReversals({
       payment,
-      refundCents: sellerShare,
+      targetSellerShareCents: sellerShare,
       auditActor: payment.buyer_user_id,
+      refundKey: refund.id,
     });
   }
 
-  // Only mark fully `refunded` when the cumulative refund covers the
-  // entire refundable (non-fee) portion. Otherwise stay
-  // `refund_pending` so admin sees partial state.
-  const fullyRefunded =
-    refundAmountCents >=
-    payment.amount_total_cents - payment.marketplace_fee_cents;
-  await transitionPayment(payment.id, { type: fullyRefunded ? "REFUNDED" : "REFUND_PENDING" });
+  const fullyRefunded = cumulativeRefundedCents >= maxRefundable;
+  await transitionPayment(payment.id, {
+    type: fullyRefunded ? "REFUNDED" : "REFUND_PENDING",
+  });
+  if (fullyRefunded) {
+    await finalizeFullRefundLifecycle(payment);
+  }
 
   await audit({
     actorUserId: payment.buyer_user_id,
@@ -158,6 +164,7 @@ export async function recordExternalChargeRefund(input: {
     metadata: {
       stripe_refund_id: refund.id,
       stripe_refund_amount_cents: refundAmountCents,
+      stripe_cumulative_refunded_cents: cumulativeRefundedCents,
       seller_share_cents: sellerShare,
       fully_refunded: fullyRefunded,
       reversed_transfer_ids: reversedTransferIds,
@@ -165,6 +172,10 @@ export async function recordExternalChargeRefund(input: {
   });
 
   await notifyRefund(payment, refundAmountCents, refund.reason ?? null);
+}
+
+function refundableSellerShare(payment: MarketplacePaymentRow): number {
+  return payment.amount_total_cents - payment.marketplace_fee_cents;
 }
 
 function formatEur(cents: number): string {
@@ -239,6 +250,144 @@ async function notifyRefund(
 // Re-export so api routes import refund helpers from one file.
 export { WebhookSignatureError };
 
+interface RefundablePurchaseRow {
+  id: string;
+  ticket_id: string;
+  status: string;
+}
+
+interface RefundableTicketRow {
+  id: string;
+  status: string;
+}
+
+const REFUND_FINALIZABLE_TICKET_STATUSES = new Set([
+  "sold",
+  "listed",
+  "refund_pending",
+  "repair_needed",
+  "canceled",
+  "available",
+  "reserved",
+  "expired",
+  "refunded",
+]);
+
+function canFinalizeRefundTicket(status: string): boolean {
+  return REFUND_FINALIZABLE_TICKET_STATUSES.has(status);
+}
+
+async function assertFullRefundLifecycleCanFinalize(
+  payment: MarketplacePaymentRow,
+): Promise<void> {
+  const sb = createServiceClient();
+  const tickets = await loadRefundLifecycleTickets(sb, payment);
+  const blocked = tickets.find(
+    (ticket) => !canFinalizeRefundTicket(ticket.status),
+  );
+  if (blocked) {
+    throw new Error("Cannot refund this ticket in its current state");
+  }
+}
+
+async function finalizeFullRefundLifecycle(
+  payment: MarketplacePaymentRow,
+): Promise<void> {
+  const sb = createServiceClient();
+  if (payment.kind === "primary") {
+    const purchases = await loadRefundLifecyclePurchases(sb, payment);
+    for (const purchase of purchases) {
+      await refundLifecycleTicket(purchase.ticket_id);
+      if (purchase.status !== "refunded") {
+        await markPurchaseRefunded(purchase.id);
+      }
+    }
+    return;
+  }
+
+  if (!payment.resale_listing_id) return;
+  const { data: listing, error } = await sb
+    .from("resale_listings")
+    .select("id, ticket_id, status")
+    .eq("id", payment.resale_listing_id)
+    .maybeSingle<{ id: string; ticket_id: string; status: string }>();
+  if (error) throw error;
+  if (!listing) return;
+
+  await refundLifecycleTicket(listing.ticket_id);
+}
+
+async function refundLifecycleTicket(ticketId: string): Promise<void> {
+  const sb = createServiceClient();
+  const { data: ticket, error } = await sb
+    .from("tickets")
+    .select("id, status")
+    .eq("id", ticketId)
+    .maybeSingle<RefundableTicketRow>();
+  if (error) throw error;
+  if (!ticket || ticket.status === "refunded") return;
+  await markTicketRefunded(ticket.id);
+}
+
+async function loadRefundLifecyclePurchases(
+  sb: ReturnType<typeof createServiceClient>,
+  payment: MarketplacePaymentRow,
+): Promise<RefundablePurchaseRow[]> {
+  if (payment.purchase_id) {
+    const { data, error } = await sb
+      .from("purchases")
+      .select("id, ticket_id, status")
+      .eq("id", payment.purchase_id)
+      .maybeSingle<RefundablePurchaseRow>();
+    if (error) throw error;
+    return data ? [data] : [];
+  }
+
+  const { data, error } = await sb
+    .from("marketplace_payment_items")
+    .select("purchases(id, ticket_id, status)")
+    .eq("marketplace_payment_id", payment.id)
+    .returns<Array<{ purchases: RefundablePurchaseRow | null }>>();
+  if (error) throw error;
+  return (data ?? []).flatMap((item) => item.purchases ?? []);
+}
+
+async function loadRefundLifecycleTickets(
+  sb: ReturnType<typeof createServiceClient>,
+  payment: MarketplacePaymentRow,
+): Promise<RefundableTicketRow[]> {
+  if (payment.kind === "primary") {
+    const purchases = await loadRefundLifecyclePurchases(sb, payment);
+    if (purchases.length === 0) return [];
+    const { data, error } = await sb
+      .from("tickets")
+      .select("id, status")
+      .in(
+        "id",
+        purchases.map((purchase) => purchase.ticket_id),
+      )
+      .returns<RefundableTicketRow[]>();
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  if (!payment.resale_listing_id) return [];
+  const { data: listing, error: listingError } = await sb
+    .from("resale_listings")
+    .select("ticket_id")
+    .eq("id", payment.resale_listing_id)
+    .maybeSingle<{ ticket_id: string }>();
+  if (listingError) throw listingError;
+  if (!listing) return [];
+  const { data: ticket, error: ticketError } = await sb
+    .from("tickets")
+    .select("id, status")
+    .eq("id", listing.ticket_id)
+    .maybeSingle<RefundableTicketRow>();
+  if (ticketError) throw ticketError;
+  return ticket ? [ticket] : [];
+}
+
 // ---------------------------------------------------------------------------
 // Shared helper: prorate-min reversal allocation.
 //
@@ -277,7 +426,9 @@ export function planProRateReversals(
   const candidates = transfers
     .filter(
       (t): t is MarketplaceTransferRow & { stripe_transfer_id: string } =>
-        !!t.stripe_transfer_id && t.status === "created",
+        !!t.stripe_transfer_id &&
+        (t.status === "created" || t.status === "reversed") &&
+        remainingTransferCents(t) > 0,
     )
     .sort(
       (a, b) =>
@@ -289,7 +440,7 @@ export function planProRateReversals(
   let remaining = refundCents;
   for (const transfer of candidates) {
     if (remaining <= 0) break;
-    const amount = Math.min(transfer.amount_cents, remaining);
+    const amount = Math.min(remainingTransferCents(transfer), remaining);
     if (amount <= 0) continue;
     steps.push({
       transferId: transfer.id,
@@ -304,14 +455,34 @@ export function planProRateReversals(
   return steps;
 }
 
+function remainingTransferCents(transfer: MarketplaceTransferRow): number {
+  return Math.max(
+    0,
+    transfer.amount_cents - (transfer.reversed_amount_cents ?? 0),
+  );
+}
+
+function reversedSellerShareCents(transfers: MarketplaceTransferRow[]): number {
+  return transfers.reduce(
+    (total, transfer) => total + (transfer.reversed_amount_cents ?? 0),
+    0,
+  );
+}
+
 async function proRateReversals(input: {
   payment: MarketplacePaymentRow;
-  refundCents: number;
+  targetSellerShareCents: number;
   auditActor: string;
+  refundKey: string;
 }): Promise<string[]> {
   const reversed: string[] = [];
   const transfers = await listTransfersForPayment(input.payment.id);
-  const plan = planProRateReversals(transfers, input.refundCents);
+  const alreadyReversed = reversedSellerShareCents(transfers);
+  const remainingTarget = Math.max(
+    0,
+    input.targetSellerShareCents - alreadyReversed,
+  );
+  const plan = planProRateReversals(transfers, remainingTarget);
 
   for (const step of plan) {
     try {
@@ -319,6 +490,7 @@ async function proRateReversals(input: {
         marketplaceTransferId: step.transferId,
         stripeTransferId: step.stripeTransferId,
         amountCents: step.amountCents,
+        refundKey: input.refundKey,
       });
       reversed.push(reversalId);
     } catch (err) {

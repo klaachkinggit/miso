@@ -25,12 +25,19 @@ export const stripe: Stripe = new Proxy({} as Stripe, {
   },
 });
 
+export async function refundStripePaymentIntent(
+  paymentIntentId: string,
+): Promise<void> {
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (pi.status !== "succeeded") return;
+  await stripe.refunds.create({ payment_intent: pi.id });
+}
+
 export async function refundStripeSession(sessionId: string): Promise<void> {
   const session = await stripe.checkout.sessions.retrieve(sessionId, {
     expand: ["payment_intent"],
   });
   const pi = session.payment_intent;
   if (!pi || typeof pi === "string") return;
-  if (pi.status !== "succeeded") return;
-  await stripe.refunds.create({ payment_intent: pi.id });
+  await refundStripePaymentIntent(pi.id);
 }

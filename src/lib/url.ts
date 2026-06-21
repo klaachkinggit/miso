@@ -36,9 +36,10 @@ export function getRequestOrigin(request: NextRequest): string {
   const rawHost = request.headers.get("host") ?? request.nextUrl.host;
 
   if (isStorefrontHost(rawHost)) {
-    const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim()
-      || request.nextUrl.protocol.replace(/:$/, "")
-      || "https";
+    const proto =
+      request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+      request.nextUrl.protocol.replace(/:$/, "") ||
+      "https";
     return `${proto}://${rawHost}`;
   }
 
@@ -56,9 +57,18 @@ export function getRequestOrigin(request: NextRequest): string {
       .get("x-forwarded-proto")
       ?.split(",")[0]
       ?.trim();
-    const proto = forwardedProto || request.nextUrl.protocol.replace(/:$/, "") || "https";
+    const proto =
+      forwardedProto || request.nextUrl.protocol.replace(/:$/, "") || "https";
     return `${proto}://${forwardedHost}`;
   }
 
   return request.nextUrl.origin;
+}
+
+export function getConfiguredAppUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.APP_URL ??
+    "http://localhost:3002"
+  ).replace(/\/+$/, "");
 }

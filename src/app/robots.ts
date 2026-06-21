@@ -1,10 +1,7 @@
 import type { MetadataRoute } from "next";
+import { getConfiguredAppUrl } from "@/lib/url";
 
-const siteUrl =
-  (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3002").replace(
-    /\/+$/,
-    "",
-  );
+const siteUrl = getConfiguredAppUrl();
 
 export default function robots(): MetadataRoute.Robots {
   return {

@@ -18,6 +18,14 @@ function buyerFacingPaymentStatus(payment: MarketplacePayment): string {
   return "fulfillment_pending";
 }
 
+function paymentStatusLabel(status: string): string {
+  if (status === "paid") return "Ready";
+  if (status === "failed") return "Failed";
+  if (status === "refunded") return "Refunded";
+  if (status === "refund_pending") return "Refund pending";
+  return "Processing";
+}
+
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
@@ -43,13 +51,14 @@ export default async function CheckoutSuccessPage({
     if (payment) {
       resolved = true;
       status = buyerFacingPaymentStatus(payment);
-      if (payment.kind === "resale") pendingTitle = "Moving your digital ticket.";
+      if (payment.kind === "resale")
+        pendingTitle = "Moving your digital ticket.";
     }
   }
 
   const paid = status === "paid";
   const failed = FAILED_STATUSES.has(status);
-  const pending = !paid && !failed;
+  const pending = resolved && !paid && !failed;
 
   return (
     <div className="container flex min-h-[calc(100vh-4rem)] items-center py-12">
@@ -64,22 +73,29 @@ export default async function CheckoutSuccessPage({
             <Clock className="h-6 w-6 text-signal" />
           )}
         </div>
-        <Badge variant={paid ? "signal" : failed ? "destructive" : "warning"} className="mt-6">
-          {status}
+        <Badge
+          variant={paid ? "signal" : failed ? "destructive" : "warning"}
+          className="mt-6"
+        >
+          {paymentStatusLabel(status)}
         </Badge>
         <h1 className="display mt-5 text-3xl text-foreground md:text-4xl">
           {paid
             ? "Ticket is ready."
             : failed
               ? "Payment not completed."
-              : pendingTitle}
+              : pending
+                ? pendingTitle
+                : "Checkout status unavailable."}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
           {paid
             ? "Your digital ticket is ready in My tickets."
             : failed
               ? "The reservation was released. Try checkout again."
-              : "This page refreshes while we finalize your ticket."}
+              : pending
+                ? "This page refreshes while we finalize your ticket."
+                : "We could not find this checkout. Check My tickets or start checkout again."}
         </p>
         <div className="mt-7 flex justify-center gap-3">
           <Button asChild>

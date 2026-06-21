@@ -8,7 +8,10 @@
 import { audit } from "@/lib/audit";
 import { DomainError } from "@/lib/api/errors";
 import { markPurchaseRefunded } from "@/lib/payments/settlement";
-import { refundStripeSession } from "@/lib/payments/stripe";
+import {
+  refundStripePaymentIntent,
+  refundStripeSession,
+} from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { markTicketRefunded } from "@/lib/tickets/lifecycle";
 import { eventHasAvailability, notifyWaitlistHead } from "@/lib/waitlist";
@@ -21,10 +24,17 @@ export async function refundTicket(params: {
 }) {
   const sb = createServiceClient();
 
-  const { data: ticket } = await sb.from("tickets").select("*").eq("id", params.ticketId).single<Ticket>();
+  const { data: ticket } = await sb
+    .from("tickets")
+    .select("*")
+    .eq("id", params.ticketId)
+    .single<Ticket>();
   if (!ticket) throw new Error("Ticket not found");
   if (ticket.status === "refunded") throw new DomainError("Already refunded");
-  if (ticket.status === "used") throw new DomainError("Cannot refund a used ticket");
+  if (ticket.status === "refund_pending")
+    throw new DomainError("Refund already pending");
+  if (ticket.status === "used")
+    throw new DomainError("Cannot refund a used ticket");
 
   const holderUserId = ticket.owner_user_id;
 
@@ -52,9 +62,13 @@ export async function refundTicket(params: {
 
   const refundAmount = resale?.price ?? purchase?.amount;
   const refundCurrency = resale?.currency ?? purchase?.currency;
-  const providerSessionId = resale?.provider_session_id ?? purchase?.provider_session_id;
+  const providerPaymentId = purchase?.provider_payment_id;
+  const providerSessionId =
+    resale?.provider_session_id ?? purchase?.provider_session_id;
 
-  if (providerSessionId) {
+  if (providerPaymentId) {
+    await refundStripePaymentIntent(providerPaymentId);
+  } else if (providerSessionId?.startsWith("cs_")) {
     await refundStripeSession(providerSessionId);
   }
 

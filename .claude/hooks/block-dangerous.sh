@@ -5,12 +5,95 @@ INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | python3 -c "
 import sys, json
 try:
-    print(json.load(sys.stdin).get('tool_input', {}).get('command', ''))
+    ti = json.load(sys.stdin).get('tool_input', {})
+    print(ti.get('command', '') or ti.get('cmd', '') or ti.get('shell_command', '') or ti.get('script', ''))
 except Exception:
     pass
 " 2>/dev/null)
 
 [ -z "$CMD" ] && exit 0
+
+CMD_ENV="$CMD" python3 - <<'PY'
+import glob
+import os
+import re
+import shlex
+import sys
+from pathlib import Path
+
+cmd = os.environ.get("CMD_ENV", "")
+try:
+    tokens = shlex.split(cmd)
+except ValueError:
+    tokens = cmd.split()
+if not tokens:
+    sys.exit(0)
+
+readers = {"cat", "less", "more", "head", "tail", "sed", "awk", "grep", "rg"}
+name = Path(tokens[0]).name
+if name not in readers:
+    sys.exit(0)
+
+patterns = [
+    r"\.env$",
+    r"\.env\.",
+    r"\.pem$",
+    r"\.key$",
+    r"\.p12$",
+    r"\.pfx$",
+    r"id_rsa",
+    r"id_ed25519",
+    r"id_ecdsa",
+    r"credentials\.json$",
+    r"\.netrc$",
+    r"secrets\.",
+]
+
+example_markers = {"example", "sample", "template", "dist"}
+
+
+def is_example_template(value):
+    name = Path(value).name.lower()
+    parts = [part for part in name.split(".") if part]
+    return any(part in example_markers for part in parts)
+
+
+def is_sensitive_value(value):
+    if is_example_template(value):
+        return False
+    name = Path(value).name
+    if name.startswith("secrets."):
+        return True
+    return any(re.search(pattern, value) for pattern in patterns if pattern != r"secrets\.")
+
+
+def sensitive(raw):
+    expanded = os.path.expandvars(os.path.expanduser(raw))
+    matches = glob.glob(expanded) or [expanded]
+    for item in matches:
+        path = Path(item)
+        values = [str(path)]
+        try:
+            values.append(str(path.resolve(strict=False)))
+        except Exception:
+            pass
+        for value in values:
+            if is_sensitive_value(value):
+                return True
+    return False
+
+
+for token in tokens[1:]:
+    if token.startswith("-"):
+        continue
+    if sensitive(token):
+        print("BLOCKED: reading sensitive file — %s" % token, file=sys.stderr)
+        sys.exit(2)
+PY
+secret_status=$?
+if [ "$secret_status" -eq 2 ]; then
+  exit 2
+fi
 
 if printf '%s' "$CMD" | grep -qE '(^|[;&|][[:space:]]*)git[[:space:]]+push([[:space:]]|$)'; then
   if printf '%s' "$CMD" | grep -qE '(^|[[:space:]])(-f|--force|--force-with-lease)([=[:space:]]|$)|[[:space:]]\+[^[:space:]]+|[[:space:]]([^[:space:]]+:)?(main|master)(:[^[:space:]]*)?([[:space:]]|$)'; then

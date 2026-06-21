@@ -5,12 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction } from "./actions";
 
-export function LoginForm({ error }: { error?: string }) {
+export function LoginForm({ error, next }: { error?: string; next?: string }) {
   return (
     <form action={loginAction} className="grid gap-5">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <div>
         <p className="eyebrow-signal">Welcome back</p>
-        <h1 className="display mt-4 text-4xl text-foreground md:text-5xl">Log in.</h1>
+        <h1 className="display mt-4 text-4xl text-foreground md:text-5xl">
+          Log in.
+        </h1>
         <p className="mt-4 text-sm leading-6 text-muted-foreground">
           Access your workspace, tickets, and resale listings.
         </p>
@@ -59,7 +62,10 @@ export function LoginForm({ error }: { error?: string }) {
       </Button>
       <p className="text-center text-sm text-muted-foreground">
         New to MISO?{" "}
-        <Link href="/signup" className="font-medium text-signal hover:underline">
+        <Link
+          href="/signup"
+          className="font-medium text-signal hover:underline"
+        >
           Create an account
         </Link>
       </p>

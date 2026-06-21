@@ -37,3 +37,9 @@ A storefront screenshot exposed buyer-facing "NFT tickets" copy even though impl
 ## 2026-06-16 - Keep visual QA when the MCP browser is locked
 
 Playwright MCP can fail with a locked browser profile if another session owns the shared cache. Next time: run the repo's Playwright package directly with a fresh headless browser/context and save screenshots, instead of dropping the browser check.
+
+## 2026-06-20 — Harness upstreams need project-fit review [tools]
+
+- **Saw:** the upstream harness installer replaced app CI with generic CI, duplicated old hook matchers during JSON merge, and scanned generated/test fixture files as secrets.
+- **Why:** base harness defaults are intentionally generic, but this repo has project-specific CI, extra mirrored skills, fixtures, and build artifacts.
+- **Next time:** after applying a harness upstream, run its preflight, then review CI/config diffs for project-fit before accepting the update.

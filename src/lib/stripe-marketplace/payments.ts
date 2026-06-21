@@ -4,10 +4,8 @@ import type Stripe from "stripe";
 
 import { audit } from "@/lib/audit";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  createResaleListing,
-  getResaleCheckoutListing,
-} from "@/lib/resale/listing";
+import { getSellableResaleListing } from "@/lib/marketplace/public";
+import { createResaleListing } from "@/lib/resale/listing";
 import {
   reserveTicket,
   releaseReservation,
@@ -21,7 +19,11 @@ import {
   validateExtraGuests,
 } from "@/lib/payments/checkout";
 import { allocateMoney } from "@/lib/payments/pricing";
-import { markPromoUsed, releasePromoUse, validateAndPricePromo } from "@/lib/promo";
+import {
+  markPromoUsed,
+  releasePromoUse,
+  validateAndPricePromo,
+} from "@/lib/promo";
 import type {
   Purchase,
   ResaleListing,
@@ -253,10 +255,16 @@ function assertEur(currency: string): asserts currency is "EUR" {
 // category whose window is currently open.
 function assertSaleWindowOpen(category: TicketCategory): void {
   const now = Date.now();
-  if (category.sale_starts_at && now < new Date(category.sale_starts_at).getTime()) {
+  if (
+    category.sale_starts_at &&
+    now < new Date(category.sale_starts_at).getTime()
+  ) {
     throw new StripeMarketplaceError("Sales have not started.", 400);
   }
-  if (category.sale_ends_at && now > new Date(category.sale_ends_at).getTime()) {
+  if (
+    category.sale_ends_at &&
+    now > new Date(category.sale_ends_at).getTime()
+  ) {
     throw new StripeMarketplaceError("Sales have ended.", 400);
   }
 }
@@ -544,9 +552,10 @@ export async function createPrimaryCheckout(input: {
 
     // Allocate the DISCOUNTED total across items so the per-purchase shares sum
     // to the actual buyer charge (breakdown.amountTotalCents).
-    const itemCents = allocateMoney(fromCents(effectiveGrossCents), quantity).map(
-      toCents,
-    );
+    const itemCents = allocateMoney(
+      fromCents(effectiveGrossCents),
+      quantity,
+    ).map(toCents);
     const { error: itemsError } = await sb.from(ITEM_TABLE).insert(
       purchaseIds.map((purchaseId, index) => ({
         marketplace_payment_id: payment.id,
@@ -659,24 +668,18 @@ export async function createResaleCheckout(input: {
     };
   }
 
-  const listing = await getResaleCheckoutListing({
+  const sellable = await getSellableResaleListing({
     listingId: input.listingId,
-    buyerUserId: input.buyerUserId,
   });
+  if (!sellable)
+    throw new StripeMarketplaceError("Listing is not available.", 404);
+  const { listing } = sellable;
+  if (listing.seller_user_id === input.buyerUserId) {
+    throw new StripeMarketplaceError("Cannot buy your own listing.");
+  }
   assertEur(listing.currency);
 
-  const { data: ticket } = await sb
-    .from("tickets")
-    .select("event_id")
-    .eq("id", listing.ticket_id)
-    .single<{ event_id: string }>();
-  if (!ticket) throw new StripeMarketplaceError("Ticket missing.", 404);
-  const { data: event } = await sb
-    .from("events")
-    .select("*")
-    .eq("id", ticket.event_id)
-    .single<EventRowWithOrganizer>();
-  if (!event) throw new StripeMarketplaceError("Event not found.", 404);
+  const event = sellable.event as EventRowWithOrganizer;
 
   const env = stripeEnv();
   const royaltyBps = Math.max(0, event.organizer_resale_royalty_bps ?? 0);
@@ -829,7 +832,7 @@ async function createPaymentIntent(params: {
   );
 }
 
-export { createResaleListing, getResaleCheckoutListing };
+export { createResaleListing };
 export type { ResaleListing };
 
 export type SupportedCurrency = "EUR";

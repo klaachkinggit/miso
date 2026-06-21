@@ -35,7 +35,11 @@ export function reducePaymentTransition(
 ): TransitionPlan {
   const noop: TransitionPlan = {
     patch: null,
-    sideEffects: { releaseInventory: false, markPurchasePaid: false, mirrorIntentToPurchase: false },
+    sideEffects: {
+      releaseInventory: false,
+      markPurchasePaid: false,
+      mirrorIntentToPurchase: false,
+    },
   };
   const patch: Partial<MarketplacePaymentRow> = { last_webhook_at: now() };
 
@@ -105,13 +109,15 @@ export function reducePaymentTransition(
       break;
   }
 
-  const isPrimaryWithPurchase = payment.kind === "primary" && !!payment.purchase_id;
+  const isPrimaryWithPurchase =
+    payment.kind === "primary" && !!payment.purchase_id;
   return {
     patch,
     sideEffects: {
       releaseInventory: patch.status === "failed",
       markPurchasePaid: patch.status === "paid" && isPrimaryWithPurchase,
-      mirrorIntentToPurchase: !!patch.stripe_payment_intent_id && isPrimaryWithPurchase,
+      mirrorIntentToPurchase:
+        !!patch.stripe_payment_intent_id && isPrimaryWithPurchase,
     },
   };
 }
@@ -181,28 +187,42 @@ export async function transitionPayment(
 // Side Effect: Release inventory when a payment enters a terminal failed state
 async function releaseInventory(payment: MarketplacePaymentRow) {
   const sb = createServiceClient();
-  if (payment.kind === "primary" && payment.purchase_id) {
-    const { data: purchase } = await sb
+  if (payment.kind === "primary") {
+    const purchaseIds = payment.purchase_id
+      ? [payment.purchase_id]
+      : await getPaymentItemPurchaseIds(payment.id);
+    if (!purchaseIds.length) return;
+
+    const { data: purchases } = await sb
       .from("purchases")
-      .select("ticket_id, status")
-      .eq("id", payment.purchase_id)
-      .maybeSingle<{ ticket_id: string; status: string }>();
-    if (purchase && purchase.status !== "paid") {
-      await sb
-        .from("purchases")
-        .update({ status: "failed" })
-        .eq("id", payment.purchase_id);
-      await sb
-        .from("tickets")
-        .update({
-          status: "available",
-          reserved_until: null,
-          owner_user_id: null,
-        })
-        .eq("id", purchase.ticket_id)
-        .eq("status", "reserved")
-        .eq("owner_user_id", payment.buyer_user_id);
-    }
+      .select("id, ticket_id, status")
+      .in("id", purchaseIds)
+      .returns<Array<{ id: string; ticket_id: string; status: string }>>();
+    const failedPurchases = (purchases ?? []).filter(
+      (purchase) => purchase.status !== "paid",
+    );
+    if (!failedPurchases.length) return;
+
+    await sb
+      .from("purchases")
+      .update({ status: "failed" })
+      .in(
+        "id",
+        failedPurchases.map((purchase) => purchase.id),
+      );
+    await sb
+      .from("tickets")
+      .update({
+        status: "available",
+        reserved_until: null,
+        owner_user_id: null,
+      })
+      .in(
+        "id",
+        failedPurchases.map((purchase) => purchase.ticket_id),
+      )
+      .eq("status", "reserved")
+      .eq("owner_user_id", payment.buyer_user_id);
   } else if (payment.kind === "resale" && payment.resale_listing_id) {
     await sb
       .from("resale_listings")
@@ -211,4 +231,14 @@ async function releaseInventory(payment: MarketplacePaymentRow) {
       .eq("status", "transferring")
       .eq("buyer_user_id", payment.buyer_user_id);
   }
+}
+
+async function getPaymentItemPurchaseIds(paymentId: string): Promise<string[]> {
+  const sb = createServiceClient();
+  const { data } = await sb
+    .from("marketplace_payment_items")
+    .select("purchase_id")
+    .eq("marketplace_payment_id", paymentId)
+    .returns<Array<{ purchase_id: string }>>();
+  return (data ?? []).map((item) => item.purchase_id);
 }

@@ -9,12 +9,13 @@ export default function CookiesPage() {
           Cookie policy<span className="display-italic">.</span>
         </h1>
         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-          Placeholder — final policy to be provided
+          Last updated June 21, 2026
         </p>
       </header>
       <p>
-        MISO uses strictly necessary cookies to keep you signed in and to remember your cart during
-        checkout. We do not use third-party advertising cookies.
+        MISO uses strictly necessary cookies to keep you signed in and to
+        remember your cart during checkout. We do not use third-party
+        advertising cookies.
       </p>
     </>
   );

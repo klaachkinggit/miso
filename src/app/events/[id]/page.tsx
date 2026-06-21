@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EventDetail } from "@/components/site/event-detail";
 import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
-import { getPublishedEventById, listPublicEventCategories } from "@/lib/events/public";
+import {
+  getPublishedEventById,
+  listPublicEventCategories,
+} from "@/lib/events/public";
 import { formatDate } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getConfiguredAppUrl } from "@/lib/url";
 import type { EventRow } from "@/types/db";
 
-const appUrl = (
-  process.env.NEXT_PUBLIC_APP_URL ??
-  process.env.APP_URL ??
-  "http://localhost:3002"
-).replace(/\/+$/, "");
+const appUrl = getConfiguredAppUrl();
 
 async function getEventById(id: string): Promise<EventRow | null> {
   const sb = createServiceClient();
@@ -65,7 +65,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EventPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const [{ id }, profile] = await Promise.all([params, getCurrentProfile()]);
   redirectIfCannotUseBuyerSurface(profile);
 
@@ -74,9 +78,13 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   const categories = await listPublicEventCategories(event.id);
 
-  const lowestCategory = categories.length > 0
-    ? categories.reduce((min, c) => (c.price < min.price ? c : min), categories[0])
-    : null;
+  const lowestCategory =
+    categories.length > 0
+      ? categories.reduce(
+          (min, c) => (c.price < min.price ? c : min),
+          categories[0],
+        )
+      : null;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -116,7 +124,11 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString }}
       />
-      <EventDetail event={event} categories={categories} calendarHref={`/api/events/${id}/calendar`} />
+      <EventDetail
+        event={event}
+        categories={categories}
+        calendarHref={`/api/events/${id}/calendar`}
+      />
     </>
   );
 }

@@ -3,7 +3,13 @@ import { EmptyState } from "@/components/site/empty-state";
 import { TicketCard } from "@/components/tickets/ticket-card";
 import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, Purchase, ResaleListing, Ticket, TicketCategory } from "@/types/db";
+import type {
+  EventRow,
+  Purchase,
+  ResaleListing,
+  Ticket,
+  TicketCategory,
+} from "@/types/db";
 
 export default async function TicketsPage() {
   const profile = await getCurrentProfile();
@@ -15,12 +21,24 @@ export default async function TicketsPage() {
     .from("tickets")
     .select("*")
     .eq("owner_user_id", profile.id)
-    .in("status", ["sold", "listed", "used", "expired", "refund_pending", "refunded", "canceled"])
+    .in("status", [
+      "sold",
+      "listed",
+      "used",
+      "expired",
+      "refund_pending",
+      "refunded",
+      "canceled",
+    ])
     .order("created_at", { ascending: false })
     .returns<Ticket[]>();
 
-  const eventIds = [...new Set(tickets?.map((ticket) => ticket.event_id) ?? [])];
-  const categoryIds = [...new Set(tickets?.map((ticket) => ticket.category_id) ?? [])];
+  const eventIds = [
+    ...new Set(tickets?.map((ticket) => ticket.event_id) ?? []),
+  ];
+  const categoryIds = [
+    ...new Set(tickets?.map((ticket) => ticket.category_id) ?? []),
+  ];
   const listingIds = [
     ...new Set(
       (tickets ?? [])
@@ -36,30 +54,53 @@ export default async function TicketsPage() {
     ),
   ];
 
-  const [{ data: events }, { data: categories }, { data: listings }, { data: purchases }] = await Promise.all([
+  const [
+    { data: events },
+    { data: categories },
+    { data: listings },
+    { data: purchases },
+  ] = await Promise.all([
     eventIds.length
       ? sb.from("events").select("*").in("id", eventIds).returns<EventRow[]>()
       : Promise.resolve({ data: [] as EventRow[] }),
     categoryIds.length
-      ? sb.from("ticket_categories").select("*").in("id", categoryIds).returns<TicketCategory[]>()
+      ? sb
+          .from("ticket_categories")
+          .select("*")
+          .in("id", categoryIds)
+          .returns<TicketCategory[]>()
       : Promise.resolve({ data: [] as TicketCategory[] }),
     listingIds.length
-      ? sb.from("resale_listings").select("*").in("id", listingIds).returns<ResaleListing[]>()
+      ? sb
+          .from("resale_listings")
+          .select("*")
+          .in("id", listingIds)
+          .returns<ResaleListing[]>()
       : Promise.resolve({ data: [] as ResaleListing[] }),
     purchaseIds.length
-      ? sb.from("purchases").select("*").in("id", purchaseIds).returns<Purchase[]>()
+      ? sb
+          .from("purchases")
+          .select("*")
+          .in("id", purchaseIds)
+          .returns<Purchase[]>()
       : Promise.resolve({ data: [] as Purchase[] }),
   ]);
 
   const eventById = new Map((events ?? []).map((event) => [event.id, event]));
-  const categoryById = new Map((categories ?? []).map((category) => [category.id, category]));
-  const listingById = new Map((listings ?? []).map((listing) => [listing.id, listing]));
-  const purchaseById = new Map((purchases ?? []).map((purchase) => [purchase.id, purchase]));
+  const categoryById = new Map(
+    (categories ?? []).map((category) => [category.id, category]),
+  );
+  const listingById = new Map(
+    (listings ?? []).map((listing) => [listing.id, listing]),
+  );
+  const purchaseById = new Map(
+    (purchases ?? []).map((purchase) => [purchase.id, purchase]),
+  );
 
   return (
     <div className="container py-12">
       <header className="mb-10 border-b border-hairline pb-8">
-        <p className="eyebrow-signal">Buyer · Wallet</p>
+        <p className="eyebrow-signal">Buyer · Tickets</p>
         <h1 className="display mt-4 text-4xl text-foreground md:text-6xl">
           Your tickets<span className="display-italic">.</span>
         </h1>
@@ -74,14 +115,21 @@ export default async function TicketsPage() {
             if (!event) return null;
             const category = categoryById.get(ticket.category_id) ?? null;
             const listing = ticket.current_listing_id
-              ? listingById.get(ticket.current_listing_id) ?? null
+              ? (listingById.get(ticket.current_listing_id) ?? null)
               : null;
             const eventFuture = new Date(event.date).getTime() > Date.now();
             const eventPast = new Date(event.date).getTime() < Date.now();
-            const purchase = ticket.original_purchase_id ? purchaseById.get(ticket.original_purchase_id) : null;
+            const purchase = ticket.original_purchase_id
+              ? purchaseById.get(ticket.original_purchase_id)
+              : null;
             const originalOnlineTotal = purchase?.amount ?? null;
             const resaleCap =
-              category?.max_resale_price == null ? originalOnlineTotal : Math.min(originalOnlineTotal ?? category.max_resale_price, category.max_resale_price);
+              category?.max_resale_price == null
+                ? originalOnlineTotal
+                : Math.min(
+                    originalOnlineTotal ?? category.max_resale_price,
+                    category.max_resale_price,
+                  );
             const canList =
               ticket.status === "sold" &&
               event.status === "published" &&
@@ -109,7 +157,10 @@ export default async function TicketsPage() {
           })}
         </div>
       ) : (
-        <EmptyState title="No tickets yet" description="After checkout completes, your digital ticket appears here." />
+        <EmptyState
+          title="No tickets yet"
+          description="After checkout completes, your digital ticket appears here."
+        />
       )}
     </div>
   );

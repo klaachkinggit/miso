@@ -14,13 +14,10 @@ import {
   organizationEventPath,
 } from "@/lib/organizations/public";
 import { storefrontPathForHost } from "@/lib/organizations/hosts";
+import { getConfiguredAppUrl } from "@/lib/url";
 import { isOnWaitlist } from "@/lib/waitlist";
 
-const appUrl = (
-  process.env.NEXT_PUBLIC_APP_URL ??
-  process.env.APP_URL ??
-  "http://localhost:3002"
-).replace(/\/+$/, "");
+const appUrl = getConfiguredAppUrl();
 
 export async function generateMetadata({
   params,
@@ -74,11 +71,8 @@ export default async function OrganizationEventPage({
 }: {
   params: Promise<{ organizationSlug: string; eventSlug: string }>;
 }) {
-  const [{ organizationSlug, eventSlug }, profile, headerStore] = await Promise.all([
-    params,
-    getCurrentProfile(),
-    headers(),
-  ]);
+  const [{ organizationSlug, eventSlug }, profile, headerStore] =
+    await Promise.all([params, getCurrentProfile(), headers()]);
   redirectIfCannotUseBuyerSurface(profile);
 
   const organization = await getActiveOrganizationBySlug(organizationSlug);

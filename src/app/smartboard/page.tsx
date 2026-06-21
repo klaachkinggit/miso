@@ -1,7 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, CalendarPlus, ExternalLink, LockKeyhole, Megaphone, Settings, ShieldCheck, Tag, Users, WalletCards } from "lucide-react";
+import {
+  BarChart3,
+  CalendarPlus,
+  ExternalLink,
+  LockKeyhole,
+  Megaphone,
+  Settings,
+  ShieldCheck,
+  Tag,
+  Users,
+  WalletCards,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +37,7 @@ import {
 import { getActiveAdminOrganization } from "@/lib/organizations/context";
 import { listPromoCodes } from "@/lib/promo";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getConfiguredAppUrl } from "@/lib/url";
 import { formatPrice } from "@/lib/format";
 import type { EventRow, PromoCode, Ticket } from "@/types/db";
 import {
@@ -39,7 +51,14 @@ import {
   startStripeConnect,
 } from "./actions";
 
-const TAB_VALUES = ["events", "marketing", "promos", "analyse", "banking", "page"] as const;
+const TAB_VALUES = [
+  "events",
+  "marketing",
+  "promos",
+  "analyse",
+  "banking",
+  "page",
+] as const;
 
 export default async function SmartboardPage({
   searchParams,
@@ -49,7 +68,9 @@ export default async function SmartboardPage({
   const profile = await requireRole("organizer");
   await refreshOrganizerLiveStatus(profile.id);
   const params = await searchParams;
-  const activeTab = TAB_VALUES.includes(params?.tab as (typeof TAB_VALUES)[number])
+  const activeTab = TAB_VALUES.includes(
+    params?.tab as (typeof TAB_VALUES)[number],
+  )
     ? (params?.tab as (typeof TAB_VALUES)[number])
     : "events";
   const compliance = await getOrganizerCompliance(profile.id);
@@ -72,7 +93,9 @@ export default async function SmartboardPage({
         .returns<Pick<Ticket, "id" | "event_id" | "status">[]>()
     : { data: [] as Pick<Ticket, "id" | "event_id" | "status">[] };
   const ticketRows = tickets ?? [];
-  const soldCount = ticketRows.filter((ticket) => ["sold", "listed", "used"].includes(ticket.status)).length;
+  const soldCount = ticketRows.filter((ticket) =>
+    ["sold", "listed", "used"].includes(ticket.status),
+  ).length;
   const generatedCount = ticketRows.length;
   const followerCount = await getActiveOrganizationFollowerCount(profile);
   const announcedCount = params?.announced ? Number(params.announced) : null;
@@ -116,20 +139,21 @@ export default async function SmartboardPage({
         .in("event_id", publishedEventIds)
         .order("price", { ascending: true })
     : { data: [] as Array<{ id: string; name: string; event_id: string }> };
-  const appOrigin = (
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.APP_URL ??
-    "http://localhost:3002"
-  ).replace(/\/+$/, "");
+  const appOrigin = getConfiguredAppUrl();
 
   return (
     <div className="container py-8">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="mono-stub mb-3 text-primary">Organizer Smartboard</p>
-          <h1 className="text-3xl font-semibold">{compliance.organizer.page_name ?? profile.display_name ?? profile.email}</h1>
+          <h1 className="text-3xl font-semibold">
+            {compliance.organizer.page_name ??
+              profile.display_name ??
+              profile.email}
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {compliance.live ? "Live account" : "Sandbox account"} · {eventRows.length} events · {generatedCount} tickets generated
+            {compliance.live ? "Live account" : "Sandbox account"} ·{" "}
+            {eventRows.length} events · {generatedCount} tickets generated
           </p>
         </div>
         <Badge variant={compliance.live ? "success" : "warning"}>
@@ -167,20 +191,33 @@ export default async function SmartboardPage({
             <section className="grid gap-4">
               {eventRows.length ? (
                 eventRows.map((event) => {
-                  const count = ticketRows.filter((ticket) => ticket.event_id === event.id).length;
+                  const count = ticketRows.filter(
+                    (ticket) => ticket.event_id === event.id,
+                  ).length;
                   return (
                     <Card key={event.id} className="glass rounded-lg">
                       <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                         <div>
                           <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <h2 className="text-xl font-semibold">{event.name}</h2>
-                            <Badge variant={event.status === "published" ? "success" : "secondary"}>{event.status}</Badge>
+                            <h2 className="text-xl font-semibold">
+                              {event.name}
+                            </h2>
+                            <Badge
+                              variant={
+                                event.status === "published"
+                                  ? "success"
+                                  : "secondary"
+                              }
+                            >
+                              {event.status}
+                            </Badge>
                             {event.status === "draft" && !compliance.live ? (
                               <Badge variant="warning">Publish locked</Badge>
                             ) : null}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {formatDateShort(event.date)} · {event.venue_name}, {event.city} · {count} tickets
+                            {formatDateShort(event.date)} · {event.venue_name},{" "}
+                            {event.city} · {count} tickets
                           </p>
                         </div>
                         <Button asChild variant="outline">
@@ -195,7 +232,9 @@ export default async function SmartboardPage({
                 })
               ) : (
                 <Card className="glass rounded-lg">
-                  <CardContent className="p-5 text-sm text-muted-foreground">No organizer events yet.</CardContent>
+                  <CardContent className="p-5 text-sm text-muted-foreground">
+                    No organizer events yet.
+                  </CardContent>
                 </Card>
               )}
             </section>
@@ -205,12 +244,27 @@ export default async function SmartboardPage({
 
         <TabsContent value="marketing">
           <div className="grid gap-5 md:grid-cols-3">
-            <MetricCard icon={CalendarPlus} label="Draft events" value={eventRows.filter((event) => event.status === "draft").length} />
-            <MetricCard icon={ShieldCheck} label="Published events" value={eventRows.filter((event) => event.status === "published").length} />
+            <MetricCard
+              icon={CalendarPlus}
+              label="Draft events"
+              value={
+                eventRows.filter((event) => event.status === "draft").length
+              }
+            />
+            <MetricCard
+              icon={ShieldCheck}
+              label="Published events"
+              value={
+                eventRows.filter((event) => event.status === "published").length
+              }
+            />
             <MetricCard icon={Users} label="Followers" value={followerCount} />
           </div>
           <div className="mt-5">
-            <AnnounceComposer followerCount={followerCount} announcedCount={announcedCount} />
+            <AnnounceComposer
+              followerCount={followerCount}
+              announcedCount={announcedCount}
+            />
           </div>
         </TabsContent>
 
@@ -231,9 +285,21 @@ export default async function SmartboardPage({
 
         <TabsContent value="analyse">
           <div className="grid gap-5 md:grid-cols-3">
-            <MetricCard icon={BarChart3} label="Generated tickets" value={generatedCount} />
-            <MetricCard icon={WalletCards} label="Primary sales" value={soldCount} />
-            <MetricCard icon={LockKeyhole} label="Sandbox locks" value={compliance.live ? 0 : 1} />
+            <MetricCard
+              icon={BarChart3}
+              label="Generated tickets"
+              value={generatedCount}
+            />
+            <MetricCard
+              icon={WalletCards}
+              label="Primary sales"
+              value={soldCount}
+            />
+            <MetricCard
+              icon={LockKeyhole}
+              label="Sandbox locks"
+              value={compliance.live ? 0 : 1}
+            />
           </div>
         </TabsContent>
 
@@ -252,7 +318,9 @@ export default async function SmartboardPage({
               <CardContent className="grid gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center justify-between rounded-md border border-border/70 p-3">
                   <span>Payout readiness</span>
-                  <Badge variant={compliance.stripeReady ? "success" : "warning"}>
+                  <Badge
+                    variant={compliance.stripeReady ? "success" : "warning"}
+                  >
                     {compliance.stripeReady ? "Verified" : "Required"}
                   </Badge>
                 </div>
@@ -280,7 +348,9 @@ export default async function SmartboardPage({
                   <CardTitle>Storefront theme</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ThemePicker currentKey={getTheme(orgSettings?.theme).key as ThemeKey} />
+                  <ThemePicker
+                    currentKey={getTheme(orgSettings?.theme).key as ThemeKey}
+                  />
                 </CardContent>
               </Card>
               <Card className="glass rounded-lg">
@@ -304,7 +374,9 @@ export default async function SmartboardPage({
                   <CustomDomainSettings
                     customDomain={orgSettings?.custom_domain ?? null}
                     verified={Boolean(orgSettings?.custom_domain_verified_at)}
-                    verificationToken={orgSettings?.custom_domain_verification_token ?? null}
+                    verificationToken={
+                      orgSettings?.custom_domain_verification_token ?? null
+                    }
                   />
                 </CardContent>
               </Card>
@@ -319,24 +391,42 @@ export default async function SmartboardPage({
                 <form action={saveOrganizerPage} className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="page_name">Page name</Label>
-                    <Input id="page_name" name="page_name" defaultValue={compliance.organizer.page_name ?? ""} required />
+                    <Input
+                      id="page_name"
+                      name="page_name"
+                      defaultValue={compliance.organizer.page_name ?? ""}
+                      required
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="page_slug">Slug</Label>
                     <Input
                       id="page_slug"
                       name="page_slug"
-                      defaultValue={compliance.organizer.page_slug ?? slugify(compliance.organizer.page_name ?? profile.email)}
+                      defaultValue={
+                        compliance.organizer.page_slug ??
+                        slugify(compliance.organizer.page_name ?? profile.email)
+                      }
                       required
                     />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="page_description">Description</Label>
-                    <Textarea id="page_description" name="page_description" rows={4} defaultValue={compliance.organizer.page_description ?? ""} />
+                    <Textarea
+                      id="page_description"
+                      name="page_description"
+                      rows={4}
+                      defaultValue={compliance.organizer.page_description ?? ""}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="widget_accent_color">Widget accent</Label>
-                    <Input id="widget_accent_color" name="widget_accent_color" type="color" defaultValue={compliance.organizer.widget_accent_color} />
+                    <Input
+                      id="widget_accent_color"
+                      name="widget_accent_color"
+                      type="color"
+                      defaultValue={compliance.organizer.widget_accent_color}
+                    />
                   </div>
                   <Button type="submit">Save page</Button>
                 </form>
@@ -347,14 +437,24 @@ export default async function SmartboardPage({
                 <CardTitle>Xpress Door</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 text-sm text-muted-foreground">
-                <p>Controller invitations are available inside published events with generated tickets.</p>
-                {eventRows.filter((event) => event.status === "published").length ? (
+                <p>
+                  Controller invitations are available inside published events
+                  with generated tickets.
+                </p>
+                {eventRows.filter((event) => event.status === "published")
+                  .length ? (
                   <div className="grid gap-2">
-                    {eventRows.filter((event) => event.status === "published").map((event) => (
-                      <Button key={event.id} asChild variant="outline">
-                        <Link href={`/smartboard/events/${event.id}?tab=door`}>{event.name}</Link>
-                      </Button>
-                    ))}
+                    {eventRows
+                      .filter((event) => event.status === "published")
+                      .map((event) => (
+                        <Button key={event.id} asChild variant="outline">
+                          <Link
+                            href={`/smartboard/events/${event.id}?tab=door`}
+                          >
+                            {event.name}
+                          </Link>
+                        </Button>
+                      ))}
                   </div>
                 ) : (
                   <Badge variant="warning">Locked</Badge>
@@ -385,21 +485,39 @@ function ComplianceBanner({
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <LockKeyhole className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold">Publishing is locked until compliance is complete.</h2>
+            <h2 className="font-semibold">
+              Publishing is locked until compliance is complete.
+            </h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant={legalReady ? "success" : "warning"}>Legal identity {legalReady ? "ready" : "required"}</Badge>
-            <Badge variant={stripeReady ? "success" : "warning"}>Stripe {stripeReady ? "verified" : "required"}</Badge>
+            <Badge variant={legalReady ? "success" : "warning"}>
+              Legal identity {legalReady ? "ready" : "required"}
+            </Badge>
+            <Badge variant={stripeReady ? "success" : "warning"}>
+              Stripe {stripeReady ? "verified" : "required"}
+            </Badge>
           </div>
         </div>
         <form action={saveLegalCompliance} className="grid gap-2">
           <Label htmlFor="siret-banner">SIRET or corporate id</Label>
           <div className="flex gap-2">
-            <Input id="siret-banner" name="siret" defaultValue={siret ?? ""} disabled={noSiret} />
-            <Button type="submit" variant="outline">Save</Button>
+            <Input
+              id="siret-banner"
+              name="siret"
+              defaultValue={siret ?? ""}
+              disabled={noSiret}
+            />
+            <Button type="submit" variant="outline">
+              Save
+            </Button>
           </div>
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <input name="no_siret" type="checkbox" defaultChecked={noSiret} className="h-4 w-4" />
+            <input
+              name="no_siret"
+              type="checkbox"
+              defaultChecked={noSiret}
+              className="h-4 w-4"
+            />
             I do not have one
           </label>
         </form>
@@ -428,19 +546,32 @@ function BankingCard({
         <form action={saveLegalCompliance} className="grid gap-4">
           <div className="flex items-center justify-between rounded-md border border-border/70 p-3 text-sm">
             <span>SIRET / corporate id</span>
-            <Badge variant={legalReady ? "success" : "warning"}>{legalReady ? "Saved" : "Required"}</Badge>
+            <Badge variant={legalReady ? "success" : "warning"}>
+              {legalReady ? "Saved" : "Required"}
+            </Badge>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="siret">SIRET or regional equivalent</Label>
-            <Input id="siret" name="siret" defaultValue={siret ?? ""} disabled={noSiret} />
+            <Input
+              id="siret"
+              name="siret"
+              defaultValue={siret ?? ""}
+              disabled={noSiret}
+            />
           </div>
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input name="no_siret" type="checkbox" defaultChecked={noSiret} className="h-4 w-4" />
+            <input
+              name="no_siret"
+              type="checkbox"
+              defaultChecked={noSiret}
+              className="h-4 w-4"
+            />
             I do not have one
           </label>
           <Button type="submit">Save legal identity</Button>
           <p className="text-xs text-muted-foreground">
-            Stripe status: {stripeReady ? "ready for payouts" : "verification pending"}
+            Stripe status:{" "}
+            {stripeReady ? "ready for payouts" : "verification pending"}
           </p>
         </form>
       </CardContent>
@@ -467,7 +598,13 @@ function CreateEventCard() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="capacity">Capacity</Label>
-              <Input id="capacity" name="capacity" type="number" min="1" required />
+              <Input
+                id="capacity"
+                name="capacity"
+                type="number"
+                min="1"
+                required
+              />
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -485,8 +622,18 @@ function CreateEventCard() {
             <Input id="image_url" name="image_url" type="url" />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="organizer_resale_royalty_pct">Resale royalty (%)</Label>
-            <Input id="organizer_resale_royalty_pct" name="organizer_resale_royalty_pct" type="number" step="0.5" min="0" max="50" defaultValue="0" />
+            <Label htmlFor="organizer_resale_royalty_pct">
+              Resale royalty (%)
+            </Label>
+            <Input
+              id="organizer_resale_royalty_pct"
+              name="organizer_resale_royalty_pct"
+              type="number"
+              step="0.5"
+              min="0"
+              max="50"
+              defaultValue="0"
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="description">Description</Label>
@@ -519,13 +666,19 @@ function AnnounceComposer({
       <CardContent>
         {announcedCount !== null ? (
           <div className="mb-4 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm">
-            Announcement sent to {announcedCount} {announcedCount === 1 ? "follower" : "followers"}.
+            Announcement sent to {announcedCount}{" "}
+            {announcedCount === 1 ? "follower" : "followers"}.
           </div>
         ) : null}
         <form action={sendAnnouncementAction} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="announce_subject">Subject</Label>
-            <Input id="announce_subject" name="subject" maxLength={150} required />
+            <Input
+              id="announce_subject"
+              name="subject"
+              maxLength={150}
+              required
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="announce_body">Message</Label>
@@ -533,7 +686,8 @@ function AnnounceComposer({
           </div>
           <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              Reaches {followerCount} active {followerCount === 1 ? "follower" : "followers"}.
+              Reaches {followerCount} active{" "}
+              {followerCount === 1 ? "follower" : "followers"}.
             </p>
             <Button type="submit" disabled={followerCount === 0}>
               Send announcement
@@ -574,7 +728,10 @@ function PromoCodeList({ promoCodes }: { promoCodes: PromoCode[] }) {
                     <td className="px-3 py-2">
                       {promo.discount_kind === "percent"
                         ? `${promo.percent_off}%`
-                        : formatPrice((promo.amount_off_cents ?? 0) / 100, "EUR")}
+                        : formatPrice(
+                            (promo.amount_off_cents ?? 0) / 100,
+                            "EUR",
+                          )}
                     </td>
                     <td className="px-3 py-2">
                       {promo.used_count}
@@ -588,7 +745,11 @@ function PromoCodeList({ promoCodes }: { promoCodes: PromoCode[] }) {
                     <td className="px-3 py-2 text-right">
                       {promo.active ? (
                         <form action={deactivatePromoCodeAction}>
-                          <input type="hidden" name="promo_code_id" value={promo.id} />
+                          <input
+                            type="hidden"
+                            name="promo_code_id"
+                            value={promo.id}
+                          />
                           <Button type="submit" variant="outline" size="sm">
                             Deactivate
                           </Button>
@@ -618,7 +779,12 @@ function CreatePromoCard() {
         <form action={createPromoCodeAction} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="promo_code_input">Code</Label>
-            <Input id="promo_code_input" name="code" placeholder="EARLYBIRD" required />
+            <Input
+              id="promo_code_input"
+              name="code"
+              placeholder="EARLYBIRD"
+              required
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="discount_kind">Discount type</Label>
@@ -635,11 +801,23 @@ function CreatePromoCard() {
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
               <Label htmlFor="percent_off">Percent off</Label>
-              <Input id="percent_off" name="percent_off" type="number" min="1" max="100" />
+              <Input
+                id="percent_off"
+                name="percent_off"
+                type="number"
+                min="1"
+                max="100"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="amount_off">Fixed (EUR)</Label>
-              <Input id="amount_off" name="amount_off" type="number" min="0.01" step="0.01" />
+              <Input
+                id="amount_off"
+                name="amount_off"
+                type="number"
+                min="0.01"
+                step="0.01"
+              />
             </div>
           </div>
           <div className="grid gap-2">
@@ -682,8 +860,8 @@ function EmbedWidgetCard({
       </CardHeader>
       <CardContent className="grid gap-5 text-sm text-muted-foreground">
         <p>
-          Paste a category snippet on any external site to embed a checkout button. Buyers complete
-          payment back on MISO.
+          Paste a category snippet on any external site to embed a checkout
+          button. Buyers complete payment back on MISO.
         </p>
         {eventsWithCategories.length ? (
           eventsWithCategories.map((event) => (
@@ -696,13 +874,18 @@ function EmbedWidgetCard({
                     <p className="font-mono text-[11px] uppercase tracking-[0.16em]">
                       {category.name}
                     </p>
-                    <EmbedSnippet snippet={buildEmbedSnippet(origin, category.id)} />
+                    <EmbedSnippet
+                      snippet={buildEmbedSnippet(origin, category.id)}
+                    />
                   </div>
                 ))}
             </div>
           ))
         ) : (
-          <p>Publish an event with ticket categories to generate an embed snippet.</p>
+          <p>
+            Publish an event with ticket categories to generate an embed
+            snippet.
+          </p>
         )}
       </CardContent>
     </Card>

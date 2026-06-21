@@ -1,12 +1,9 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { organizationStorefrontOrigin } from "@/lib/organizations/hosts";
+import { getConfiguredAppUrl } from "@/lib/url";
 
-const siteUrl =
-  (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3002").replace(
-    /\/+$/,
-    "",
-  );
+const siteUrl = getConfiguredAppUrl();
 
 export const revalidate = 3600;
 
@@ -24,7 +21,11 @@ type SitemapOrganization = {
   updated_at?: string | null;
 };
 
-function page(url: string, priority: number, changeFrequency: "daily" | "weekly" | "monthly") {
+function page(
+  url: string,
+  priority: number,
+  changeFrequency: "daily" | "weekly" | "monthly",
+) {
   return {
     url: `${siteUrl}${url}`,
     lastModified: new Date(),
@@ -60,7 +61,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const sb = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
     });
 
     const [{ data: events }, { data: organizations }] = await Promise.all([
@@ -79,9 +84,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .returns<SitemapOrganization[]>(),
     ]);
 
-    const organizationById = new Map((organizations ?? []).map((organization) => [organization.id, organization]));
+    const organizationById = new Map(
+      (organizations ?? []).map((organization) => [
+        organization.id,
+        organization,
+      ]),
+    );
     const publicEvents =
-      events?.filter((event) => !event.organization_id || organizationById.has(event.organization_id)) ?? [];
+      events?.filter(
+        (event) =>
+          !event.organization_id || organizationById.has(event.organization_id),
+      ) ?? [];
     const organizationPages =
       organizations?.flatMap((organization) => [
         {
@@ -98,29 +111,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
       ]) ?? [];
 
-    const eventPages =
-      publicEvents.map((event) => ({
-        url: `${siteUrl}/events/${event.id}`,
-        lastModified: event.updated_at ?? event.date ?? new Date(),
-        changeFrequency: "weekly" as const,
-        priority: 0.8,
-      }));
+    const eventPages = publicEvents.map((event) => ({
+      url: `${siteUrl}/events/${event.id}`,
+      lastModified: event.updated_at ?? event.date ?? new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    }));
 
-    const organizationEventPages =
-      publicEvents
-        .map((event) => {
-          const organization = organizationById.get(event.organization_id ?? "");
-          if (!organization || !event.slug) return null;
-          return {
-            url: organizationPageUrl(organization.slug, `/events/${event.slug}`),
-            lastModified: event.updated_at ?? event.date ?? new Date(),
-            changeFrequency: "weekly" as const,
-            priority: 0.8,
-          };
-        })
-        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+    const organizationEventPages = publicEvents
+      .map((event) => {
+        const organization = organizationById.get(event.organization_id ?? "");
+        if (!organization || !event.slug) return null;
+        return {
+          url: organizationPageUrl(organization.slug, `/events/${event.slug}`),
+          lastModified: event.updated_at ?? event.date ?? new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.8,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 
-    return [...staticPages, ...organizationPages, ...eventPages, ...organizationEventPages];
+    return [
+      ...staticPages,
+      ...organizationPages,
+      ...eventPages,
+      ...organizationEventPages,
+    ];
   } catch {
     return staticPages;
   }

@@ -66,7 +66,8 @@ export function CardCheckoutForm({
     async function init() {
       try {
         const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-        if (!publishableKey) throw new Error("Stripe publishable key is missing.");
+        if (!publishableKey)
+          throw new Error("Stripe publishable key is missing.");
         await loadStripeScript();
         if (!window.Stripe) throw new Error("Stripe.js did not load.");
 
@@ -77,7 +78,8 @@ export function CardCheckoutForm({
 
         const primaryBody: Record<string, unknown> = { category_id: id };
         if (quantity !== undefined) primaryBody.quantity = quantity;
-        if (extraGuests !== undefined) primaryBody.extra_guests_count = extraGuests;
+        if (extraGuests !== undefined)
+          primaryBody.extra_guests_count = extraGuests;
         if (giftEmail) primaryBody.gift_recipient_email = giftEmail;
         if (returnPath) primaryBody.return_path = returnPath;
         if (promo) primaryBody.promo = promo;
@@ -88,10 +90,13 @@ export function CardCheckoutForm({
             "content-type": "application/json",
             "idempotency-key": crypto.randomUUID(),
           },
-          body: JSON.stringify(mode === "primary" ? primaryBody : { listing_id: id }),
+          body: JSON.stringify(
+            mode === "primary" ? primaryBody : { listing_id: id },
+          ),
         });
         const payload = (await response.json()) as CheckoutPayload;
-        if (!response.ok) throw new Error(payload.error ?? "Card checkout could not start.");
+        if (!response.ok)
+          throw new Error(payload.error ?? "Card checkout could not start.");
         if (canceled) return;
 
         if (payload.free) {
@@ -100,7 +105,9 @@ export function CardCheckoutForm({
         }
 
         const stripe = window.Stripe(publishableKey);
-        const elements = stripe.elements({ clientSecret: payload.clientSecret });
+        const elements = stripe.elements({
+          clientSecret: payload.clientSecret,
+        });
         elements.create("payment").mount("#payment-element");
         stripeRef.current = stripe;
         elementsRef.current = elements;
@@ -109,7 +116,11 @@ export function CardCheckoutForm({
         setLoading(false);
       } catch (err) {
         if (!canceled) {
-          setError(err instanceof Error ? err.message : "Card checkout could not start.");
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Card checkout could not start.",
+          );
           setLoading(false);
         }
       }
@@ -122,7 +133,8 @@ export function CardCheckoutForm({
   }, [id, mode, quantity, extraGuests, giftEmail, returnPath, promo]);
 
   async function submit() {
-    if (!stripeRef.current || !elementsRef.current || !paymentIdRef.current) return;
+    if (!stripeRef.current || !elementsRef.current || !paymentIdRef.current)
+      return;
     setSubmitting(true);
     setError(null);
     const { error: stripeError } = await stripeRef.current.confirmPayment({
@@ -148,10 +160,17 @@ export function CardCheckoutForm({
       <CardContent className="grid gap-5">
         {amount !== null ? (
           <div className="rounded-md border border-border/70 p-3 text-sm">
-            Total {(amount / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+            Total{" "}
+            {(amount / 100).toLocaleString("fr-FR", {
+              style: "currency",
+              currency: "EUR",
+            })}
           </div>
         ) : null}
-        <div id="payment-element" className="min-h-28 rounded-md border border-border/70 bg-background/40 p-3" />
+        <div
+          id="payment-element"
+          className="min-h-28 rounded-md border border-border/70 bg-background/40 p-3"
+        />
         {loading ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -163,9 +182,13 @@ export function CardCheckoutForm({
             {error}
           </div>
         ) : null}
-        <Button type="button" onClick={submit} disabled={loading || submitting || Boolean(error)}>
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-          Pay by card
+        <Button type="button" onClick={submit} disabled={loading || submitting}>
+          {submitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <CreditCard className="h-4 w-4" />
+          )}
+          {error ? "Try again" : "Pay by card"}
         </Button>
       </CardContent>
     </Card>
@@ -178,17 +201,27 @@ function loadStripeScript(): Promise<void> {
       resolve();
       return;
     }
-    const existing = document.querySelector<HTMLScriptElement>("script[src='https://js.stripe.com/v3/']");
+    const existing = document.querySelector<HTMLScriptElement>(
+      "script[src='https://js.stripe.com/v3/']",
+    );
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Stripe.js failed to load.")), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("Stripe.js failed to load.")),
+        { once: true },
+      );
       return;
     }
     const script = document.createElement("script");
     script.src = "https://js.stripe.com/v3/";
     script.async = true;
     script.addEventListener("load", () => resolve(), { once: true });
-    script.addEventListener("error", () => reject(new Error("Stripe.js failed to load.")), { once: true });
+    script.addEventListener(
+      "error",
+      () => reject(new Error("Stripe.js failed to load.")),
+      { once: true },
+    );
     document.head.appendChild(script);
   });
 }

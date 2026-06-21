@@ -27,10 +27,26 @@ import { syncSellerAccountFromStripe } from "./seller-accounts";
 // vs legacy `charges.data[]`). Returns null when neither is populated.
 export function extractChargeId(intent: Stripe.PaymentIntent): string | null {
   if (typeof intent.latest_charge === "string") return intent.latest_charge;
-  const legacy = (intent as unknown as { charges?: { data?: Array<{ id?: string }> } })
-    .charges?.data;
+  const legacy = (
+    intent as unknown as { charges?: { data?: Array<{ id?: string }> } }
+  ).charges?.data;
   if (Array.isArray(legacy) && legacy[0]?.id) return legacy[0].id;
   return null;
+}
+
+export interface ChargeRefundInfo {
+  refund: Stripe.Refund;
+  cumulativeRefundedCents: number;
+}
+
+export function extractChargeRefundInfo(
+  charge: Stripe.Charge,
+): ChargeRefundInfo | null {
+  const refund = (charge.refunds?.data ?? [])[0];
+  if (!refund) return null;
+  const cumulativeRefundedCents = charge.amount_refunded ?? refund.amount ?? 0;
+  if (cumulativeRefundedCents <= 0) return null;
+  return { refund, cumulativeRefundedCents };
 }
 
 export function constructWebhookEvent(
@@ -102,9 +118,13 @@ export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
       if (!intentId) return;
       const payment = await getMarketplacePaymentByIntent(intentId);
       if (!payment) return;
-      const refund = (charge.refunds?.data ?? [])[0];
-      if (!refund) return;
-      await recordExternalChargeRefund({ payment, refund });
+      const refundInfo = extractChargeRefundInfo(charge);
+      if (!refundInfo) return;
+      await recordExternalChargeRefund({
+        payment,
+        refund: refundInfo.refund,
+        cumulativeRefundedCents: refundInfo.cumulativeRefundedCents,
+      });
       return;
     }
 

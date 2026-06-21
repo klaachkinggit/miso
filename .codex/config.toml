@@ -1,11 +1,9 @@
-[mcp_servers.codegraph]
-command = "codegraph"
-args = ["serve", "--mcp"]
-
 [mcp_servers.github]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-github"]
-env_vars = ["GITHUB_TOKEN"]
+
+[mcp_servers.github.env]
+GITHUB_PERSONAL_ACCESS_TOKEN = "$GITHUB_TOKEN"
 
 [mcp_servers.filesystem]
 command = "npx"
@@ -23,16 +21,6 @@ args = ["-y", "@playwright/mcp"]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
 
-[mcp_servers.vercel]
-url = "https://mcp.vercel.com"
-
-[mcp_servers.supabase]
-url = "https://mcp.supabase.com/mcp?read_only=true"
-
-[mcp_servers.stripe]
+[mcp_servers.context7]
 command = "npx"
-args = ["-y", "@stripe/mcp@latest"]
-env_vars = ["STRIPE_SECRET_KEY"]
-
-[mcp_servers.figma]
-url = "https://mcp.figma.com/mcp"
+args = ["-y", "@upstash/context7-mcp"]

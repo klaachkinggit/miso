@@ -9,13 +9,13 @@ export default function PrivacyPage() {
           Privacy policy<span className="display-italic">.</span>
         </h1>
         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-          Placeholder — final policy to be provided
+          Last updated June 21, 2026
         </p>
       </header>
       <p>
-        MISO collects the minimum personal data required to issue tickets and process payments:
-        email, wallet address, and purchase records. Wallet addresses are public on-chain. We do not
-        sell your personal data.
+        MISO collects the minimum personal data required to issue tickets and
+        process payments: email, wallet address, and purchase records. Wallet
+        addresses are public on-chain. We do not sell your personal data.
       </p>
     </>
   );

@@ -186,21 +186,35 @@ async function ensureTransfer(input: {
 export async function reverseTransfer(input: {
   marketplaceTransferId: string;
   stripeTransferId: string;
+  refundKey: string;
   amountCents?: number;
 }): Promise<string> {
+  const existing = await getTransferById(input.marketplaceTransferId);
+  const amountCents = input.amountCents ?? existing.amount_cents;
+  const alreadyReversed = existing.reversed_amount_cents ?? 0;
+  const nextReversed = Math.min(
+    existing.amount_cents,
+    alreadyReversed + amountCents,
+  );
   const stripe = stripeClient();
   const reversal = await stripe.transfers.createReversal(
     input.stripeTransferId,
     {
-      ...(input.amountCents ? { amount: input.amountCents } : {}),
+      ...(amountCents ? { amount: amountCents } : {}),
     },
     {
-      idempotencyKey: `rev_${input.marketplaceTransferId}`,
+      idempotencyKey:
+        `rev_${input.marketplaceTransferId}_${input.refundKey}`.slice(0, 255),
     },
   );
   await updateTransferRow(input.marketplaceTransferId, {
-    status: "reversed",
+    status: nextReversed >= existing.amount_cents ? "reversed" : "created",
     stripe_transfer_reversal_id: reversal.id,
+    stripe_transfer_reversal_ids: [
+      ...(existing.stripe_transfer_reversal_ids ?? []),
+      reversal.id,
+    ],
+    reversed_amount_cents: nextReversed,
   });
   return reversal.id;
 }
@@ -219,6 +233,8 @@ export interface MarketplaceTransferRow {
   stripe_connected_account_id: string;
   stripe_transfer_id: string | null;
   stripe_transfer_reversal_id: string | null;
+  stripe_transfer_reversal_ids: string[];
+  reversed_amount_cents: number;
   status: TransferStatus;
   failure_reason: string | null;
   created_at: string;
@@ -236,6 +252,18 @@ export async function listTransfersForPayment(
     .eq("marketplace_payment_id", marketplacePaymentId);
   if (error) throw error;
   return (data ?? []) as MarketplaceTransferRow[];
+}
+
+async function getTransferById(id: string): Promise<MarketplaceTransferRow> {
+  const TRANSFER_TABLE = "marketplace_transfers" as const;
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from(TRANSFER_TABLE)
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data as MarketplaceTransferRow;
 }
 
 export async function upsertTransferRow(input: {
@@ -270,6 +298,8 @@ export async function updateTransferRow(
       | "status"
       | "stripe_transfer_id"
       | "stripe_transfer_reversal_id"
+      | "stripe_transfer_reversal_ids"
+      | "reversed_amount_cents"
       | "failure_reason"
     >
   >,

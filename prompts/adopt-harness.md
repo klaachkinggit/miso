@@ -12,8 +12,10 @@ mirrors, remove dead weight, keep what's genuinely project-specific.
    - provider mirrors: `.codex/`, `.claude/`
    - legacy harness folders only if present (`.agents/`) so they can be removed
    - git hooks (`git config --get core.hooksPath`), CI workflows in `.github/`
-2. **Apply the harness** — install the shared files plus both provider mirrors.
-   Back up any overwritten file to `<file>.bak`.
+2. **Apply the harness** — from the target project root, run `apply.sh` directly
+   via curl or from a temp clone outside the project. Do not clone/leave
+   `klaach_harness/` inside the project. Install the shared files plus both
+   provider mirrors. Back up any overwritten file to `<file>.bak`.
 3. **Audit each pre-existing skill / command** and classify:
    - **KEEP** — project-specific, useful, no harness equivalent.
    - **REDUNDANT** — duplicates a harness skill/prompt (e.g. a custom "debugger"
@@ -28,7 +30,8 @@ mirrors, remove dead weight, keep what's genuinely project-specific.
 5. **On approval** — execute the plan. Reconcile rules: fold any
    project-specific rules into the bottom of `AGENTS.md` and mirror the same
    contract into `CLAUDE.md`. Never silently drop project rules.
-6. **Verify** — shared prompts under `prompts/`, provider hooks under
+6. **Verify** — run `tools/check-agent-context.sh --tool all` and
+   `tools/preflight-harness.sh`. Shared prompts under `prompts/`, provider hooks under
    `.codex/hooks` and `.claude/hooks`, mirrored skills under `.codex/skills`
    and `.claude/skills`, no tracked `.agents/`, no in-repo harness archive
    folders, and a quick sanity run.

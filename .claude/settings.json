@@ -24,9 +24,7 @@
       "Bash(which:*)",
       "Bash(env:*)"
     ],
-    "deny": [
-      "Bash(sudo:*)"
-    ]
+    "deny": ["Bash(sudo:*)"]
   },
   "hooks": {
     "Stop": [
@@ -41,7 +39,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|Read",
+        "matcher": "Edit|MultiEdit|NotebookEdit|Write|Read",
         "hooks": [
           {
             "type": "command",
@@ -83,7 +81,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|MultiEdit|NotebookEdit|Write",
         "hooks": [
           {
             "type": "command",
@@ -93,9 +91,5 @@
         ]
       }
     ]
-  },
-  "enabledPlugins": {
-    "ponytail@ponytail": true,
-    "context7@context7-marketplace": true
   }
 }

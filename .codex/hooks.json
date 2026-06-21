@@ -1,4 +1,8 @@
 {
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
   "hooks": {
     "Stop": [
       {
@@ -12,7 +16,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "^Edit$|^Write$|^Read$",
+        "matcher": "^Edit$|^MultiEdit$|^NotebookEdit$|^Write$|^Read$",
         "hooks": [
           {
             "type": "command",
@@ -54,7 +58,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "^Edit$|^Write$",
+        "matcher": "^Edit$|^MultiEdit$|^NotebookEdit$|^Write$",
         "hooks": [
           {
             "type": "command",

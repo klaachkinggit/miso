@@ -55,7 +55,8 @@
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.21.45",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "ponytail": "^1.0.57"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",

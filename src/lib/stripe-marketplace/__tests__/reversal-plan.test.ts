@@ -4,12 +4,15 @@ import { describe, it } from "vitest";
 import { planProRateReversals } from "../refunds";
 import type { MarketplaceTransferRow } from "../transfers";
 
-function mkTransfer(o: Partial<MarketplaceTransferRow> & {
-  role: "organizer" | "resale_seller";
-  amount: number;
-  stripeId?: string | null;
-  status?: MarketplaceTransferRow["status"];
-}): MarketplaceTransferRow {
+function mkTransfer(
+  o: Partial<MarketplaceTransferRow> & {
+    role: "organizer" | "resale_seller";
+    amount: number;
+    stripeId?: string | null;
+    status?: MarketplaceTransferRow["status"];
+    reversed_amount_cents?: number;
+  },
+): MarketplaceTransferRow {
   return {
     id: `tr_${o.role}_${o.amount}`,
     marketplace_payment_id: "pay_1",
@@ -18,8 +21,11 @@ function mkTransfer(o: Partial<MarketplaceTransferRow> & {
     amount_cents: o.amount,
     currency: "EUR",
     stripe_connected_account_id: `acct_${o.role}`,
-    stripe_transfer_id: o.stripeId === undefined ? `tr_stripe_${o.role}` : o.stripeId,
+    stripe_transfer_id:
+      o.stripeId === undefined ? `tr_stripe_${o.role}` : o.stripeId,
     stripe_transfer_reversal_id: null,
+    stripe_transfer_reversal_ids: [],
+    reversed_amount_cents: o.reversed_amount_cents ?? 0,
     status: o.status ?? "created",
     failure_reason: null,
     created_at: "2026-01-01",
@@ -79,10 +85,42 @@ describe("planProRateReversals", () => {
     assert.equal(plan[0].amountCents, 200);
   });
 
-  it("skips transfers not in created status", () => {
+  it("uses only the unreversed remainder of partial transfer reversals", () => {
     const plan = planProRateReversals(
       [
-        mkTransfer({ role: "organizer", amount: 100, status: "reversed" }),
+        mkTransfer({
+          role: "organizer",
+          amount: 500,
+          reversed_amount_cents: 200,
+        }),
+      ],
+      500,
+    );
+    assert.equal(plan.length, 1);
+    assert.equal(plan[0].amountCents, 300);
+  });
+
+  it("skips fully reversed transfers", () => {
+    const plan = planProRateReversals(
+      [
+        mkTransfer({
+          role: "organizer",
+          amount: 100,
+          reversed_amount_cents: 100,
+          status: "reversed",
+        }),
+        mkTransfer({ role: "resale_seller", amount: 200 }),
+      ],
+      300,
+    );
+    assert.equal(plan.length, 1);
+    assert.equal(plan[0].recipientRole, "resale_seller");
+  });
+
+  it("skips transfers not in reversible status", () => {
+    const plan = planProRateReversals(
+      [
+        mkTransfer({ role: "organizer", amount: 100, status: "failed" }),
         mkTransfer({ role: "resale_seller", amount: 200 }),
       ],
       300,

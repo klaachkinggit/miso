@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import { buildIcs } from "@/lib/calendar";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getConfiguredAppUrl } from "@/lib/url";
 import type { EventRow } from "@/types/db";
 
-const appUrl = (
-  process.env.NEXT_PUBLIC_APP_URL ??
-  process.env.APP_URL ??
-  "http://localhost:3002"
-).replace(/\/+$/, "");
+const appUrl = getConfiguredAppUrl();
 
 export async function GET(
   _req: Request,
@@ -22,7 +19,8 @@ export async function GET(
     .eq("status", "published")
     .maybeSingle<EventRow>();
 
-  if (error) return NextResponse.json({ error: "lookup failed" }, { status: 500 });
+  if (error)
+    return NextResponse.json({ error: "lookup failed" }, { status: 500 });
   if (!data) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   const filename = (data.slug ?? data.id) + ".ics";

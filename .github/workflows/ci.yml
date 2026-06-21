@@ -10,6 +10,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  harness:
+    name: harness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: tools/preflight-harness.sh
+
   quality:
     name: quality
     runs-on: ubuntu-latest
