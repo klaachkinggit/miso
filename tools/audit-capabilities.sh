@@ -249,6 +249,7 @@ package_profiles = set()
 for item in sys.argv[1:]:
     if item == "all":
         mcp_profiles.update(["vercel", "supabase", "stripe", "figma"])
+        package_profiles.add("ponytail")
     elif item == "ponytail":
         package_profiles.add(item)
     elif item:

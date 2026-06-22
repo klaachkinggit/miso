@@ -53,9 +53,13 @@ run_rules_sync_check() {
 }
 
 run_profile_dry_runs() {
+  local status=0
   [ -x tools/apply-profile.sh ] || return 0
-  tools/apply-profile.sh all --dry-run >/dev/null
-  [ -x tools/remove-profile.sh ] && tools/remove-profile.sh all --dry-run >/dev/null
+  tools/apply-profile.sh all --dry-run >/dev/null || status=1
+  if [ -x tools/remove-profile.sh ]; then
+    tools/remove-profile.sh all --dry-run >/dev/null || status=1
+  fi
+  return "$status"
 }
 
 run_secret_scan() {

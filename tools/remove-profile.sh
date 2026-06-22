@@ -12,7 +12,7 @@ Profiles:
   stripe    Removes the Stripe MCP profile
   figma     Removes the Figma MCP profile
   ponytail  Removes the ponytail npm package from package.json
-  all       Removes all MCP profiles above
+  all       Removes all curated MCP and package profiles
 
 Removes only project-local profile entries:
   Claude: .mcp.json
@@ -90,7 +90,7 @@ PACKAGE_PROFILES = {"ponytail": "ponytail"}
 
 if PROFILE == "all":
     mcp_names = MCP_PROFILES
-    package_names = []
+    package_names = list(PACKAGE_PROFILES)
 elif PROFILE in MCP_PROFILES:
     mcp_names = [PROFILE]
     package_names = []

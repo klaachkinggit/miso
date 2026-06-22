@@ -131,7 +131,7 @@ error monitors, payments). Add the server for a stack your project actually uses
 **Already in the base — don't re-add:** `github`, `filesystem`, `git` via `uvx mcp-server-git`,
 `playwright`, `sequential-thinking`, `context7`; `db` only when `DATABASE_URL` is set (Postgres via `@bytebase/dbhub`).
 
-Apply the curated project-local MCP profiles:
+Apply the curated project-local MCP and package profiles:
 
 ```bash
 tools/apply-profile.sh vercel

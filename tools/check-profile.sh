@@ -77,7 +77,7 @@ except Exception:
 
 if profile == "all":
     expected_mcp = set(mcp_profiles)
-    expected_packages = set()
+    expected_packages = set(package_profiles)
 elif profile:
     expected_mcp = {profile} if profile in mcp_profiles else set()
     expected_packages = {profile} if profile in package_profiles else set()

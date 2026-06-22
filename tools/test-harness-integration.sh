@@ -212,6 +212,7 @@ grep -q '"left-pad": "\^1.3.0"' package.json
 
 HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/apply-profile.sh all >/dev/null
 HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/check-profile.sh all >/dev/null
+grep -q '"ponytail": "\^1.0.57"' package.json
 HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/apply-profile.sh all >/dev/null
 before="$(cksum .mcp.json .codex/config.toml)"
 HOME="$TMP/home" tools/apply-profile.sh supabase --dry-run >/dev/null
@@ -229,10 +230,12 @@ test "$remove_before" = "$remove_after"
 HOME="$TMP/home" tools/remove-profile.sh all >/dev/null
 ! grep -Eq '"(vercel|supabase|stripe|figma)"' .mcp.json
 ! grep -Eq '^\[mcp_servers\.(vercel|supabase|stripe|figma)\]' .codex/config.toml
+! grep -q '"ponytail"' package.json
 grep -q '"custom-claude"' .mcp.json
 grep -q '^\[mcp_servers.custom-codex\]' .codex/config.toml
 HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/apply-profile.sh all >/dev/null
 HOME="$TMP/home" tools/audit-capabilities.sh --expect-profile all --check-user-resources >/dev/null
+grep -q '"ponytail": "\^1.0.57"' package.json
 
 python3 -m json.tool .mcp.json >/dev/null
 python3 -m json.tool .codex/hooks.json >/dev/null
@@ -251,5 +254,7 @@ test -x tools/preflight-harness.sh
 test ! -d klaach_harness
 test ! -d .harness-archive
 HOME="$TMP/home" tools/check-agent-context.sh --tool all >/dev/null
+HOME="$TMP/home" tools/apply-profile.sh all --dry-run >/dev/null 2>profile-dry-run.err
+test ! -s profile-dry-run.err
 
 echo "Temp-project harness integration passed."

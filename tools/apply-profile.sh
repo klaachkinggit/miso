@@ -12,7 +12,7 @@ Profiles:
   stripe    Adds Stripe local MCP via npx, forwarding STRIPE_SECRET_KEY
   figma     Adds Figma hosted MCP: https://mcp.figma.com/mcp
   ponytail  Adds the ponytail npm package to package.json
-  all       Adds all MCP profiles above
+  all       Adds all curated MCP and package profiles
 
 Supabase environment knobs:
   SUPABASE_PROJECT_REF   Adds project_ref=<id> to the hosted MCP URL
@@ -141,7 +141,7 @@ PACKAGE_PROFILES = package_defs()
 
 if PROFILE == "all":
     mcp_names = list(MCP_PROFILES)
-    package_names = []
+    package_names = list(PACKAGE_PROFILES)
 elif PROFILE in MCP_PROFILES:
     mcp_names = [PROFILE]
     package_names = []
@@ -224,6 +224,9 @@ def write_codex(selected):
 def write_package(selected):
     path = Path("package.json")
     if not path.exists():
+        if DRY_RUN:
+            print("DRY RUN package.json missing; package profile skipped: %s" % ", ".join(selected))
+            return
         raise SystemExit("package.json missing; create one before applying package profile: %s" % ", ".join(selected))
     try:
         pkg = json.loads(path.read_text())
