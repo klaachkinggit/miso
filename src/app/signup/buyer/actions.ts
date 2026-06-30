@@ -10,7 +10,9 @@ function withError(message: string) {
 }
 
 export async function buyerSignupAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const displayName = String(formData.get("display_name") ?? "").trim();
 
@@ -31,7 +33,10 @@ export async function buyerSignupAction(formData: FormData) {
       },
     },
   });
-  if (error) withError(error.message);
+  if (error)
+    withError(
+      "Signup could not be completed. Please check your details and try again.",
+    );
 
   const userId = data?.user?.id;
   if (userId) {

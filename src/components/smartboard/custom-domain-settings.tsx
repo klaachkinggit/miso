@@ -19,14 +19,26 @@ type Props = {
   verificationToken: string | null;
 };
 
-export function CustomDomainSettings({ customDomain, verified, verificationToken }: Props) {
+export function CustomDomainSettings({
+  customDomain,
+  verified,
+  verificationToken,
+}: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   // Local view of the pending verification record so the TXT instructions appear
   // immediately after setting a domain, without a full page reload.
-  const [draft, setDraft] = useState<{ domain: string; token: string; txtRecordName: string } | null>(
+  const [draft, setDraft] = useState<{
+    domain: string;
+    token: string;
+    txtRecordName: string;
+  } | null>(
     customDomain && verificationToken && !verified
-      ? { domain: customDomain, token: verificationToken, txtRecordName: `_miso-verify.${customDomain}` }
+      ? {
+          domain: customDomain,
+          token: verificationToken,
+          txtRecordName: `_miso-verify.${customDomain}`,
+        }
       : null,
   );
   const [isVerified, setIsVerified] = useState(verified);
@@ -40,16 +52,23 @@ export function CustomDomainSettings({ customDomain, verified, verificationToken
     if (typeof result.verified === "boolean") {
       setIsVerified(result.verified);
       if (result.verified) setDraft(null);
-      else if (!result.verified) setError("Domain not verified yet — add the TXT record and try again.");
+      else if (!result.verified)
+        setError("Domain not verified yet — add the TXT record and try again.");
       return;
     }
     setIsVerified(false);
-    setDraft({ domain: result.domain, token: result.token, txtRecordName: result.txtRecordName });
+    setDraft({
+      domain: result.domain,
+      token: result.token,
+      txtRecordName: result.txtRecordName,
+    });
   }
 
   function onSet(formData: FormData) {
     setError(null);
-    startTransition(async () => handleResult(await setCustomDomainAction(formData)));
+    startTransition(async () =>
+      handleResult(await setCustomDomainAction(formData)),
+    );
   }
 
   function onVerify() {
@@ -69,8 +88,10 @@ export function CustomDomainSettings({ customDomain, verified, verificationToken
       </CardHeader>
       <CardContent className="grid gap-4 text-sm text-muted-foreground">
         {activeDomain ? (
-          <div className="flex items-center justify-between rounded-md border border-border/70 p-3">
-            <span className="font-mono text-foreground">{activeDomain}</span>
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 p-3">
+            <span className="min-w-0 break-all font-mono text-foreground">
+              {activeDomain}
+            </span>
             <Badge variant={isVerified ? "success" : "warning"}>
               {isVerified ? "Verified" : "Pending verification"}
             </Badge>
@@ -107,7 +128,12 @@ export function CustomDomainSettings({ customDomain, verified, verificationToken
             <CopyRow label="Record name" value={draft.txtRecordName} />
             <CopyRow label="Type" value="TXT" />
             <CopyRow label="Value" value={draft.token} />
-            <Button type="button" variant="outline" onClick={onVerify} disabled={pending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onVerify}
+              disabled={pending}
+            >
               Verify
             </Button>
           </div>
@@ -131,8 +157,18 @@ function CopyRow({ label, value }: { label: string; value: string }) {
         <code className="min-w-0 flex-1 overflow-x-auto rounded-md border border-border/70 bg-background px-3 py-2 font-mono text-xs">
           {value}
         </code>
-        <Button type="button" variant="outline" size="sm" onClick={copy}>
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={copy}
+          aria-label={`Copy ${label}`}
+        >
+          {copied ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
         </Button>
       </div>
     </div>

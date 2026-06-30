@@ -38,7 +38,8 @@ export async function loginAction(formData: FormData) {
 
   const sb = await createClient();
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) withError("/login", error.message, next);
+  if (error)
+    withError("/login", "Login failed. Check your email and password.", next);
 
   if (data.user) {
     const service = createServiceClient();

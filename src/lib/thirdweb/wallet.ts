@@ -27,17 +27,18 @@ interface PregenerateResponse {
 }
 
 async function pregenerateWallet(email: string): Promise<UserWallet> {
-  const response = await thirdwebFetch<PregenerateResponse>("/v1/wallets/user", {
-    method: "POST",
-    body: { type: "email", email },
-  });
+  const response = await thirdwebFetch<PregenerateResponse>(
+    "/v1/wallets/user",
+    {
+      method: "POST",
+      body: { type: "email", email },
+    },
+  );
 
   const result = response.result ?? response;
   const evmAddress = result.address;
   if (!evmAddress) {
-    throw new Error(
-      `Thirdweb pregenerate returned no address for ${email}`,
-    );
+    throw new Error("Thirdweb pregenerate returned no wallet address.");
   }
   return {
     evmAddress,

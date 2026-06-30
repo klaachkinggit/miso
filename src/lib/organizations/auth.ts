@@ -2,11 +2,10 @@ import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow, OrganizationRole, Profile } from "@/types/db";
 
 export type AuthProfile = Pick<Profile, "id" | "role">;
-export type EventAuthScope = Pick<EventRow, "organization_id" | "organizer_user_id">;
-
-export function isOrganizationControllerOnly(role: OrganizationRole | null): boolean {
-  return role === "controller";
-}
+export type EventAuthScope = Pick<
+  EventRow,
+  "organization_id" | "organizer_user_id"
+>;
 
 export function shouldUseLegacyOrganizerEventScope(
   profile: AuthProfile,
@@ -54,7 +53,9 @@ export async function getOrganizationRole(
   return data?.role ?? null;
 }
 
-export async function getDefaultAdminOrganizationId(userId: string): Promise<string | null> {
+export async function getDefaultAdminOrganizationId(
+  userId: string,
+): Promise<string | null> {
   const sb = createServiceClient();
   const { data } = await sb
     .from("organization_memberships")
@@ -67,7 +68,9 @@ export async function getDefaultAdminOrganizationId(userId: string): Promise<str
   return data?.organization_id ?? null;
 }
 
-export async function getAdminOrganizationIds(userId: string): Promise<string[]> {
+export async function getAdminOrganizationIds(
+  userId: string,
+): Promise<string[]> {
   const sb = createServiceClient();
   const { data } = await sb
     .from("organization_memberships")
@@ -79,7 +82,9 @@ export async function getAdminOrganizationIds(userId: string): Promise<string[]>
   return data?.map((row) => row.organization_id) ?? [];
 }
 
-export async function getMemberOrganizationIds(userId: string): Promise<string[]> {
+export async function getMemberOrganizationIds(
+  userId: string,
+): Promise<string[]> {
   const sb = createServiceClient();
   const { data } = await sb
     .from("organization_memberships")
@@ -94,7 +99,9 @@ export async function hasAdminOrganization(userId: string): Promise<boolean> {
   return !!(await getDefaultAdminOrganizationId(userId));
 }
 
-export async function getEventAuthScope(eventId: string): Promise<EventAuthScope | null> {
+export async function getEventAuthScope(
+  eventId: string,
+): Promise<EventAuthScope | null> {
   const sb = createServiceClient();
   const { data } = await sb
     .from("events")
@@ -104,12 +111,18 @@ export async function getEventAuthScope(eventId: string): Promise<EventAuthScope
   return data ?? null;
 }
 
-export async function canManageEvent(profile: AuthProfile, event: EventAuthScope): Promise<boolean> {
+export async function canManageEvent(
+  profile: AuthProfile,
+  event: EventAuthScope,
+): Promise<boolean> {
   const role = await getOrganizationRole(profile.id, event.organization_id);
   return canManageEventWithRole(profile, event, role);
 }
 
-async function hasEventControllerAssignment(userId: string, eventId: string): Promise<boolean> {
+async function hasEventControllerAssignment(
+  userId: string,
+  eventId: string,
+): Promise<boolean> {
   const sb = createServiceClient();
   const { data } = await sb
     .from("event_controllers")
@@ -139,7 +152,10 @@ export async function canAdministerEventGate(params: {
 }): Promise<boolean> {
   const event = await getEventAuthScope(params.eventId);
   if (!event) return false;
-  const role = await getOrganizationRole(params.profile.id, event.organization_id);
+  const role = await getOrganizationRole(
+    params.profile.id,
+    event.organization_id,
+  );
   if (params.profile.role === "admin") return true;
   if (event.organization_id) return role === "admin";
   return false;
@@ -149,10 +165,12 @@ export async function isOrganizationControllerForUser(
   userId: string,
   organizationId: string | null | undefined,
 ): Promise<boolean> {
-  return isOrganizationControllerOnly(await getOrganizationRole(userId, organizationId));
+  return (await getOrganizationRole(userId, organizationId)) === "controller";
 }
 
-export async function getOrganizationIdForCategory(categoryId: string): Promise<string | null> {
+export async function getOrganizationIdForCategory(
+  categoryId: string,
+): Promise<string | null> {
   const sb = createServiceClient();
   const { data: category } = await sb
     .from("ticket_categories")
@@ -164,7 +182,9 @@ export async function getOrganizationIdForCategory(categoryId: string): Promise<
   return event?.organization_id ?? null;
 }
 
-export async function getOrganizationIdForTicket(ticketId: string): Promise<string | null> {
+export async function getOrganizationIdForTicket(
+  ticketId: string,
+): Promise<string | null> {
   const sb = createServiceClient();
   const { data: ticket } = await sb
     .from("tickets")
@@ -176,7 +196,9 @@ export async function getOrganizationIdForTicket(ticketId: string): Promise<stri
   return event?.organization_id ?? null;
 }
 
-export async function getOrganizationIdForListing(listingId: string): Promise<string | null> {
+export async function getOrganizationIdForListing(
+  listingId: string,
+): Promise<string | null> {
   const sb = createServiceClient();
   const { data: listing } = await sb
     .from("resale_listings")
@@ -184,7 +206,9 @@ export async function getOrganizationIdForListing(listingId: string): Promise<st
     .eq("id", listingId)
     .maybeSingle<{ organization_id: string | null; ticket_id: string }>();
   if (!listing) return null;
-  return listing.organization_id ?? getOrganizationIdForTicket(listing.ticket_id);
+  return (
+    listing.organization_id ?? getOrganizationIdForTicket(listing.ticket_id)
+  );
 }
 
 // Deep dispatcher so callers don't thread which-lookup-per-entity. Each
@@ -196,7 +220,9 @@ export type OrganizationOwnedResource =
   | { kind: "ticket"; id: string }
   | { kind: "listing"; id: string };
 
-export function resourceOrganizationId(resource: OrganizationOwnedResource): Promise<string | null> {
+export function resourceOrganizationId(
+  resource: OrganizationOwnedResource,
+): Promise<string | null> {
   switch (resource.kind) {
     case "category":
       return getOrganizationIdForCategory(resource.id);

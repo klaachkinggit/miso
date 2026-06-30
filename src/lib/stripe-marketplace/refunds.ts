@@ -19,7 +19,7 @@ import { reverseTransfer } from "./transfers";
 
 // Admin-only manual refund. The Marketplace fee is NEVER refunded to
 // the buyer (plan rule). Refundable seller proceeds are reversed from
-// the connected accounts first using a prorate-min allocation so a
+// the connected accounts after the Stripe refund using a prorate-min allocation so a
 // partial refund never over-claws sellers. If a reversal fails Stripe-
 // side, the seller is flagged `owes_recovery` and the buyer refund
 // still proceeds.
@@ -63,15 +63,8 @@ export async function manuallyRefundPayment(
     await assertFullRefundLifecycleCanFinalize(payment);
   }
 
-  const reversedTransferIds = await proRateReversals({
-    payment,
-    targetSellerShareCents: refundCents,
-    auditActor: payment.buyer_user_id,
-    refundKey: `manual_${payment.id}_${refundCents}`,
-  });
-
   // Issue Stripe refund AT the charge level. `reverse_transfer:false`
-  // because we already reversed manually above. `refund_application_fee:
+  // because seller transfers are reversed explicitly below. `refund_application_fee:
   // false` because the marketplace fee is excluded by `amount` itself.
   const stripe = stripeClient();
   const refund = await stripe.refunds.create(
@@ -84,6 +77,13 @@ export async function manuallyRefundPayment(
     },
     { idempotencyKey: `refund_${payment.id}_${refundCents}` },
   );
+
+  const reversedTransferIds = await proRateReversals({
+    payment,
+    targetSellerShareCents: refundCents,
+    auditActor: payment.buyer_user_id,
+    refundKey: `manual_${payment.id}_${refundCents}`,
+  });
 
   await transitionPayment(payment.id, { type: "REFUNDED" });
   if (refundCents >= maxRefundable) {

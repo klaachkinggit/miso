@@ -100,8 +100,16 @@ export default function RootLayout({
     >
       <body className="font-sans">
         <SmoothScroll />
+        <a
+          href="#main-content"
+          className="sr-only z-[100] focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-paper focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ink focus:shadow-lg"
+        >
+          Skip to content
+        </a>
         <Header />
-        <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+        <main id="main-content" className="min-h-[calc(100vh-4rem)]">
+          {children}
+        </main>
         <Footer />
         <BottomNav />
         <Toaster />

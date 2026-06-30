@@ -645,6 +645,8 @@ export async function createResaleCheckout(input: {
   buyerUserId: string;
   listingId: string;
   idempotencyKey?: string;
+  salesChannel?: SalesChannel;
+  trackingOrigin?: string | null;
 }): Promise<CheckoutResult> {
   const sb = createServiceClient();
 
@@ -698,12 +700,16 @@ export async function createResaleCheckout(input: {
     royaltyBps > 0 && event.organizer_user_id
       ? await assertPayoutReady(event.organizer_user_id, "organizer")
       : null;
+  const salesChannel = input.salesChannel ?? "marketplace";
+  const trackingOrigin = input.trackingOrigin ?? null;
 
   const { data: claimed } = await sb
     .from("resale_listings")
     .update({
       status: "transferring",
       buyer_user_id: input.buyerUserId,
+      sales_channel: salesChannel,
+      tracking_origin: trackingOrigin,
     })
     .eq("id", listing.id)
     .eq("status", "active")
@@ -781,6 +787,8 @@ export async function createResaleCheckout(input: {
         amount_total_cents: breakdown.amountTotalCents,
         organizer_royalty_bps: breakdown.organizerRoyaltyBps,
         transfer_group: transferGroup,
+        sales_channel: salesChannel,
+        tracking_origin: trackingOrigin,
       },
     });
 

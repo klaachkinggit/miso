@@ -26,13 +26,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { organizationSlug, eventSlug } = await params;
 
-  const organization = await getActiveOrganizationBySlug(organizationSlug);
+  const organization = await getActiveOrganizationBySlug(
+    organizationSlug,
+  ).catch(() => null);
   if (!organization) return { title: "Event — MISO", robots: { index: false } };
 
   const event = await getPublishedEventByOrganizationSlug({
     organizationId: organization.id,
     eventSlug,
-  });
+  }).catch(() => null);
   if (!event || event.status !== "published") {
     return { title: "Event — MISO", robots: { index: false } };
   }

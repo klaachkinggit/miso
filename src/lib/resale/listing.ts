@@ -226,49 +226,6 @@ export class ResaleTransferPendingError extends Error {
   }
 }
 
-export class ResaleCheckoutPreflightError extends Error {
-  constructor(
-    message: string,
-    readonly status: number = 400,
-  ) {
-    super(message);
-    this.name = "ResaleCheckoutPreflightError";
-  }
-}
-
-export async function getResaleCheckoutListing(params: {
-  listingId: string;
-  buyerUserId: string;
-}): Promise<ResaleListing> {
-  const sb = createServiceClient();
-
-  const { data: listing } = await sb
-    .from("resale_listings")
-    .select("*")
-    .eq("id", params.listingId)
-    .maybeSingle<ResaleListing>();
-  if (!listing)
-    throw new ResaleCheckoutPreflightError("Listing not found.", 404);
-  if (listing.status !== "active") {
-    throw new ResaleCheckoutPreflightError("Listing is not active.");
-  }
-  if (listing.seller_user_id === params.buyerUserId) {
-    throw new ResaleCheckoutPreflightError("Cannot buy your own listing.");
-  }
-
-  const { data: ticket } = await sb
-    .from("tickets")
-    .select("status")
-    .eq("id", listing.ticket_id)
-    .maybeSingle<Pick<Ticket, "status">>();
-  if (!ticket) throw new ResaleCheckoutPreflightError("Ticket missing.");
-  if (ticket.status !== "listed") {
-    throw new ResaleCheckoutPreflightError(`Ticket is ${ticket.status}.`);
-  }
-
-  return listing;
-}
-
 export async function fulfillResale(params: {
   listingId: string;
   buyerUserId: string;

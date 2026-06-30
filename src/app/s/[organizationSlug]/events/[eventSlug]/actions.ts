@@ -2,19 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getCurrentProfile } from "@/lib/auth";
-import { canUseBuyerSurface } from "@/lib/auth";
 import { getPublishedEventByOrganizationSlug } from "@/lib/events/public";
 import { getActiveOrganizationBySlug } from "@/lib/organizations/public";
 import { joinWaitlist, leaveWaitlist } from "@/lib/waitlist";
-
-async function requireBuyer() {
-  const profile = await getCurrentProfile();
-  if (!profile || !canUseBuyerSurface(profile)) {
-    throw new Error("Sign in as a buyer to use the waitlist.");
-  }
-  return profile;
-}
+import { requireBuyer } from "../../buyer";
 
 // Resolve the event server-side from the route slugs the buyer was actually
 // shown — never trust a client-supplied eventId, or an authenticated user
@@ -24,7 +15,9 @@ async function resolveVisibleEventId(input: {
   organizationSlug: string;
   eventSlug: string;
 }): Promise<string> {
-  const organization = await getActiveOrganizationBySlug(input.organizationSlug);
+  const organization = await getActiveOrganizationBySlug(
+    input.organizationSlug,
+  );
   if (!organization) throw new Error("Event not found.");
   const event = await getPublishedEventByOrganizationSlug({
     organizationId: organization.id,
@@ -39,7 +32,7 @@ export async function joinWaitlistAction(input: {
   eventSlug: string;
   path: string;
 }): Promise<void> {
-  const profile = await requireBuyer();
+  const profile = await requireBuyer("Sign in as a buyer to use the waitlist.");
   const eventId = await resolveVisibleEventId(input);
   await joinWaitlist({ eventId, userId: profile.id });
   revalidatePath(input.path);
@@ -50,7 +43,7 @@ export async function leaveWaitlistAction(input: {
   eventSlug: string;
   path: string;
 }): Promise<void> {
-  const profile = await requireBuyer();
+  const profile = await requireBuyer("Sign in as a buyer to use the waitlist.");
   const eventId = await resolveVisibleEventId(input);
   await leaveWaitlist({ eventId, userId: profile.id });
   revalidatePath(input.path);

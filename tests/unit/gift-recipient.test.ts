@@ -35,25 +35,43 @@ describe("resolveGiftRecipientUserId", () => {
   });
 
   it("returns null when no gift email is supplied", async () => {
-    const { resolveGiftRecipientUserId } = await import("@/lib/payments/checkout");
+    const { resolveGiftRecipientUserId } =
+      await import("@/lib/payments/checkout");
     const sb = (await import("@/lib/supabase/service")).createServiceClient();
     expect(await resolveGiftRecipientUserId(sb, null)).toBeNull();
     expect(await resolveGiftRecipientUserId(sb, undefined)).toBeNull();
   });
 
   it("rejects unknown gift recipients", async () => {
-    const { resolveGiftRecipientUserId, GiftRecipientNotFoundError } = await import(
-      "@/lib/payments/checkout"
+    const { resolveGiftRecipientUserId, GiftRecipientNotFoundError } =
+      await import("@/lib/payments/checkout");
+    const sb = (await import("@/lib/supabase/service")).createServiceClient();
+    const error = await resolveGiftRecipientUserId(
+      sb,
+      "ghost@example.com",
+    ).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(GiftRecipientNotFoundError);
+    expect(error).toHaveProperty(
+      "message",
+      "We could not find a MISO account for that gift recipient.",
     );
+    expect(String((error as Error).message)).not.toContain("ghost@example.com");
+  });
+
+  it("normalizes the lookup email without exposing it in the error", async () => {
+    const { resolveGiftRecipientUserId } =
+      await import("@/lib/payments/checkout");
     const sb = (await import("@/lib/supabase/service")).createServiceClient();
     await expect(
       resolveGiftRecipientUserId(sb, "ghost@example.com"),
-    ).rejects.toBeInstanceOf(GiftRecipientNotFoundError);
+    ).rejects.toThrow("gift recipient");
+    expect(dbState.lookupEmail).toBe("ghost@example.com");
   });
 
   it("resolves a registered recipient and lowercases the email lookup", async () => {
     dbState.friend = { id: "friend-1", email: "friend@example.com" };
-    const { resolveGiftRecipientUserId } = await import("@/lib/payments/checkout");
+    const { resolveGiftRecipientUserId } =
+      await import("@/lib/payments/checkout");
     const sb = (await import("@/lib/supabase/service")).createServiceClient();
     const id = await resolveGiftRecipientUserId(sb, "FRIEND@EXAMPLE.COM");
     expect(id).toBe("friend-1");

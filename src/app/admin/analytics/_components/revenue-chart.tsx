@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useMemo, useRef, useState } from "react";
 import type { AnalyticsTimeBucket } from "@/lib/analytics/organization";
 import { formatPrice } from "@/lib/format";
@@ -25,6 +25,7 @@ function niceTick(value: number): number {
 
 export function RevenueChart({ series, currency }: RevenueChartProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const reduceMotion = useReducedMotion();
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const { points, ticks } = useMemo(() => {
@@ -33,10 +34,18 @@ export function RevenueChart({ series, currency }: RevenueChartProps) {
     const maxValue = Math.max(1, ...series.map((b) => b.revenue));
     const niceMax = niceTick(maxValue);
     const xScale = (i: number) =>
-      PADDING.left + (series.length <= 1 ? innerW / 2 : (i / (series.length - 1)) * innerW);
+      PADDING.left +
+      (series.length <= 1 ? innerW / 2 : (i / (series.length - 1)) * innerW);
     const yScale = (v: number) => PADDING.top + innerH - (v / niceMax) * innerH;
-    const points = series.map((b, i) => ({ x: xScale(i), y: yScale(b.revenue), bucket: b }));
-    const ticks = [0, 0.25, 0.5, 0.75, 1].map((p) => ({ value: niceMax * p, y: yScale(niceMax * p) }));
+    const points = series.map((b, i) => ({
+      x: xScale(i),
+      y: yScale(b.revenue),
+      bucket: b,
+    }));
+    const ticks = [0, 0.25, 0.5, 0.75, 1].map((p) => ({
+      value: niceMax * p,
+      y: yScale(niceMax * p),
+    }));
     return { points, ticks };
   }, [series]);
 
@@ -100,18 +109,22 @@ export function RevenueChart({ series, currency }: RevenueChartProps) {
         <motion.path
           d={area}
           fill="hsl(var(--signal) / 0.12)"
-          initial={{ opacity: 0 }}
+          initial={reduceMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={
+            reduceMotion ? { duration: 0 } : { duration: 0.6, ease: "easeOut" }
+          }
         />
         <motion.path
           d={path}
           fill="none"
           stroke="hsl(var(--signal))"
           strokeWidth="2"
-          initial={{ pathLength: 0 }}
+          initial={reduceMotion ? false : { pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={{ duration: 1.1, ease: "easeOut" }}
+          transition={
+            reduceMotion ? { duration: 0 } : { duration: 1.1, ease: "easeOut" }
+          }
         />
         {hover ? (
           <g>
@@ -137,7 +150,9 @@ export function RevenueChart({ series, currency }: RevenueChartProps) {
             transform: "translateX(-50%)",
           }}
         >
-          <div className="font-medium text-foreground">{formatPrice(hover.bucket.revenue, currency)}</div>
+          <div className="font-medium text-foreground">
+            {formatPrice(hover.bucket.revenue, currency)}
+          </div>
           <div className="text-muted-foreground">
             {hover.bucket.tickets} tickets · {hover.bucket.bucket}
           </div>

@@ -18,6 +18,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { formatPrice } from "@/lib/format";
 
+const giftEmailStorageKey = (categoryId: string) =>
+  `miso:checkout:gift:${categoryId}`;
+
 export interface BuyButtonCategory {
   id: string;
   kind: "standard" | "club_table";
@@ -71,7 +74,14 @@ export function BuyButton({
     const params = new URLSearchParams({ category_id: category.id });
     if (quantity !== 1) params.set("quantity", String(quantity));
     if (extras > 0) params.set("extra_guests", String(extras));
-    if (isGift && giftEmail) params.set("gift_email", giftEmail);
+    if (isGift && giftEmail) {
+      window.sessionStorage.setItem(
+        giftEmailStorageKey(category.id),
+        giftEmail,
+      );
+    } else {
+      window.sessionStorage.removeItem(giftEmailStorageKey(category.id));
+    }
     if (promo.trim()) params.set("promo", promo.trim());
     if (returnPath) params.set("return_path", returnPath);
     router.push(`/checkout/card?${params.toString()}`);
@@ -81,14 +91,20 @@ export function BuyButton({
     <div className="space-y-2">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button type="button" disabled={disabled} className="w-full sm:w-auto">
+          <Button
+            type="button"
+            disabled={disabled}
+            className="w-full sm:w-auto"
+          >
             <ShoppingCart className="h-4 w-4" />
             {isClub ? "Book table" : "Get ticket"}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{isClub ? "Book this table" : "Buy this ticket"}</DialogTitle>
+            <DialogTitle>
+              {isClub ? "Book this table" : "Buy this ticket"}
+            </DialogTitle>
             <DialogDescription>
               {isClub
                 ? "Pay an advance now to secure the table. Remaining minimum spending is due at the venue."
@@ -137,7 +153,8 @@ export function BuyButton({
                   <p className="text-sm font-medium">Extra guests</p>
                   <p className="text-xs text-muted-foreground">
                     Base table includes {category.base_capacity} guests.{" "}
-                    {formatPrice(extraPrice, category.currency)} per extra (max {maxExtras}).
+                    {formatPrice(extraPrice, category.currency)} per extra (max{" "}
+                    {maxExtras}).
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -180,17 +197,22 @@ export function BuyButton({
             </label>
             {isGift ? (
               <div className="grid gap-1">
-                <Label htmlFor="gift_email">Friend&rsquo;s MISO account email</Label>
+                <Label htmlFor="gift_email">
+                  Friend&rsquo;s MISO account email
+                </Label>
                 <Input
                   id="gift_email"
+                  name="gift_recipient_email"
                   type="email"
+                  autoComplete="email"
                   placeholder="friend@example.com"
                   value={giftEmail}
                   onChange={(e) => setGiftEmail(e.target.value)}
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Must match an existing MISO account. The digital ticket is issued directly to them.
+                  Must match an existing MISO account. The digital ticket is
+                  issued directly to them.
                 </p>
               </div>
             ) : null}
@@ -200,6 +222,8 @@ export function BuyButton({
             <Label htmlFor="promo_code">Promo code (optional)</Label>
             <Input
               id="promo_code"
+              name="promo"
+              autoComplete="off"
               placeholder="EARLYBIRD"
               value={promo}
               onChange={(e) => setPromo(e.target.value)}
@@ -227,7 +251,12 @@ export function BuyButton({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button type="button" onClick={submit} disabled={loading}>
@@ -239,7 +268,9 @@ export function BuyButton({
       </Dialog>
 
       {disabled && reason ? (
-        <p className="text-center text-xs text-muted-foreground sm:text-right">{reason}</p>
+        <p className="text-center text-xs text-muted-foreground sm:text-right">
+          {reason}
+        </p>
       ) : null}
     </div>
   );

@@ -119,6 +119,12 @@ test -x tools/preflight-harness.sh
 test -x tools/update-harness.sh
 test -x .claude/hooks/project-scope.sh
 test -x .codex/hooks/project-scope.sh
+test -x tools/hooks/auto-format.sh
+test -x tools/hooks/block-dangerous.sh
+test -x tools/hooks/log-bash.sh
+test -x tools/hooks/pre-pr-gate.sh
+test -x tools/hooks/project-scope.sh
+test -x tools/hooks/protect-secrets.sh
 grep -q '"custom-claude"' .mcp.json
 grep -q '^\[mcp_servers.custom-codex\]' .codex/config.toml
 grep -q 'custom-claude' .claude/settings.json
@@ -203,16 +209,16 @@ cat > package.json <<'JSON'
   }
 }
 JSON
+grep -q '"left-pad": "\^1.3.0"' package.json
 HOME="$TMP/home" tools/apply-profile.sh ponytail >/dev/null
 grep -q '"ponytail": "\^1.0.57"' package.json
 HOME="$TMP/home" tools/check-profile.sh ponytail >/dev/null
 HOME="$TMP/home" tools/remove-profile.sh ponytail >/dev/null
 ! grep -q '"ponytail"' package.json
-grep -q '"left-pad": "\^1.3.0"' package.json
 
 HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/apply-profile.sh all >/dev/null
-HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/check-profile.sh all >/dev/null
 grep -q '"ponytail": "\^1.0.57"' package.json
+HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/check-profile.sh all >/dev/null
 HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/apply-profile.sh all >/dev/null
 before="$(cksum .mcp.json .codex/config.toml)"
 HOME="$TMP/home" tools/apply-profile.sh supabase --dry-run >/dev/null
@@ -230,12 +236,10 @@ test "$remove_before" = "$remove_after"
 HOME="$TMP/home" tools/remove-profile.sh all >/dev/null
 ! grep -Eq '"(vercel|supabase|stripe|figma)"' .mcp.json
 ! grep -Eq '^\[mcp_servers\.(vercel|supabase|stripe|figma)\]' .codex/config.toml
-! grep -q '"ponytail"' package.json
 grep -q '"custom-claude"' .mcp.json
 grep -q '^\[mcp_servers.custom-codex\]' .codex/config.toml
 HOME="$TMP/home" STRIPE_SECRET_KEY=sk_test_placeholder tools/apply-profile.sh all >/dev/null
 HOME="$TMP/home" tools/audit-capabilities.sh --expect-profile all --check-user-resources >/dev/null
-grep -q '"ponytail": "\^1.0.57"' package.json
 
 python3 -m json.tool .mcp.json >/dev/null
 python3 -m json.tool .codex/hooks.json >/dev/null

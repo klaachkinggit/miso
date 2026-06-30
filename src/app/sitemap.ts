@@ -7,6 +7,15 @@ const siteUrl = getConfiguredAppUrl();
 
 export const revalidate = 3600;
 
+function isLocalSupabaseUrl(value: string): boolean {
+  try {
+    const host = new URL(value).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
 type SitemapEvent = {
   id: string;
   organization_id: string | null;
@@ -55,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !serviceRoleKey || isLocalSupabaseUrl(supabaseUrl)) {
     return staticPages;
   }
 

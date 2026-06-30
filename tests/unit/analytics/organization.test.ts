@@ -49,14 +49,36 @@ function makeRows(): {
     },
   ];
   const categories: AnalyticsCategoryRow[] = [
-    { event_id: "e1", supply: 150, sold_count: 90, currency: "EUR" },
-    { event_id: "e1", supply: 50, sold_count: 20, currency: "EUR" },
-    { event_id: "e2", supply: 100, sold_count: 30, currency: "EUR" },
+    {
+      id: "c1",
+      event_id: "e1",
+      supply: 150,
+      sold_count: 90,
+      currency: "EUR",
+      name: "General",
+    },
+    {
+      id: "c2",
+      event_id: "e1",
+      supply: 50,
+      sold_count: 20,
+      currency: "EUR",
+      name: "VIP",
+    },
+    {
+      id: "c3",
+      event_id: "e2",
+      supply: 100,
+      sold_count: 30,
+      currency: "EUR",
+      name: "Balcony",
+    },
   ];
   const purchases: AnalyticsPurchaseRow[] = [
     // in-range, paid
     {
       event_id: "e1",
+      ticket_id: "t1",
       amount: 50,
       currency: "EUR",
       status: "paid",
@@ -65,6 +87,7 @@ function makeRows(): {
     },
     {
       event_id: "e1",
+      ticket_id: "t2",
       amount: 80,
       currency: "EUR",
       status: "paid",
@@ -73,6 +96,7 @@ function makeRows(): {
     },
     {
       event_id: "e2",
+      ticket_id: "t3",
       amount: 60,
       currency: "EUR",
       status: "paid",
@@ -82,6 +106,7 @@ function makeRows(): {
     // in-range, refunded
     {
       event_id: "e1",
+      ticket_id: "t4",
       amount: 50,
       currency: "EUR",
       status: "refunded",
@@ -91,6 +116,7 @@ function makeRows(): {
     // before range — prior period
     {
       event_id: "e1",
+      ticket_id: "t5",
       amount: 40,
       currency: "EUR",
       status: "paid",
@@ -100,6 +126,7 @@ function makeRows(): {
     // after range
     {
       event_id: "e1",
+      ticket_id: "t6",
       amount: 99,
       currency: "EUR",
       status: "paid",
@@ -108,9 +135,48 @@ function makeRows(): {
     },
   ];
   const tickets: AnalyticsTicketRow[] = [
-    { event_id: "e1", status: "used" },
-    { event_id: "e1", status: "used" },
-    { event_id: "e2", status: "sold" },
+    {
+      id: "t1",
+      event_id: "e1",
+      category_id: "c1",
+      status: "used",
+      used_at: "2026-06-05T12:00:00Z",
+    },
+    {
+      id: "t2",
+      event_id: "e1",
+      category_id: "c2",
+      status: "sold",
+      used_at: null,
+    },
+    {
+      id: "t3",
+      event_id: "e2",
+      category_id: "c3",
+      status: "sold",
+      used_at: null,
+    },
+    {
+      id: "t4",
+      event_id: "e1",
+      category_id: "c1",
+      status: "refunded",
+      used_at: null,
+    },
+    {
+      id: "t5",
+      event_id: "e1",
+      category_id: "c1",
+      status: "used",
+      used_at: "2026-05-30T12:00:00Z",
+    },
+    {
+      id: "t6",
+      event_id: "e1",
+      category_id: "c2",
+      status: "sold",
+      used_at: null,
+    },
   ];
   return { events, categories, purchases, tickets };
 }
@@ -261,7 +327,7 @@ describe("aggregateOrganizationAnalytics", () => {
     expect(result.salesChannelBreakdown[0].channel).toBe("marketplace");
   });
 
-  it("populates per-event stats with sellout + attendance", () => {
+  it("populates per-event stats from the selected range", () => {
     const rows = makeRows();
     const result = aggregateOrganizationAnalytics(rows, {
       range: r,
@@ -270,10 +336,32 @@ describe("aggregateOrganizationAnalytics", () => {
     });
     const e1 = result.events.find((e) => e.event_id === "e1");
     expect(e1).toBeDefined();
-    expect(e1?.tickets_sold).toBe(110); // 90+20
-    expect(e1?.tickets_redeemed).toBe(2);
-    expect(e1?.attendance_rate).toBeCloseTo(2 / 110, 5);
-    expect(e1?.sellout_rate).toBeCloseTo(110 / 200, 5);
+    expect(e1?.tickets_sold).toBe(2);
+    expect(e1?.tickets_redeemed).toBe(1);
+    expect(e1?.revenue_paid).toBe(130);
+    expect(e1?.attendance_rate).toBeCloseTo(1 / 2, 5);
+    expect(e1?.sellout_rate).toBeCloseTo(2 / 200, 5);
+  });
+
+  it("builds category breakdown from paid purchases inside the selected range", () => {
+    const rows = makeRows();
+    const result = aggregateOrganizationAnalytics(rows, {
+      range: r,
+      prior: null,
+      filters: {},
+    });
+
+    expect(result.categoryBreakdown.map((row) => row.category_id)).toEqual([
+      "c2",
+      "c3",
+      "c1",
+    ]);
+    expect(result.categoryBreakdown.map((row) => row.revenue)).toEqual([
+      80, 60, 50,
+    ]);
+    expect(result.categoryBreakdown.map((row) => row.tickets_sold)).toEqual([
+      1, 1, 1,
+    ]);
   });
 });
 

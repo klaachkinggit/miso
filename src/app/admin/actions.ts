@@ -879,7 +879,7 @@ export async function refundMarketplacePaymentAction(formData: FormData) {
     .eq("id", paymentId)
     .maybeSingle<MarketplacePaymentRow>();
   if (!payment)
-    fail(`/admin/events/${eventId}`, "Marketplace payment not found.");
+    fail(`/admin/events/${eventId}`, "Payment not found or not allowed.");
 
   // Authorize against the event the payment actually belongs to, derived
   // server-side — never against the form's event_id, which any organizer
@@ -922,7 +922,7 @@ export async function refundMarketplacePaymentAction(formData: FormData) {
     }
   }
   if (!paymentEventId || paymentEventId !== eventId) {
-    fail(`/admin/events/${eventId}`, "Payment does not belong to this event.");
+    fail(`/admin/events/${eventId}`, "Payment not found or not allowed.");
   }
 
   await assertCanManageEvent(admin, paymentEventId, `/admin/events/${eventId}`);
@@ -930,10 +930,8 @@ export async function refundMarketplacePaymentAction(formData: FormData) {
   try {
     await manuallyRefundPayment({ payment });
   } catch (error) {
-    fail(
-      `/admin/events/${eventId}`,
-      errorMessage(error, "Refund could not be processed."),
-    );
+    console.error("[admin] marketplace refund failed:", error);
+    fail(`/admin/events/${eventId}`, "Refund could not be processed.");
   }
 
   revalidatePath(`/admin/events/${eventId}`);

@@ -9,8 +9,8 @@ import type { TicketCategory } from "@/types/db";
 // path (`src/lib/stripe-marketplace/payments.ts`).
 
 export class GiftRecipientNotFoundError extends DomainError {
-  constructor(email: string) {
-    super(`No MISO account is registered for ${email}.`);
+  constructor() {
+    super("We could not find a MISO account for that gift recipient.");
     this.name = "GiftRecipientNotFoundError";
   }
 }
@@ -38,11 +38,16 @@ export function normalizeExtras(extras: number | undefined): number {
   return Math.max(0, Math.floor(extras ?? 0));
 }
 
-export function validateExtraGuests(category: TicketCategory, extras: number): void {
+export function validateExtraGuests(
+  category: TicketCategory,
+  extras: number,
+): void {
   if (extras === 0) return;
 
   if (category.kind !== "club_table" || !category.extra_guests_enabled) {
-    throw new ExtraGuestsInvalidError("This category does not allow extra guests.");
+    throw new ExtraGuestsInvalidError(
+      "This category does not allow extra guests.",
+    );
   }
 
   const maxExtras = category.max_extra_guests ?? 0;
@@ -57,7 +62,10 @@ export function validateExtraGuests(category: TicketCategory, extras: number): v
   }
 }
 
-export function checkoutPricing(category: TicketCategory, extras: number): CheckoutPricing {
+export function checkoutPricing(
+  category: TicketCategory,
+  extras: number,
+): CheckoutPricing {
   if (category.kind !== "club_table") {
     return {
       amount: Number(category.price),
@@ -86,7 +94,7 @@ export async function resolveGiftRecipientUserId(
     .select("id, email")
     .eq("email", normalizedEmail)
     .maybeSingle<{ id: string; email: string }>();
-  if (!friend) throw new GiftRecipientNotFoundError(normalizedEmail);
+  if (!friend) throw new GiftRecipientNotFoundError();
 
   return friend.id;
 }

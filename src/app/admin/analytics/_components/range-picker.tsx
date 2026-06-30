@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
+import { patchedQueryHref } from "@/lib/query-string";
 
 const PRESETS: Array<{ value: string; label: string }> = [
   { value: "today", label: "Today" },
@@ -23,12 +24,7 @@ export function RangePicker({ current, compare }: RangePickerProps) {
   const [pending, start] = useTransition();
 
   const update = (next: Record<string, string | null>) => {
-    const usp = new URLSearchParams(params.toString());
-    for (const [k, v] of Object.entries(next)) {
-      if (v === null) usp.delete(k);
-      else usp.set(k, v);
-    }
-    start(() => router.replace(`?${usp.toString()}`));
+    start(() => router.replace(patchedQueryHref(params, next)));
   };
 
   return (
@@ -45,8 +41,11 @@ export function RangePicker({ current, compare }: RangePickerProps) {
               onClick={() =>
                 update({ range: preset.value, from: null, to: null })
               }
-              className={`rounded px-3 py-1 text-xs transition-colors ${
-                active ? "bg-signal/15 text-signal" : "text-muted-foreground hover:text-foreground"
+              aria-pressed={active}
+              className={`rounded px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/30 ${
+                active
+                  ? "bg-signal/15 text-signal"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {preset.label}
@@ -56,8 +55,11 @@ export function RangePicker({ current, compare }: RangePickerProps) {
       </div>
       <button
         type="button"
-        onClick={() => update({ compare: compare === "prior" ? "none" : "prior" })}
-        className={`rounded-md border border-hairline px-3 py-1 text-xs transition-colors ${
+        onClick={() =>
+          update({ compare: compare === "prior" ? "none" : "prior" })
+        }
+        aria-pressed={compare === "prior"}
+        className={`rounded-md border border-hairline px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/30 ${
           compare === "prior"
             ? "border-signal/40 bg-signal/10 text-signal"
             : "text-muted-foreground hover:text-foreground"

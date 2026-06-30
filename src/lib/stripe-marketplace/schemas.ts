@@ -11,6 +11,7 @@ export const PrimaryCheckoutInitSchema = z.object({
 
 export const ResaleCheckoutInitSchema = z.object({
   listing_id: z.string().uuid(),
+  return_path: z.string().startsWith("/").max(200).optional(),
 });
 
 export const OnboardingLinkInitSchema = z.object({

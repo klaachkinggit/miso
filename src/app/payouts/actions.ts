@@ -1,9 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createOnboardingLink } from "@/lib/stripe-marketplace/seller-accounts";
+import { getConfiguredAppUrl } from "@/lib/url";
 
 function fail(message: string): never {
   redirect(`/payouts?error=${encodeURIComponent(message)}`);
@@ -15,15 +15,12 @@ function errorMessage(error: unknown, fallback: string): string {
 
 export async function startSellerStripeConnect() {
   const profile = await requireRole("user");
-  const hdrs = await headers();
-  const proto = hdrs.get("x-forwarded-proto") ?? "http";
-  const host = hdrs.get("host") ?? "localhost:3000";
   let url = "";
   try {
     const link = await createOnboardingLink({
       userId: profile.id,
       email: profile.email,
-      appUrl: `${proto}://${host}`,
+      appUrl: getConfiguredAppUrl(),
       returnPath: "/payouts",
     });
     url = link.url;

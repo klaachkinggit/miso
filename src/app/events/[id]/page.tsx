@@ -7,21 +7,9 @@ import {
   listPublicEventCategories,
 } from "@/lib/events/public";
 import { formatDate } from "@/lib/format";
-import { createServiceClient } from "@/lib/supabase/service";
 import { getConfiguredAppUrl } from "@/lib/url";
-import type { EventRow } from "@/types/db";
 
 const appUrl = getConfiguredAppUrl();
-
-async function getEventById(id: string): Promise<EventRow | null> {
-  const sb = createServiceClient();
-  const { data } = await sb
-    .from("events")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle<EventRow>();
-  return data ?? null;
-}
 
 export async function generateMetadata({
   params,
@@ -29,9 +17,9 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const event = await getEventById(id);
+  const event = await getPublishedEventById(id).catch(() => null);
 
-  if (!event || event.status !== "published") {
+  if (!event) {
     return {
       title: "Event — MISO",
       robots: { index: false },

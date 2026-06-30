@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { X } from "lucide-react";
+import { patchedQueryHref } from "@/lib/query-string";
 
 interface FilterOption {
   id: string;
@@ -17,7 +18,9 @@ interface FilterChipsProps {
 }
 
 function toggle(list: string[], value: string): string[] {
-  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+  return list.includes(value)
+    ? list.filter((v) => v !== value)
+    : [...list, value];
 }
 
 export function FilterChips({
@@ -31,12 +34,7 @@ export function FilterChips({
   const [pending, start] = useTransition();
 
   const apply = (next: Record<string, string[]>) => {
-    const usp = new URLSearchParams(params.toString());
-    for (const [k, v] of Object.entries(next)) {
-      if (v.length === 0) usp.delete(k);
-      else usp.set(k, v.join(","));
-    }
-    start(() => router.replace(`?${usp.toString()}`));
+    start(() => router.replace(patchedQueryHref(params, next)));
   };
 
   const hasAny = selectedEvents.length > 0 || selectedChannels.length > 0;
@@ -47,19 +45,29 @@ export function FilterChips({
         title="Events"
         options={events}
         selected={selectedEvents}
-        onToggle={(id) => apply({ events: toggle(selectedEvents, id), channels: selectedChannels })}
+        onToggle={(id) =>
+          apply({
+            events: toggle(selectedEvents, id),
+            channels: selectedChannels,
+          })
+        }
       />
       <Section
         title="Sales channels"
         options={channels}
         selected={selectedChannels}
-        onToggle={(id) => apply({ channels: toggle(selectedChannels, id), events: selectedEvents })}
+        onToggle={(id) =>
+          apply({
+            channels: toggle(selectedChannels, id),
+            events: selectedEvents,
+          })
+        }
       />
       {hasAny ? (
         <button
           type="button"
           onClick={() => apply({ events: [], channels: [] })}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/30"
         >
           <X className="h-3 w-3" /> Clear filters
         </button>
@@ -82,7 +90,9 @@ function Section({
   if (options.length === 0) return null;
   return (
     <div>
-      <p className="mb-1.5 text-xs uppercase tracking-wider text-muted-foreground">{title}</p>
+      <p className="mb-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+        {title}
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {options.map((option) => {
           const active = selected.includes(option.id);
@@ -91,7 +101,8 @@ function Section({
               key={option.id}
               type="button"
               onClick={() => onToggle(option.id)}
-              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+              aria-pressed={active}
+              className={`rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/30 ${
                 active
                   ? "border-signal/40 bg-signal/15 text-signal"
                   : "border-hairline text-muted-foreground hover:text-foreground"

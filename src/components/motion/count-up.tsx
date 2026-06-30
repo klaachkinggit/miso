@@ -1,6 +1,13 @@
 "use client";
 
-import { animate, useInView, useMotionValue, useTransform, motion } from "motion/react";
+import {
+  animate,
+  useInView,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+  motion,
+} from "motion/react";
 import { useEffect, useRef } from "react";
 
 export function CountUp({
@@ -22,6 +29,7 @@ export function CountUp({
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-15% 0px" });
+  const reduceMotion = useReducedMotion();
   const value = useMotionValue(0);
   const display = useTransform(value, (latest) =>
     format ? format(latest) : `${prefix}${latest.toFixed(decimals)}${suffix}`,
@@ -29,12 +37,16 @@ export function CountUp({
 
   useEffect(() => {
     if (!inView) return;
+    if (reduceMotion) {
+      value.set(to);
+      return;
+    }
     const controls = animate(value, to, {
       duration,
       ease: [0.22, 0.72, 0.18, 1],
     });
     return controls.stop;
-  }, [inView, to, duration, value]);
+  }, [inView, reduceMotion, to, duration, value]);
 
   return (
     <span ref={ref} className={className}>

@@ -140,7 +140,7 @@ export default async function OrganizationStorefrontPage({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={branding.hero_image_url}
-                alt=""
+                alt={`${organization.name} storefront artwork`}
                 width={1600}
                 height={1000}
                 className="h-full w-full object-cover"
@@ -156,7 +156,7 @@ export default async function OrganizationStorefrontPage({
         </div>
       </section>
 
-      <main id="events" className="container py-10 md:py-14">
+      <section id="events" className="container py-10 md:py-14">
         <div className="mb-8 flex flex-col gap-5 border-b border-hairline pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="eyebrow">Program</p>
@@ -243,7 +243,7 @@ export default async function OrganizationStorefrontPage({
             }
           />
         )}
-      </main>
+      </section>
 
       <BuyerAssistantWidget
         organizationId={organization.id}

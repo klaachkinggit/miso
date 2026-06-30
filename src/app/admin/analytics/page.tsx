@@ -225,18 +225,9 @@ export default async function OrganizationAnalyticsPage({
                 Live ledger.
               </h2>
             </div>
-            <div className="flex items-center gap-3">
-              <a
-                href={`/api/admin/analytics/export?range=${parsed.range.preset}`}
-                download
-                className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-              >
-                Download CSV
-              </a>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/admin/events">All events →</Link>
-              </Button>
-            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/admin/events">All events →</Link>
+            </Button>
           </div>
           <EventTable events={analytics.events} />
         </section>

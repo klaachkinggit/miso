@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useInView } from "motion/react";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import { Fragment, useRef, type CSSProperties, type ElementType } from "react";
 
 type Segment = {
@@ -27,6 +27,7 @@ export function WordReveal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-15% 0px" });
+  const reduceMotion = useReducedMotion();
   const Wrapper = (as ?? "div") as ElementType;
 
   const words: { word: string; segment: Segment }[] = [];
@@ -49,30 +50,40 @@ export function WordReveal({
         const wordIdx = idx;
         return (
           <Fragment key={`w-${i}`}>
-            <span style={{ display: "inline-block", overflow: "hidden", verticalAlign: "bottom" }}>
+            <span
+              style={{
+                display: "inline-block",
+                overflow: "hidden",
+                verticalAlign: "bottom",
+              }}
+            >
               <motion.span
-                initial={{ y: "100%", opacity: 0 }}
-                animate={inView ? { y: 0, opacity: 1 } : { y: "100%", opacity: 0 }}
+                initial={reduceMotion ? false : { y: "100%", opacity: 0 }}
+                animate={
+                  reduceMotion || inView
+                    ? { y: 0, opacity: 1 }
+                    : { y: "100%", opacity: 0 }
+                }
                 transition={{
-                  duration,
-                  delay: wordIdx * stagger,
+                  duration: reduceMotion ? 0 : duration,
+                  delay: reduceMotion ? 0 : wordIdx * stagger,
                   ease: [0.22, 0.72, 0.18, 1],
                 }}
                 style={{
                   display: "inline-block",
                   fontStyle: entry.segment.italic ? "italic" : undefined,
                   color: entry.segment.color,
-                  fontFamily: entry.segment.italic ? "var(--font-display)" : undefined,
+                  fontFamily: entry.segment.italic
+                    ? "var(--font-display)"
+                    : undefined,
                 }}
               >
                 {entry.word}
               </motion.span>
-            </span>
-            {" "}
+            </span>{" "}
           </Fragment>
         );
       })}
     </Wrapper>
   );
 }
-

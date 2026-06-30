@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
@@ -20,13 +19,21 @@ import { assertOwnEvent } from "@/lib/organizers/permissions";
 import { sendOrganizationAnnouncement } from "@/lib/email/send";
 import { listActiveFollowerEmails } from "@/lib/followers";
 import { getDefaultAdminOrganizationId } from "@/lib/organizations/auth";
-import { getActiveAdminOrganization, requireActiveAdminOrganization } from "@/lib/organizations/context";
+import {
+  getActiveAdminOrganization,
+  requireActiveAdminOrganization,
+} from "@/lib/organizations/context";
 import { createPromoCode, deactivatePromoCode } from "@/lib/promo";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import type { Profile } from "@/types/db";
-import { CreateCategorySchema, CreateEventSchema, InviteControllerSchema } from "@/lib/schemas";
+import {
+  CreateCategorySchema,
+  CreateEventSchema,
+  InviteControllerSchema,
+} from "@/lib/schemas";
 import { createOnboardingLink } from "@/lib/stripe-marketplace/seller-accounts";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getConfiguredAppUrl } from "@/lib/url";
 
 function checkbox(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
@@ -55,7 +62,11 @@ export async function saveLegalCompliance(formData: FormData) {
     siret: formData.get("siret"),
     no_siret: checkbox(formData, "no_siret"),
   });
-  if (!parsed.success) fail("/smartboard?tab=banking", parsed.error.issues[0]?.message ?? "Invalid legal identity.");
+  if (!parsed.success)
+    fail(
+      "/smartboard?tab=banking",
+      parsed.error.issues[0]?.message ?? "Invalid legal identity.",
+    );
 
   const sb = createServiceClient();
   const { error } = await sb
@@ -73,20 +84,20 @@ export async function saveLegalCompliance(formData: FormData) {
 
 export async function startStripeConnect() {
   const profile = await requireOrganizer();
-  const hdrs = await headers();
-  const proto = hdrs.get("x-forwarded-proto") ?? "http";
-  const host = hdrs.get("host") ?? "localhost:3000";
   let url = "";
   try {
     const link = await createOnboardingLink({
       userId: profile.id,
       email: profile.email,
-      appUrl: `${proto}://${host}`,
+      appUrl: getConfiguredAppUrl(),
       returnPath: "/smartboard?tab=banking",
     });
     url = link.url;
   } catch (error) {
-    fail("/smartboard?tab=banking", errorMessage(error, "Stripe onboarding could not be started."));
+    fail(
+      "/smartboard?tab=banking",
+      errorMessage(error, "Stripe onboarding could not be started."),
+    );
   }
   redirect(url);
 }
@@ -99,7 +110,11 @@ export async function saveOrganizerPage(formData: FormData) {
     page_description: formData.get("page_description") || null,
     widget_accent_color: formData.get("widget_accent_color"),
   });
-  if (!parsed.success) fail("/smartboard?tab=page", parsed.error.issues[0]?.message ?? "Invalid page settings.");
+  if (!parsed.success)
+    fail(
+      "/smartboard?tab=page",
+      parsed.error.issues[0]?.message ?? "Invalid page settings.",
+    );
 
   const sb = createServiceClient();
   const { error } = await sb
@@ -124,10 +139,17 @@ export async function createOrganizerEvent(formData: FormData) {
     conditions: formData.get("conditions") || null,
     sales_enabled: checkbox(formData, "sales_enabled"),
     resale_enabled: checkbox(formData, "resale_enabled"),
-    public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
-    organizer_resale_royalty_bps: percentToBps(formData, "organizer_resale_royalty_pct"),
+    public_sales_counter_enabled: checkbox(
+      formData,
+      "public_sales_counter_enabled",
+    ),
+    organizer_resale_royalty_bps: percentToBps(
+      formData,
+      "organizer_resale_royalty_pct",
+    ),
   });
-  if (!parsed.success) fail("/smartboard", parsed.error.issues[0]?.message ?? "Invalid event.");
+  if (!parsed.success)
+    fail("/smartboard", parsed.error.issues[0]?.message ?? "Invalid event.");
 
   const organizationId = await getDefaultAdminOrganizationId(profile.id);
   if (!organizationId) {
@@ -164,16 +186,33 @@ export async function updateOrganizerEvent(formData: FormData) {
     conditions: formData.get("conditions") || null,
     sales_enabled: checkbox(formData, "sales_enabled"),
     resale_enabled: checkbox(formData, "resale_enabled"),
-    public_sales_counter_enabled: checkbox(formData, "public_sales_counter_enabled"),
-    organizer_resale_royalty_bps: percentToBps(formData, "organizer_resale_royalty_pct"),
+    public_sales_counter_enabled: checkbox(
+      formData,
+      "public_sales_counter_enabled",
+    ),
+    organizer_resale_royalty_bps: percentToBps(
+      formData,
+      "organizer_resale_royalty_pct",
+    ),
   });
-  if (!parsed.success) fail(`/smartboard/events/${eventId}`, parsed.error.issues[0]?.message ?? "Invalid event.");
+  if (!parsed.success)
+    fail(
+      `/smartboard/events/${eventId}`,
+      parsed.error.issues[0]?.message ?? "Invalid event.",
+    );
 
   try {
     await assertOwnEvent({ eventId, profile });
-    await updateEventDetails({ eventId, input: parsed.data, actorUserId: profile.id });
+    await updateEventDetails({
+      eventId,
+      input: parsed.data,
+      actorUserId: profile.id,
+    });
   } catch (error) {
-    fail(`/smartboard/events/${eventId}`, errorMessage(error, "Event could not be updated."));
+    fail(
+      `/smartboard/events/${eventId}`,
+      errorMessage(error, "Event could not be updated."),
+    );
   }
   revalidatePath(`/smartboard/events/${eventId}`);
   redirect(`/smartboard/events/${eventId}`);
@@ -194,13 +233,17 @@ export async function createOrganizerCategory(formData: FormData) {
     sale_starts_at: formData.get("sale_starts_at") || null,
     sale_ends_at: formData.get("sale_ends_at") || null,
   });
-  if (!parsed.success) fail("/smartboard", parsed.error.issues[0]?.message ?? "Invalid category.");
+  if (!parsed.success)
+    fail("/smartboard", parsed.error.issues[0]?.message ?? "Invalid category.");
 
   try {
     await assertOwnEvent({ eventId: parsed.data.event_id, profile });
     await createTicketCategory({ input: parsed.data, actorUserId: profile.id });
   } catch (error) {
-    fail(`/smartboard/events/${parsed.data.event_id}`, errorMessage(error, "Category could not be created."));
+    fail(
+      `/smartboard/events/${parsed.data.event_id}`,
+      errorMessage(error, "Category could not be created."),
+    );
   }
   revalidatePath(`/smartboard/events/${parsed.data.event_id}`);
   redirect(`/smartboard/events/${parsed.data.event_id}`);
@@ -219,7 +262,10 @@ export async function publishOrganizerEvent(formData: FormData) {
       requireOrganizerLive: true,
     });
   } catch (error) {
-    fail(`/smartboard/events/${eventId}`, errorMessage(error, "Event could not be published."));
+    fail(
+      `/smartboard/events/${eventId}`,
+      errorMessage(error, "Event could not be published."),
+    );
   }
   revalidatePath(`/smartboard/events/${eventId}`);
   revalidatePath("/events");
@@ -231,7 +277,11 @@ export async function sendAnnouncementAction(formData: FormData) {
   const { activeOrganization } = await requireActiveAdminOrganization(profile);
 
   const { allowed } = await enforceRateLimit("announce", profile.id);
-  if (!allowed) fail("/smartboard?tab=marketing", "Too many announcements. Try again later.");
+  if (!allowed)
+    fail(
+      "/smartboard?tab=marketing",
+      "Too many announcements. Try again later.",
+    );
 
   const subject = String(formData.get("subject") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
@@ -247,7 +297,10 @@ export async function sendAnnouncementAction(formData: FormData) {
     });
     sent = result.sent;
   } catch (error) {
-    fail("/smartboard?tab=marketing", errorMessage(error, "Announcement could not be sent."));
+    fail(
+      "/smartboard?tab=marketing",
+      errorMessage(error, "Announcement could not be sent."),
+    );
   }
   revalidatePath("/smartboard");
   redirect(`/smartboard?tab=marketing&announced=${sent}`);
@@ -258,7 +311,9 @@ export async function getActiveOrganizationFollowerCount(
 ): Promise<number> {
   const { activeOrganization } = await getActiveAdminOrganization(profile);
   if (!activeOrganization) return 0;
-  const followers = await listActiveFollowerEmails({ organizationId: activeOrganization.id });
+  const followers = await listActiveFollowerEmails({
+    organizationId: activeOrganization.id,
+  });
   return followers.length;
 }
 
@@ -288,7 +343,10 @@ export async function createPromoCodeAction(formData: FormData) {
     ? new Date(String(formData.get("ends_at"))).toISOString()
     : null;
 
-  if (discountKind === "percent" && (!percentOff || percentOff < 1 || percentOff > 100)) {
+  if (
+    discountKind === "percent" &&
+    (!percentOff || percentOff < 1 || percentOff > 100)
+  ) {
     fail("/smartboard?tab=promos", "Percent off must be between 1 and 100.");
   }
   if (discountKind === "fixed" && (!amountOffCents || amountOffCents <= 0)) {
@@ -307,7 +365,10 @@ export async function createPromoCodeAction(formData: FormData) {
       endsAt,
     });
   } catch (error) {
-    fail("/smartboard?tab=promos", errorMessage(error, "Promo code could not be created."));
+    fail(
+      "/smartboard?tab=promos",
+      errorMessage(error, "Promo code could not be created."),
+    );
   }
   revalidatePath("/smartboard");
   redirect("/smartboard?tab=promos");
@@ -320,9 +381,15 @@ export async function deactivatePromoCodeAction(formData: FormData) {
   if (!promoCodeId) fail("/smartboard?tab=promos", "Missing promo code id.");
 
   try {
-    await deactivatePromoCode({ promoCodeId, organizationId: activeOrganization.id });
+    await deactivatePromoCode({
+      promoCodeId,
+      organizationId: activeOrganization.id,
+    });
   } catch (error) {
-    fail("/smartboard?tab=promos", errorMessage(error, "Promo code could not be deactivated."));
+    fail(
+      "/smartboard?tab=promos",
+      errorMessage(error, "Promo code could not be deactivated."),
+    );
   }
   revalidatePath("/smartboard");
   redirect("/smartboard?tab=promos");
@@ -334,7 +401,11 @@ export async function inviteOrganizerController(formData: FormData) {
     event_id: formData.get("event_id"),
     email: formData.get("email"),
   });
-  if (!parsed.success) fail("/smartboard", parsed.error.issues[0]?.message ?? "Invalid controller invite.");
+  if (!parsed.success)
+    fail(
+      "/smartboard",
+      parsed.error.issues[0]?.message ?? "Invalid controller invite.",
+    );
 
   try {
     await assertOwnEvent({ eventId: parsed.data.event_id, profile });
@@ -344,7 +415,10 @@ export async function inviteOrganizerController(formData: FormData) {
       actorUserId: profile.id,
     });
   } catch (error) {
-    fail(`/smartboard/events/${parsed.data.event_id}`, errorMessage(error, "Controller invite could not be sent."));
+    fail(
+      `/smartboard/events/${parsed.data.event_id}`,
+      errorMessage(error, "Controller invite could not be sent."),
+    );
   }
   revalidatePath(`/smartboard/events/${parsed.data.event_id}`);
   redirect(`/smartboard/events/${parsed.data.event_id}?tab=door`);

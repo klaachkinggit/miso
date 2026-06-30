@@ -127,6 +127,7 @@ export function EventDetail({
                   alt="Venue floor plan"
                   width={1200}
                   height={800}
+                  loading="lazy"
                   className="w-full rounded object-contain"
                 />
               </div>

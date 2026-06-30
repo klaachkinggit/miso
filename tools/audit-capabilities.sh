@@ -10,14 +10,14 @@ CHECK_USER_RESOURCES=0
 usage() {
   cat <<'EOF'
 Usage:
-  tools/audit-capabilities.sh [--expect-profile vercel|supabase|stripe|figma|ponytail|all] [--check-user-resources]
+  tools/audit-capabilities.sh [--expect-profile vercel|supabase|stripe|figma|all] [--check-user-resources]
 
 Checks:
   - Claude/Codex skill and hook mirrors
   - project-local MCP config syntax
   - duplicate Codex MCP sections
   - base MCP servers
-  - expected optional MCP/package profiles
+  - expected optional MCP profiles
   - installed-project CI does not reference harness-only scripts
   - no user-level skills/resources left in ~/.codex, ~/.claude, or ~/.agents when --check-user-resources is set
 EOF
@@ -168,6 +168,11 @@ for hook in $expected_hooks; do
     pass "$hook executable in both providers"
   else
     fail "$hook is not executable in both providers"
+  fi
+  if [ -x "tools/hooks/$hook" ]; then
+    pass "shared hook body executable: $hook"
+  else
+    fail "shared hook body is not executable: $hook"
   fi
 done
 

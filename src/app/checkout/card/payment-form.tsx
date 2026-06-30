@@ -35,6 +35,9 @@ interface CheckoutPayload {
   error?: string;
 }
 
+const giftEmailStorageKey = (categoryId: string) =>
+  `miso:checkout:gift:${categoryId}`;
+
 export function CardCheckoutForm({
   mode,
   id,
@@ -80,7 +83,13 @@ export function CardCheckoutForm({
         if (quantity !== undefined) primaryBody.quantity = quantity;
         if (extraGuests !== undefined)
           primaryBody.extra_guests_count = extraGuests;
-        if (giftEmail) primaryBody.gift_recipient_email = giftEmail;
+        const storedGiftEmail =
+          mode === "primary"
+            ? window.sessionStorage.getItem(giftEmailStorageKey(id))
+            : null;
+        const effectiveGiftEmail = giftEmail ?? storedGiftEmail ?? undefined;
+        if (effectiveGiftEmail)
+          primaryBody.gift_recipient_email = effectiveGiftEmail;
         if (returnPath) primaryBody.return_path = returnPath;
         if (promo) primaryBody.promo = promo;
 
@@ -91,13 +100,21 @@ export function CardCheckoutForm({
             "idempotency-key": crypto.randomUUID(),
           },
           body: JSON.stringify(
-            mode === "primary" ? primaryBody : { listing_id: id },
+            mode === "primary"
+              ? primaryBody
+              : {
+                  listing_id: id,
+                  ...(returnPath ? { return_path: returnPath } : {}),
+                },
           ),
         });
         const payload = (await response.json()) as CheckoutPayload;
         if (!response.ok)
           throw new Error(payload.error ?? "Card checkout could not start.");
         if (canceled) return;
+        if (mode === "primary") {
+          window.sessionStorage.removeItem(giftEmailStorageKey(id));
+        }
 
         if (payload.free) {
           window.location.assign("/tickets?claimed=1");
@@ -178,7 +195,11 @@ export function CardCheckoutForm({
           </p>
         ) : null}
         {error ? (
-          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground"
+          >
             {error}
           </div>
         ) : null}

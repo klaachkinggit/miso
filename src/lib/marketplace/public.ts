@@ -1,6 +1,5 @@
 import "server-only";
 
-import { organizationMarketplaceListingPath } from "@/lib/organizations/public";
 import {
   resalePlatformFee,
   resaleRoyaltyAmount,
@@ -272,57 +271,4 @@ export async function getSellableResaleListing(params: {
       activeOrganizationsById: activeOrganizations,
     }) ?? null
   );
-}
-
-export async function resaleCheckoutCancelPath(
-  listingId: string,
-): Promise<string> {
-  const sb = createServiceClient();
-  const { data: listing, error: listingError } = await sb
-    .from("resale_listings")
-    .select("id, organization_id, ticket_id")
-    .eq("id", listingId)
-    .maybeSingle<Pick<ResaleListing, "id" | "organization_id" | "ticket_id">>();
-  if (listingError)
-    throw new Error(
-      `Marketplace listing lookup failed: ${listingError.message}`,
-    );
-  if (!listing) return "/marketplace";
-
-  const { data: ticket, error: ticketError } = await sb
-    .from("tickets")
-    .select("event_id")
-    .eq("id", listing.ticket_id)
-    .maybeSingle<Pick<Ticket, "event_id">>();
-  if (ticketError)
-    throw new Error(`Marketplace ticket lookup failed: ${ticketError.message}`);
-
-  const eventId = ticket?.event_id;
-  const { data: event, error: eventError } = eventId
-    ? await sb
-        .from("events")
-        .select("organization_id")
-        .eq("id", eventId)
-        .maybeSingle<Pick<EventRow, "organization_id">>()
-    : { data: null, error: null };
-  if (eventError)
-    throw new Error(`Marketplace event lookup failed: ${eventError.message}`);
-
-  const organizationId = listing.organization_id ?? event?.organization_id;
-  if (organizationId) {
-    const { data: organization, error: organizationError } = await sb
-      .from("organizations")
-      .select("slug")
-      .eq("id", organizationId)
-      .eq("status", "active")
-      .maybeSingle<{ slug: string }>();
-    if (organizationError)
-      throw new Error(
-        `Marketplace organization lookup failed: ${organizationError.message}`,
-      );
-    if (organization)
-      return organizationMarketplaceListingPath(organization.slug, listing.id);
-  }
-
-  return `/marketplace/${listing.id}`;
 }

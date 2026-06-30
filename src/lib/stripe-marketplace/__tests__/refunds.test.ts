@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   markTicketRefunded: vi.fn(),
   reverseTransfer: vi.fn(),
   sendRefundNotice: vi.fn(),
+  stripeRefundCreate: vi.fn(),
   transitionPayment: vi.fn(),
   upsertSellerAccount: vi.fn(),
   listTransfersForPayment: vi.fn(),
@@ -83,6 +84,11 @@ vi.mock("@/lib/tickets/lifecycle", () => ({
 vi.mock("../seller-accounts", () => ({
   upsertSellerAccount: mocks.upsertSellerAccount,
 }));
+vi.mock("../client", () => ({
+  stripeClient: () => ({
+    refunds: { create: mocks.stripeRefundCreate },
+  }),
+}));
 vi.mock("../state-machine", () => ({
   transitionPayment: mocks.transitionPayment,
 }));
@@ -91,7 +97,7 @@ vi.mock("../transfers", () => ({
   reverseTransfer: mocks.reverseTransfer,
 }));
 
-import { recordExternalChargeRefund } from "../refunds";
+import { manuallyRefundPayment, recordExternalChargeRefund } from "../refunds";
 
 function payment(): MarketplacePaymentRow {
   return {
@@ -152,6 +158,7 @@ describe("recordExternalChargeRefund", () => {
     vi.clearAllMocks();
     mocks.listTransfersForPayment.mockResolvedValue([transfer()]);
     mocks.reverseTransfer.mockResolvedValue("trr_new");
+    mocks.stripeRefundCreate.mockResolvedValue({ id: "re_1", amount: 700 });
   });
 
   it("uses cumulative refund target and finalizes all linked primary rows", async () => {
@@ -180,5 +187,56 @@ describe("recordExternalChargeRefund", () => {
       "payment-1",
       { type: "REFUNDED" },
     ]);
+  });
+});
+
+describe("manuallyRefundPayment", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.listTransfersForPayment.mockResolvedValue([transfer()]);
+    mocks.reverseTransfer.mockResolvedValue("trr_new");
+    mocks.stripeRefundCreate.mockResolvedValue({
+      id: "re_manual",
+      amount: 700,
+    });
+  });
+
+  it("does not reverse seller transfers when Stripe refund creation fails", async () => {
+    mocks.stripeRefundCreate.mockRejectedValue(
+      new Error("stripe refused refund"),
+    );
+
+    await assert.rejects(
+      manuallyRefundPayment({ payment: payment() }),
+      /stripe refused refund/,
+    );
+
+    assert.equal(mocks.reverseTransfer.mock.calls.length, 0);
+    assert.deepEqual(mocks.stripeRefundCreate.mock.calls[0], [
+      {
+        charge: "ch_1",
+        amount: 700,
+        reverse_transfer: false,
+        refund_application_fee: false,
+        metadata: { marketplace_payment_id: "payment-1" },
+      },
+      { idempotencyKey: "refund_payment-1_700" },
+    ]);
+  });
+
+  it("creates the Stripe refund before reversing seller transfers", async () => {
+    const order: string[] = [];
+    mocks.stripeRefundCreate.mockImplementation(async () => {
+      order.push("refund");
+      return { id: "re_manual", amount: 700 };
+    });
+    mocks.reverseTransfer.mockImplementation(async () => {
+      order.push("reverse");
+      return "trr_new";
+    });
+
+    await manuallyRefundPayment({ payment: payment() });
+
+    assert.deepEqual(order, ["refund", "reverse"]);
   });
 });

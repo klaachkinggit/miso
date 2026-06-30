@@ -65,6 +65,7 @@ export interface AnalyticsCategoryBreakdownRow {
 
 export interface AnalyticsPurchaseRow {
   event_id: string;
+  ticket_id: string;
   amount: number;
   currency: Currency;
   status: string;
@@ -73,8 +74,11 @@ export interface AnalyticsPurchaseRow {
 }
 
 export interface AnalyticsTicketRow {
+  id: string;
   event_id: string;
+  category_id: string;
   status: string;
+  used_at: string | null;
 }
 
 export interface AnalyticsTotals {
@@ -159,7 +163,9 @@ export function rangePresetWindow(
   }
 }
 
-export function computePriorRange(range: AnalyticsRange): AnalyticsRange | null {
+export function computePriorRange(
+  range: AnalyticsRange,
+): AnalyticsRange | null {
   if (range.preset === "all") return null;
   const span = range.to.getTime() - range.from.getTime();
   return {
@@ -183,10 +189,22 @@ function bucketKey(date: Date, bucketSize: number): string {
   return date.toISOString().slice(0, 13) + ":00:00.000Z"; // hour bucket
 }
 
-function alignBucketStart(time: number, range: AnalyticsRange, bucketSize: number): number {
+function alignBucketStart(
+  time: number,
+  range: AnalyticsRange,
+  bucketSize: number,
+): number {
   if (bucketSize === DAY_MS) {
     const d = new Date(time);
-    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0);
+    return Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    );
   }
   if (bucketSize === 7 * DAY_MS) {
     const from = range.from.getTime();
@@ -206,8 +224,51 @@ function alignBucketStart(time: number, range: AnalyticsRange, bucketSize: numbe
 export function aggregateCategoryBreakdown(
   categories: AnalyticsCategoryRow[],
   currency: Currency,
+  purchasesOrLimit?: AnalyticsPurchaseRow[] | number,
+  tickets?: AnalyticsTicketRow[],
+  range?: AnalyticsRange,
+  salesChannels?: Set<string> | null,
   limit = 8,
 ): AnalyticsCategoryBreakdownRow[] {
+  const purchases = Array.isArray(purchasesOrLimit)
+    ? purchasesOrLimit
+    : undefined;
+  const rowLimit =
+    typeof purchasesOrLimit === "number" ? purchasesOrLimit : limit;
+  if (purchases && tickets && range) {
+    const categoryById = new Map(
+      categories
+        .filter((category) => category.id)
+        .map((category) => [category.id!, category]),
+    );
+    const categoryIdByTicketId = new Map(
+      tickets.map((ticket) => [ticket.id, ticket.category_id]),
+    );
+    const rows = new Map<string, AnalyticsCategoryBreakdownRow>();
+    for (const purchase of purchases) {
+      if (purchase.status !== "paid") continue;
+      if (!inRange(new Date(purchase.created_at).getTime(), range)) continue;
+      if (salesChannels && !salesChannels.has(purchase.sales_channel)) continue;
+      const categoryId = categoryIdByTicketId.get(purchase.ticket_id);
+      if (!categoryId) continue;
+      const category = categoryById.get(categoryId);
+      if (!category) continue;
+      const existing = rows.get(categoryId) ?? {
+        category_id: categoryId,
+        name: category.name ?? categoryId,
+        tickets_sold: 0,
+        revenue: 0,
+        currency,
+      };
+      existing.tickets_sold += 1;
+      existing.revenue += Number(purchase.amount);
+      rows.set(categoryId, existing);
+    }
+    return Array.from(rows.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, rowLimit);
+  }
+
   const rows: AnalyticsCategoryBreakdownRow[] = categories
     .filter((c) => c.id !== undefined)
     .map((c) => ({
@@ -218,7 +279,7 @@ export function aggregateCategoryBreakdown(
       currency,
     }));
 
-  return rows.sort((a, b) => b.revenue - a.revenue).slice(0, limit);
+  return rows.sort((a, b) => b.revenue - a.revenue).slice(0, rowLimit);
 }
 
 // --- Aggregation --------------------------------------------------------
@@ -240,7 +301,10 @@ function inRange(ts: number, range: AnalyticsRange): boolean {
   return ts >= range.from.getTime() && ts < range.to.getTime();
 }
 
-function applyEventFilter<T extends { event_id: string }>(rows: T[], eventIds?: Set<string>): T[] {
+function applyEventFilter<T extends { event_id: string }>(
+  rows: T[],
+  eventIds?: Set<string>,
+): T[] {
   if (!eventIds) return rows;
   return rows.filter((row) => eventIds.has(row.event_id));
 }
@@ -324,14 +388,24 @@ export function aggregateOrganizationAnalytics(
     scopedCategories,
   );
   const priorTotals = params.prior
-    ? aggregateWindow(scopedPurchases, params.prior, channelFilter, currency, scopedCategories)
+    ? aggregateWindow(
+        scopedPurchases,
+        params.prior,
+        channelFilter,
+        currency,
+        scopedCategories,
+      )
     : null;
 
   // Time series — buckets fully cover the range, even when empty.
   const bucketSize = bucketSizeMs(params.range);
   const buckets = new Map<string, AnalyticsTimeBucket>();
   for (
-    let t = alignBucketStart(params.range.from.getTime(), params.range, bucketSize);
+    let t = alignBucketStart(
+      params.range.from.getTime(),
+      params.range,
+      bucketSize,
+    );
     t < params.range.to.getTime();
     t += bucketSize
   ) {
@@ -367,7 +441,9 @@ export function aggregateOrganizationAnalytics(
     channelMap.set(p.sales_channel, entry);
   }
   const channelTotal = totals.gross_revenue;
-  const salesChannelBreakdown: AnalyticsChannelStat[] = Array.from(channelMap.entries())
+  const salesChannelBreakdown: AnalyticsChannelStat[] = Array.from(
+    channelMap.entries(),
+  )
     .map(([channel, { revenue, tickets }]) => ({
       channel,
       revenue,
@@ -380,18 +456,27 @@ export function aggregateOrganizationAnalytics(
   const soldByEvent = new Map<string, number>();
   const supplyByEvent = new Map<string, number>();
   for (const c of scopedCategories) {
-    soldByEvent.set(c.event_id, (soldByEvent.get(c.event_id) ?? 0) + c.sold_count);
-    supplyByEvent.set(c.event_id, (supplyByEvent.get(c.event_id) ?? 0) + c.supply);
+    supplyByEvent.set(
+      c.event_id,
+      (supplyByEvent.get(c.event_id) ?? 0) + c.supply,
+    );
   }
   const revenueByEvent = new Map<string, number>();
   for (const p of scopedPurchases) {
     if (p.status !== "paid") continue;
+    if (!inRange(new Date(p.created_at).getTime(), params.range)) continue;
     if (channelFilter && !channelFilter.has(p.sales_channel)) continue;
-    revenueByEvent.set(p.event_id, (revenueByEvent.get(p.event_id) ?? 0) + Number(p.amount));
+    soldByEvent.set(p.event_id, (soldByEvent.get(p.event_id) ?? 0) + 1);
+    revenueByEvent.set(
+      p.event_id,
+      (revenueByEvent.get(p.event_id) ?? 0) + Number(p.amount),
+    );
   }
   const redeemedByEvent = new Map<string, number>();
   for (const t of scopedTickets) {
     if (t.status !== "used") continue;
+    if (!t.used_at || !inRange(new Date(t.used_at).getTime(), params.range))
+      continue;
     redeemedByEvent.set(t.event_id, (redeemedByEvent.get(t.event_id) ?? 0) + 1);
   }
   const events: AnalyticsEventStat[] = scopedEvents.map((event) => {
@@ -415,7 +500,14 @@ export function aggregateOrganizationAnalytics(
     };
   });
 
-  const categoryBreakdown = aggregateCategoryBreakdown(scopedCategories, currency);
+  const categoryBreakdown = aggregateCategoryBreakdown(
+    scopedCategories,
+    currency,
+    scopedPurchases,
+    scopedTickets,
+    params.range,
+    channelFilter,
+  );
 
   return {
     range: params.range,
@@ -449,7 +541,8 @@ export async function loadOrganizationAnalytics(params: {
     eventsQuery = eventsQuery.in("id", params.filters.eventIds);
   }
   const eventsRes = await eventsQuery;
-  const events: AnalyticsEventRow[] = (eventsRes.data ?? []) as AnalyticsEventRow[];
+  const events: AnalyticsEventRow[] = (eventsRes.data ??
+    []) as AnalyticsEventRow[];
   const eventIds = events.map((e) => e.id);
 
   if (eventIds.length === 0) {
@@ -457,7 +550,8 @@ export async function loadOrganizationAnalytics(params: {
       { events: [], categories: [], purchases: [], tickets: [] },
       {
         range: params.range,
-        prior: params.compare === "prior" ? computePriorRange(params.range) : null,
+        prior:
+          params.compare === "prior" ? computePriorRange(params.range) : null,
         filters: params.filters,
       },
     );
@@ -466,16 +560,22 @@ export async function loadOrganizationAnalytics(params: {
   // Purchases: span = current range + prior range (when comparing). Pull
   // the union so the aggregator can split client-side without a second
   // round-trip.
-  const prior = params.compare === "prior" ? computePriorRange(params.range) : null;
+  const prior =
+    params.compare === "prior" ? computePriorRange(params.range) : null;
   const earliest = prior ? prior.from : params.range.from;
   let purchasesQuery = sb
     .from("purchases")
-    .select("event_id, amount, currency, status, sales_channel, created_at")
+    .select(
+      "event_id, ticket_id, amount, currency, status, sales_channel, created_at",
+    )
     .in("event_id", eventIds)
     .gte("created_at", earliest.toISOString())
     .lt("created_at", params.range.to.toISOString());
   if (params.filters.salesChannels?.length) {
-    purchasesQuery = purchasesQuery.in("sales_channel", params.filters.salesChannels);
+    purchasesQuery = purchasesQuery.in(
+      "sales_channel",
+      params.filters.salesChannels,
+    );
   }
 
   const [purchasesRes, categoriesRes, ticketsRes] = await Promise.all([
@@ -486,9 +586,8 @@ export async function loadOrganizationAnalytics(params: {
       .in("event_id", eventIds),
     sb
       .from("tickets")
-      .select("event_id, status")
-      .in("event_id", eventIds)
-      .eq("status", "used"),
+      .select("id, event_id, category_id, status, used_at")
+      .in("event_id", eventIds),
   ]);
 
   return aggregateOrganizationAnalytics(

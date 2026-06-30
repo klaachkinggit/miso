@@ -19,61 +19,66 @@ const paymentsRefactorMigration = readFileSync(
   "utf8",
 );
 const idempotencyMigration = readFileSync(
-  join(repoRoot, "supabase", "migrations", "20260518015633_purchase_checkout_idempotency.sql"),
+  join(
+    repoRoot,
+    "supabase",
+    "migrations",
+    "20260518015633_purchase_checkout_idempotency.sql",
+  ),
   "utf8",
 );
 const organizationFoundationMigration = readFileSync(
-  join(repoRoot, "supabase", "migrations", "20260605004939_organization_foundation.sql"),
+  join(
+    repoRoot,
+    "supabase",
+    "migrations",
+    "20260605004939_organization_foundation.sql",
+  ),
   "utf8",
 );
 
 describe("seed — purchases column drift", () => {
-  it("does not use the retired stripe_checkout_session_id column", () => {
-    expect(seedSource).not.toMatch(/stripe_checkout_session_id/);
-  });
+  it.each([/stripe_checkout_session_id/, /stripe_payment_intent_id/])(
+    "does not use retired column %s",
+    (column) => expect(seedSource).not.toMatch(column),
+  );
 
-  it("does not use the retired stripe_payment_intent_id column", () => {
-    expect(seedSource).not.toMatch(/stripe_payment_intent_id/);
-  });
+  it.each([
+    [/provider_session_id/, paymentsRefactorMigration],
+    [/checkout_idempotency_key/, idempotencyMigration],
+  ])(
+    "uses current seeded column %s from its migration",
+    (column, migration) => {
+      expect(seedSource).toMatch(column);
+      expect(migration).toMatch(column);
+    },
+  );
 
-  it("uses the current provider_session_id column from the payments refactor", () => {
-    expect(seedSource).toMatch(/provider_session_id/);
-    expect(paymentsRefactorMigration).toMatch(/provider_session_id/);
-  });
-
-  it("uses the current provider_payment_id column", () => {
-    expect(seedSource).toMatch(/provider_payment_id/);
-  });
-
-  it("sets payment_provider so purchases pass schema-level checks", () => {
-    expect(seedSource).toMatch(/payment_provider/);
-  });
-
-  it("populates checkout_idempotency_key introduced by the idempotency migration", () => {
-    expect(seedSource).toMatch(/checkout_idempotency_key/);
-    expect(idempotencyMigration).toMatch(/checkout_idempotency_key/);
-  });
+  it.each([/provider_payment_id/, /payment_provider/])(
+    "uses required purchases column %s",
+    (column) => expect(seedSource).toMatch(column),
+  );
 });
 
 describe("seed — demo account contract", () => {
-  it("declares the three primary demo accounts (buyer, organizer, admin)", () => {
-    expect(seedSource).toMatch(/buyer@miso\.local/);
-    expect(seedSource).toMatch(/organizer@miso\.local/);
-    expect(seedSource).toMatch(/admin@miso\.local/);
-  });
+  it.each([/buyer@miso\.local/, /organizer@miso\.local/, /admin@miso\.local/])(
+    "declares demo account %s",
+    (account) => expect(seedSource).toMatch(account),
+  );
 
-  it("calls ensureBuyerOwnsTickets so the buyer demo has tickets in their wallet", () => {
-    expect(seedSource).toMatch(/ensureBuyerOwnsTickets\(/);
-  });
-
-  it("marks claimed tickets as sold with an owner and minted timestamp", () => {
-    expect(seedSource).toMatch(/status:\s*"sold"/);
-    expect(seedSource).toMatch(/owner_user_id:\s*buyerUserId/);
-    expect(seedSource).toMatch(/minted_at:/);
-  });
+  it.each([
+    /ensureBuyerOwnsTickets\(/,
+    /status:\s*"sold"/,
+    /owner_user_id:\s*buyerUserId/,
+    /minted_at:/,
+  ])("keeps buyer wallet fixture contract %s", (pattern) =>
+    expect(seedSource).toMatch(pattern),
+  );
 
   it("seeds the Miso organization contract introduced by the platform migration", () => {
-    expect(organizationFoundationMigration).toMatch(/create table if not exists organizations/);
+    expect(organizationFoundationMigration).toMatch(
+      /create table if not exists organizations/,
+    );
     expect(seedSource).toMatch(/ensureMisoOrganization/);
     expect(seedSource).toMatch(/organization_memberships/);
     expect(seedSource).toMatch(/organization_id:\s*organizationId/);
