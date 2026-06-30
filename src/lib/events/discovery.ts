@@ -179,25 +179,31 @@ export function eventDiscoveryDescription(
   const filters = [
     params.q ? `matching "${params.q}"` : null,
     params.city ? `in ${params.city}` : null,
-    params.genre ? EVENT_GENRES.find((g) => g.value === params.genre)?.label : null,
-    params.vibe ? EVENT_VIBES.find((v) => v.value === params.vibe)?.label : null,
-    params.price ? EVENT_PRICE_BUCKETS.find((p) => p.value === params.price)?.label : null,
+    params.genre
+      ? EVENT_GENRES.find((g) => g.value === params.genre)?.label
+      : null,
+    params.vibe
+      ? EVENT_VIBES.find((v) => v.value === params.vibe)?.label
+      : null,
+    params.price
+      ? EVENT_PRICE_BUCKETS.find((p) => p.value === params.price)?.label
+      : null,
     params.festival ? "festivals" : null,
   ].filter(Boolean);
   const suffix = filters.length ? ` · ${filters.join(" · ")}` : "";
-  return `${total} available · NFT tickets · verified access${suffix}`;
+  return `${total} available · digital tickets · verified access${suffix}`;
 }
 
 export function hasActiveFilters(params: EventDiscoveryParams): boolean {
   return Boolean(
     params.q ||
-      params.city ||
-      params.genre ||
-      params.vibe ||
-      params.price ||
-      params.festival ||
-      params.when !== "all" ||
-      params.sort !== "date",
+    params.city ||
+    params.genre ||
+    params.vibe ||
+    params.price ||
+    params.festival ||
+    params.when !== "all" ||
+    params.sort !== "date",
   );
 }
 

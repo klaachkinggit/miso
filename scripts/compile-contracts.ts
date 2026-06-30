@@ -7,7 +7,7 @@
 //
 // Run with: npm run contracts:compile
 //
-// Deterministic: optimizer enabled, runs=200, evmVersion=paris. Re-running
+// Deterministic: optimizer enabled, runs=200, evmVersion=cancun. Re-running
 // against unchanged sources produces an identical bytecode file.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -53,7 +53,9 @@ const BYTECODE_OUT = join(
   "src/lib/thirdweb/contracts/misoTicket.bytecode.ts",
 );
 
-function resolveImport(importPath: string): { contents: string } | { error: string } {
+function resolveImport(
+  importPath: string,
+): { contents: string } | { error: string } {
   try {
     if (importPath.startsWith("@openzeppelin/")) {
       const full = require.resolve(importPath, { paths: [ROOT] });

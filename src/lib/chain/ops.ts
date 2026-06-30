@@ -89,7 +89,9 @@ export async function openOrResumeChainOp(
     } else {
       attemptQuery = attemptQuery.eq("ticket_id", input.ticketId);
     }
-    const { data: prior } = await attemptQuery.maybeSingle<{ attempt: number }>();
+    const { data: prior } = await attemptQuery.maybeSingle<{
+      attempt: number;
+    }>();
     return prior ? prior.attempt + 1 : 1;
   };
 
@@ -279,3 +281,35 @@ export class ChainOpRepairError extends Error {
 }
 
 export { TransactionRevertError, TransactionTimeoutError };
+
+// Single classifier for chain-op errors. Callers ask one question
+// ("can I compensate?") instead of re-listing the four error classes
+// across settlement + resale. Returning a discriminated union also lets
+// audit logs and pending-state writes pick the right `state` label
+// without each path re-encoding the rule.
+export type ChainErrorClass =
+  | { kind: "non_compensatable"; state: "in_flight" | "repair_needed" }
+  | { kind: "compensatable" };
+
+const NON_COMPENSATABLE_NAMES = new Set([
+  "TransactionTimeoutError",
+  "ChainOpInFlightError",
+  "ChainOpRepairError",
+]);
+
+export function classifyChainError(error: unknown): ChainErrorClass {
+  if (
+    error instanceof ChainOpRepairError ||
+    (error instanceof Error && error.name === "ChainOpRepairError")
+  ) {
+    return { kind: "non_compensatable", state: "repair_needed" };
+  }
+  if (
+    error instanceof ChainOpInFlightError ||
+    error instanceof TransactionTimeoutError ||
+    (error instanceof Error && NON_COMPENSATABLE_NAMES.has(error.name))
+  ) {
+    return { kind: "non_compensatable", state: "in_flight" };
+  }
+  return { kind: "compensatable" };
+}

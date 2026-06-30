@@ -6,8 +6,8 @@
 //   - waitForTransaction → polls /v1/transactions/{id} until MINED
 //
 // Auth: `x-secret-key` header (configured in client.ts). `from` is the
-// Server Wallet EOA — defaulted from THIRDWEB_BACKEND_WALLET_ADDRESS so
-// callers don't repeat it.
+// Server Wallet smart account — defaulted from THIRDWEB_BACKEND_SMART_WALLET_ADDRESS
+// or discovered from Thirdweb so callers don't repeat it.
 
 import {
   createPublicClient,
@@ -66,13 +66,15 @@ export async function backendWallet(): Promise<Address> {
     return cachedFrom;
   }
   if (!cachedFromPromise) {
-    cachedFromPromise = fetchSmartWallet().then((addr) => {
-      cachedFrom = addr;
-      return addr;
-    }).catch((err) => {
-      cachedFromPromise = undefined;
-      throw err;
-    });
+    cachedFromPromise = fetchSmartWallet()
+      .then((addr) => {
+        cachedFrom = addr;
+        return addr;
+      })
+      .catch((err) => {
+        cachedFromPromise = undefined;
+        throw err;
+      });
   }
   return cachedFromPromise;
 }
@@ -156,7 +158,9 @@ interface WriteResponse {
 const DEFAULT_WRITE_GAS_LIMIT = 500_000;
 const RECEIPT_CHECK_TIMEOUT_MS = 60_000;
 const USER_OPERATION_EVENT_TOPIC = keccak256(
-  toHex("UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)"),
+  toHex(
+    "UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)",
+  ),
 );
 
 function normalizeGasLimit(value: number | bigint): number {
@@ -173,7 +177,9 @@ export async function writeContract(
   const call: Record<string, unknown> = {
     contractAddress: params.contractAddress,
     method: params.method,
-    params: params.params.map((p) => (typeof p === "bigint" ? p.toString() : p)),
+    params: params.params.map((p) =>
+      typeof p === "bigint" ? p.toString() : p,
+    ),
   };
   if (params.value !== undefined) call.value = params.value.toString();
   // Thirdweb can under-estimate ERC-4337 callGasLimit for contract writes
@@ -203,12 +209,7 @@ export async function writeContract(
   return { transactionId: ids[0] };
 }
 
-type TransactionStatus =
-  | "QUEUED"
-  | "SENT"
-  | "MINED"
-  | "ERRORED"
-  | "CANCELLED";
+type TransactionStatus = "QUEUED" | "SENT" | "MINED" | "ERRORED" | "CANCELLED";
 
 export interface TransactionRecord {
   transactionId: string;
@@ -310,7 +311,9 @@ function publicChain() {
   }
 }
 
-async function minedReceipt(record: TransactionRecord): Promise<TransactionReceipt | null> {
+async function minedReceipt(
+  record: TransactionRecord,
+): Promise<TransactionReceipt | null> {
   if (!record.transactionHash) return null;
   const chain = publicChain();
   if (!chain) return null;
@@ -330,7 +333,9 @@ function topicAddress(topic: Hex | undefined): Address | null {
   return `0x${topic.slice(-40)}` as Address;
 }
 
-function failedUserOperationMessage(receipt: TransactionReceipt): string | null {
+function failedUserOperationMessage(
+  receipt: TransactionReceipt,
+): string | null {
   for (const log of receipt.logs) {
     if (log.topics[0] !== USER_OPERATION_EVENT_TOPIC) continue;
     const [nonce, success, , actualGasUsed] = decodeAbiParameters(
@@ -349,7 +354,9 @@ function failedUserOperationMessage(receipt: TransactionReceipt): string | null 
       log.topics[1] ? `userOpHash ${log.topics[1]}` : null,
       `nonce ${nonce.toString()}`,
       `actualGasUsed ${actualGasUsed.toString()}`,
-    ].filter(Boolean).join(", ");
+    ]
+      .filter(Boolean)
+      .join(", ");
     return `ERC-4337 user operation reverted (${details})`;
   }
   return null;

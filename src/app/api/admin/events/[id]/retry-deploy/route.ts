@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { requireOrganizerWorkspace } from "@/lib/auth";
 import { publishEventSetup } from "@/lib/events/setup";
+import { canManageEvent } from "@/lib/organizations/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { EventRow } from "@/types/db";
 
@@ -26,13 +27,16 @@ export async function POST(
     target.searchParams.set("error", "Event not found.");
     return NextResponse.redirect(target);
   }
-  if (admin.role === "organizer" && event.organizer_user_id !== admin.id) {
-    target.searchParams.set("error", "You can only manage your own events.");
+  if (!(await canManageEvent(admin, event))) {
+    target.searchParams.set(
+      "error",
+      "You can only manage events for your organization.",
+    );
     return NextResponse.redirect(new URL("/admin/events", request.url));
   }
 
   try {
-    await publishEventSetup({ eventId: event.id, adminUserId: admin.id });
+    await publishEventSetup({ eventId: event.id, actorUserId: admin.id });
   } catch (err) {
     target.searchParams.set(
       "error",

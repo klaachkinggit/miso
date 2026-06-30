@@ -8,9 +8,13 @@
 import { audit } from "@/lib/audit";
 import { DomainError } from "@/lib/api/errors";
 import { markPurchaseRefunded } from "@/lib/payments/settlement";
-import { refundStripeSession } from "@/lib/payments/stripe";
+import {
+  refundStripePaymentIntent,
+  refundStripeSession,
+} from "@/lib/payments/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { markTicketRefunded } from "@/lib/tickets/lifecycle";
+import { eventHasAvailability, notifyWaitlistHead } from "@/lib/waitlist";
 import type { Purchase, ResaleListing, Ticket } from "@/types/db";
 
 export async function refundTicket(params: {
@@ -20,10 +24,17 @@ export async function refundTicket(params: {
 }) {
   const sb = createServiceClient();
 
-  const { data: ticket } = await sb.from("tickets").select("*").eq("id", params.ticketId).single<Ticket>();
+  const { data: ticket } = await sb
+    .from("tickets")
+    .select("*")
+    .eq("id", params.ticketId)
+    .single<Ticket>();
   if (!ticket) throw new Error("Ticket not found");
   if (ticket.status === "refunded") throw new DomainError("Already refunded");
-  if (ticket.status === "used") throw new DomainError("Cannot refund a used ticket");
+  if (ticket.status === "refund_pending")
+    throw new DomainError("Refund already pending");
+  if (ticket.status === "used")
+    throw new DomainError("Cannot refund a used ticket");
 
   const holderUserId = ticket.owner_user_id;
 
@@ -51,9 +62,13 @@ export async function refundTicket(params: {
 
   const refundAmount = resale?.price ?? purchase?.amount;
   const refundCurrency = resale?.currency ?? purchase?.currency;
-  const providerSessionId = resale?.provider_session_id ?? purchase?.provider_session_id;
+  const providerPaymentId = purchase?.provider_payment_id;
+  const providerSessionId =
+    resale?.provider_session_id ?? purchase?.provider_session_id;
 
-  if (providerSessionId) {
+  if (providerPaymentId) {
+    await refundStripePaymentIntent(providerPaymentId);
+  } else if (providerSessionId?.startsWith("cs_")) {
     await refundStripeSession(providerSessionId);
   }
 
@@ -61,6 +76,14 @@ export async function refundTicket(params: {
 
   if (purchase && !resale) {
     await markPurchaseRefunded(purchase.id);
+  }
+
+  // A refund frees inventory — but only notify once markTicketRefunded has
+  // genuinely returned a purchasable seat. Gate on eventHasAvailability so a
+  // refund that did not actually free inventory (e.g. sold_count already 0)
+  // never sends a hollow "a ticket opened up" to a still-sold-out page.
+  if (await eventHasAvailability({ eventId: ticket.event_id })) {
+    await notifyWaitlistHead({ eventId: ticket.event_id, source: "refund" });
   }
 
   await audit({

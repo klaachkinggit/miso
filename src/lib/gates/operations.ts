@@ -1,7 +1,16 @@
 import { randomBytes } from "node:crypto";
 import { ApiRouteError } from "@/lib/api/errors";
+import {
+  canAdministerEventGate,
+  canOperateEventGate as canOperateOrganizationEventGate,
+} from "@/lib/organizations/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { GateSession, Profile, Ticket, TicketRedemption } from "@/types/db";
+import type {
+  GateSession,
+  Profile,
+  Ticket,
+  TicketRedemption,
+} from "@/types/db";
 
 const GATE_TTL_HOURS = 8;
 const SHORT_CODE_LEN = 8;
@@ -29,24 +38,17 @@ export function gateAllowsTicketCategory(
   session: Pick<GateSession, "allowed_category_ids">,
   categoryId: string,
 ): boolean {
-  return !session.allowed_category_ids?.length || session.allowed_category_ids.includes(categoryId);
+  return (
+    !session.allowed_category_ids?.length ||
+    session.allowed_category_ids.includes(categoryId)
+  );
 }
 
 export async function canOperateEventGate(params: {
   eventId: string;
   profile: Pick<Profile, "id" | "role">;
 }): Promise<boolean> {
-  if (params.profile.role === "admin") return true;
-  if (params.profile.role !== "controller") return false;
-
-  const sb = createServiceClient();
-  const { data } = await sb
-    .from("event_controllers")
-    .select("event_id")
-    .eq("event_id", params.eventId)
-    .eq("user_id", params.profile.id)
-    .maybeSingle();
-  return !!data;
+  return canOperateOrganizationEventGate(params);
 }
 
 async function requireEventGateOperator(params: {
@@ -75,16 +77,24 @@ async function requireEventCategories(params: {
     .eq("event_id", params.eventId)
     .in("id", categoryIds)
     .returns<Array<{ id: string }>>();
-  if (error) throw new ApiRouteError(error.message, 400);
+  if (error) {
+    console.error("[gates] category validation failed:", error);
+    throw new ApiRouteError("Invalid gate categories.", 400);
+  }
 
   if ((data ?? []).length !== categoryIds.length) {
-    throw new ApiRouteError("One or more ticket categories are not part of this event.", 400);
+    throw new ApiRouteError(
+      "One or more ticket categories are not part of this event.",
+      400,
+    );
   }
 
   return categoryIds;
 }
 
-export async function getGateSessionByShortCode(code: string): Promise<GateSession | null> {
+export async function getGateSessionByShortCode(
+  code: string,
+): Promise<GateSession | null> {
   const sb = createServiceClient();
   const { data } = await sb
     .from("gate_sessions")
@@ -101,7 +111,10 @@ export async function openGateForController(params: {
   allowedCategoryIds?: string[] | null;
   ttlHours?: number;
 }): Promise<GateSession> {
-  await requireEventGateOperator({ eventId: params.eventId, profile: params.profile });
+  await requireEventGateOperator({
+    eventId: params.eventId,
+    profile: params.profile,
+  });
 
   const sb = createServiceClient();
   const ttl = (params.ttlHours ?? GATE_TTL_HOURS) * 3600 * 1000;
@@ -129,7 +142,8 @@ export async function openGateForController(params: {
     if (data) return data;
     if (error) {
       const message = error.message || "Could not open gate.";
-      if (!message.toLowerCase().includes("duplicate")) throw new Error(message);
+      if (!message.toLowerCase().includes("duplicate"))
+        throw new Error(message);
     }
   }
 
@@ -140,9 +154,13 @@ export async function listGatesForController(params: {
   eventId: string;
   profile: Pick<Profile, "id" | "role">;
 }): Promise<GateSession[]> {
-  await requireEventGateOperator({ eventId: params.eventId, profile: params.profile });
+  await requireEventGateOperator({
+    eventId: params.eventId,
+    profile: params.profile,
+  });
 
   const sb = createServiceClient();
+  const canAdministerGate = await canAdministerEventGate(params);
   let query = sb
     .from("gate_sessions")
     .select("*")
@@ -150,7 +168,7 @@ export async function listGatesForController(params: {
     .order("opened_at", { ascending: false })
     .limit(20);
 
-  if (params.profile.role !== "admin") {
+  if (!canAdministerGate) {
     query = query.eq("controller_user_id", params.profile.id);
   }
 
@@ -170,12 +188,26 @@ export async function getGatePollForController(params: {
     .maybeSingle<GateSession>();
 
   if (!session) return null;
-  if (params.profile.role !== "admin" && session.controller_user_id !== params.profile.id) {
+  const canAdministerGate = await canAdministerEventGate({
+    eventId: session.event_id,
+    profile: params.profile,
+  });
+  if (
+    !canAdministerGate &&
+    !(await canOperateEventGate({
+      eventId: session.event_id,
+      profile: params.profile,
+    }))
+  ) {
+    throw new ApiRouteError("Not assigned to this event.", 403);
+  }
+  if (!canAdministerGate && session.controller_user_id !== params.profile.id) {
     throw new ApiRouteError("Not your gate.", 403);
   }
 
   let last_redemption: TicketRedemption | null = null;
-  let last_ticket: Pick<Ticket, "id" | "serial_number" | "status"> | null = null;
+  let last_ticket: Pick<Ticket, "id" | "serial_number" | "status"> | null =
+    null;
 
   if (session.last_redemption_id) {
     const { data } = await sb
@@ -203,13 +235,34 @@ export async function closeGateForController(params: {
   profile: Pick<Profile, "id" | "role">;
 }): Promise<GateSession | null> {
   const sb = createServiceClient();
+  const { data: session } = await sb
+    .from("gate_sessions")
+    .select("event_id")
+    .eq("id", params.gateSessionId)
+    .maybeSingle<Pick<GateSession, "event_id">>();
+  const canAdministerGate = session
+    ? await canAdministerEventGate({
+        eventId: session.event_id,
+        profile: params.profile,
+      })
+    : false;
+  if (
+    session &&
+    !canAdministerGate &&
+    !(await canOperateEventGate({
+      eventId: session.event_id,
+      profile: params.profile,
+    }))
+  ) {
+    throw new ApiRouteError("Not assigned to this event.", 403);
+  }
   let query = sb
     .from("gate_sessions")
     .update({ status: "closed", closed_at: new Date().toISOString() })
     .eq("id", params.gateSessionId)
     .eq("status", "open");
 
-  if (params.profile.role !== "admin") {
+  if (!canAdministerGate) {
     query = query.eq("controller_user_id", params.profile.id);
   }
 

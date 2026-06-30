@@ -17,6 +17,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { uploadJson } from "@/lib/thirdweb/storage";
 import { backendWallet } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
+import { notifyWaitlistHead } from "@/lib/waitlist";
 import type { EventRow, Ticket, TicketCategory } from "@/types/db";
 
 async function buyerWalletAddress(userId: string): Promise<string> {
@@ -47,7 +48,9 @@ function mockTxHash(seed: string): string {
 }
 
 class StaleReservationError extends Error {
-  constructor(message = "Reservation is stale or no longer belongs to this buyer") {
+  constructor(
+    message = "Reservation is stale or no longer belongs to this buyer",
+  ) {
     super(message);
     this.name = "StaleReservationError";
   }
@@ -65,8 +68,10 @@ export async function reserveTicket(params: {
     .eq("id", params.categoryId)
     .single<TicketCategory & { events: { status: string } }>();
   if (categoryError || !category) throw new Error("Category not found");
-  if (category.events.status !== "published") throw new DomainError("Sales not open");
-  if (!category.sales_enabled) throw new DomainError("Sales not open for this category");
+  if (category.events.status !== "published")
+    throw new DomainError("Sales not open");
+  if (!category.sales_enabled)
+    throw new DomainError("Sales not open for this category");
   if (category.sold_count >= category.supply) throw new DomainError("Sold out");
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -75,14 +80,18 @@ export async function reserveTicket(params: {
       .from("tickets")
       .select("*")
       .eq("category_id", params.categoryId)
-      .or(`status.eq.available,and(status.eq.reserved,reserved_until.lt.${now})`)
+      .or(
+        `status.eq.available,and(status.eq.reserved,reserved_until.lt.${now})`,
+      )
       .order("serial_number", { ascending: true })
       .limit(1)
       .maybeSingle<Ticket>();
     if (ticketError) throw ticketError;
     if (!candidate) throw new DomainError("No tickets available");
 
-    const reservedUntil = new Date(Date.now() + RESERVATION_TTL_MS).toISOString();
+    const reservedUntil = new Date(
+      Date.now() + RESERVATION_TTL_MS,
+    ).toISOString();
     let query = sb
       .from("tickets")
       .update({
@@ -109,10 +118,12 @@ export async function reserveTicket(params: {
 
 // Releases a reservation to `available`. Refuses to touch tickets that
 // are `minting`, `sold`, or `repair_needed`: those have either an
-// in-flight chain op or a mined token attached.
+// in-flight chain op or a mined token attached. A genuine release frees
+// inventory, so notify the waitlist head — but only when a row was
+// actually flipped (a double-release matches zero rows → no double-notify).
 export async function releaseReservation(ticketId: string): Promise<void> {
   const sb = createServiceClient();
-  await sb
+  const { data: released } = await sb
     .from("tickets")
     .update({
       status: "available",
@@ -120,7 +131,11 @@ export async function releaseReservation(ticketId: string): Promise<void> {
       owner_user_id: null,
     })
     .eq("id", ticketId)
-    .eq("status", "reserved");
+    .eq("status", "reserved")
+    .select("event_id")
+    .maybeSingle<Pick<Ticket, "event_id">>();
+  if (released)
+    await notifyWaitlistHead({ eventId: released.event_id, source: "release" });
 }
 
 export interface FulfillReceipt {
@@ -131,7 +146,7 @@ export interface FulfillReceipt {
   ownerEvmAddress: string;
 }
 
-// Mints an ERC-721 to the buyer's smart account, then flips the row to
+// Mints an ERC-721 to the buyer's on-chain owner address, then flips the row to
 // `sold`. The reservation is first claimed into a `minting` state and a
 // `chain_ops` row is persisted BEFORE the chain call. On retry the
 // existing chain_ops row is resumed (reusing the original transactionId)
@@ -179,13 +194,21 @@ export async function fulfillReservedTicket(params: {
   const recipientUserId = purchase.gift_recipient_user_id ?? params.buyerUserId;
   const extrasCount = purchase.extra_guests_count ?? 0;
   const advancePaid = Number(purchase.online_advance_amount ?? 0);
-  const minSpendingTotal = purchase.min_spending_total != null ? Number(purchase.min_spending_total) : null;
+  const minSpendingTotal =
+    purchase.min_spending_total != null
+      ? Number(purchase.min_spending_total)
+      : null;
   const minSpendingRemaining =
-    minSpendingTotal != null ? Math.max(0, minSpendingTotal - advancePaid) : null;
+    minSpendingTotal != null
+      ? Math.max(0, minSpendingTotal - advancePaid)
+      : null;
 
   // Fast-path: a prior attempt already minted + flipped to sold for this
   // exact purchase. Treat as success — settlement can record paid.
-  if (ticket.status === "sold" && ticket.original_purchase_id === params.purchaseId) {
+  if (
+    ticket.status === "sold" &&
+    ticket.original_purchase_id === params.purchaseId
+  ) {
     return {
       contractAddress: ticket.nft_contract_address ?? "",
       tokenId: ticket.nft_token_id ?? ticket.serial_number,
@@ -230,7 +253,8 @@ export async function fulfillReservedTicket(params: {
   if (!event.nft_contract_address && !mockChainEnabled()) {
     throw new Error("Event has no deployed contract");
   }
-  const contractAddress = (event.nft_contract_address ?? mockAddress(`event:${event.id}`)) as Address;
+  const contractAddress = (event.nft_contract_address ??
+    mockAddress(`event:${event.id}`)) as Address;
 
   const { data: category } = await sb
     .from("ticket_categories")
@@ -240,7 +264,8 @@ export async function fulfillReservedTicket(params: {
   if (!category) throw new Error("Category missing");
 
   const baseCapacity = category.base_capacity ?? 1;
-  const totalHeadcount = category.kind === "club_table" ? baseCapacity + extrasCount : 1;
+  const totalHeadcount =
+    category.kind === "club_table" ? baseCapacity + extrasCount : 1;
   const colorSnapshot = category.color_hex ?? null;
 
   if (mockChainEnabled()) {
@@ -385,7 +410,8 @@ export async function fulfillReservedTicket(params: {
       : await uploadJson(metadata);
 
   const tokenId = BigInt(ticket.serial_number);
-  const roleAdmin = (event.role_admin_address ?? (await backendWallet())) as Address;
+  const roleAdmin = (event.role_admin_address ??
+    (await backendWallet())) as Address;
 
   const { op, resumed } = await openOrResumeChainOp({
     opType: "mint",
@@ -600,10 +626,44 @@ export async function markTicketRefunded(ticketId: string): Promise<void> {
       "reserved",
       "expired",
     ])
-    .select("id")
-    .maybeSingle();
+    .select("id, category_id, event_id")
+    .maybeSingle<Pick<Ticket, "id" | "category_id" | "event_id">>();
   if (error) throw error;
-  if (!data) throw new DomainError("Cannot refund this ticket in its current state");
+  if (!data)
+    throw new DomainError("Cannot refund this ticket in its current state");
+
+  // A refund must genuinely return PURCHASABLE inventory, or the waitlist
+  // notification is hollow. The buy path needs BOTH: the availability gate
+  // (sold_count < supply) AND an `available` ticket row to reserve. The
+  // refunded row keeps its minted NFT (serial == tokenId is live on chain),
+  // so it cannot be re-offered — re-fulfilling it would re-mint the same
+  // tokenId. Instead decrement sold_count and seed one fresh `available` row
+  // with the next serial, mirroring createTicketCategory.
+  const { data: category } = await sb
+    .from("ticket_categories")
+    .select("sold_count")
+    .eq("id", data.category_id)
+    .maybeSingle<Pick<TicketCategory, "sold_count">>();
+  if (category && category.sold_count > 0) {
+    await sb
+      .from("ticket_categories")
+      .update({ sold_count: category.sold_count - 1 })
+      .eq("id", data.category_id);
+
+    const { data: lastTicket } = await sb
+      .from("tickets")
+      .select("serial_number")
+      .eq("event_id", data.event_id)
+      .order("serial_number", { ascending: false })
+      .limit(1)
+      .maybeSingle<Pick<Ticket, "serial_number">>();
+    await sb.from("tickets").insert({
+      event_id: data.event_id,
+      category_id: data.category_id,
+      serial_number: (lastTicket?.serial_number ?? 0) + 1,
+      status: "available",
+    });
+  }
 }
 
 // Cancels rows that have NOT touched chain yet. Tickets in `minting`,
@@ -618,7 +678,11 @@ export async function cancelUnsoldTickets(params: {
   const sb = createServiceClient();
   let query = sb
     .from("tickets")
-    .update({ status: "canceled", canceled_at: new Date().toISOString(), reserved_until: null })
+    .update({
+      status: "canceled",
+      canceled_at: new Date().toISOString(),
+      reserved_until: null,
+    })
     .eq("event_id", params.eventId)
     .in("status", ["available", "reserved"]);
   if (params.categoryId) query = query.eq("category_id", params.categoryId);
@@ -631,12 +695,20 @@ export async function cancelUnsoldTickets(params: {
 // their chain side is committed (or may commit imminently) and the
 // holder is owed a refund. The admin reconcile tool resolves the
 // chain/DB delta before final refund.
-export async function markSoldTicketsRefundPending(eventId: string): Promise<void> {
+export async function markSoldTicketsRefundPending(
+  eventId: string,
+): Promise<void> {
   const sb = createServiceClient();
   const { error } = await sb
     .from("tickets")
     .update({ status: "refund_pending" })
     .eq("event_id", eventId)
-    .in("status", ["sold", "listed", "minting", "transferring", "repair_needed"]);
+    .in("status", [
+      "sold",
+      "listed",
+      "minting",
+      "transferring",
+      "repair_needed",
+    ]);
   if (error) throw error;
 }

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireApiNonControllerProfile } from "@/lib/api/auth";
+import {
+  assertNotOrganizationController,
+  requireApiNonControllerProfile,
+} from "@/lib/api/auth";
 import { apiErrorResponse } from "@/lib/api/errors";
+import { resourceOrganizationId } from "@/lib/organizations/auth";
 import { cancelResaleListing } from "@/lib/resale/listing";
 
 export async function DELETE(
@@ -12,6 +16,11 @@ export async function DELETE(
       "Controllers cannot use the marketplace.",
     );
     const { id } = await params;
+    await assertNotOrganizationController({
+      profile,
+      organizationId: await resourceOrganizationId({ kind: "listing", id }),
+      deniedMessage: "Controllers cannot use this organization marketplace.",
+    });
     await cancelResaleListing({ listingId: id, sellerUserId: profile.id });
     return NextResponse.json({ ok: true });
   } catch (error) {

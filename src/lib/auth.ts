@@ -3,24 +3,34 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { hasAdminOrganization } from "@/lib/organizations/auth";
 import type { Profile, UserRole } from "@/types/db";
 
-export const getCurrentUser = cache(async (): Promise<{ id: string; email: string } | null> => {
-  const sb = await createClient();
-  try {
-    const { data: { user }, error } = await sb.auth.getUser();
-    if (error || !user) return null;
-    return { id: user.id, email: user.email ?? "" };
-  } catch {
-    return null;
-  }
-});
+export const getCurrentUser = cache(
+  async (): Promise<{ id: string; email: string } | null> => {
+    const sb = await createClient();
+    try {
+      const {
+        data: { user },
+        error,
+      } = await sb.auth.getUser();
+      if (error || !user) return null;
+      return { id: user.id, email: user.email ?? "" };
+    } catch {
+      return null;
+    }
+  },
+);
 
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   const user = await getCurrentUser();
   if (!user) return null;
   const sb = createServiceClient();
-  const { data } = await sb.from("profiles").select("*").eq("id", user.id).single<Profile>();
+  const { data } = await sb
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
   return data ?? null;
 });
 
@@ -39,10 +49,18 @@ export async function requireRole(role: UserRole | UserRole[]) {
 }
 
 export async function requireOrganizerWorkspace() {
-  return requireRole(["admin", "organizer"]);
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (canUseOrganizerWorkspace(profile)) return profile;
+  if (await hasAdminOrganization(profile.id)) return profile;
+  redirect("/");
 }
 
-export function canUseOrganizerWorkspace(profile: Pick<Profile, "role">): boolean {
+// Transitional: prefer organization memberships in server code. This only
+// preserves old global-role navigation while the UI gets an org switcher.
+export function canUseOrganizerWorkspace(
+  profile: Pick<Profile, "role">,
+): boolean {
   return profile.role === "admin" || profile.role === "organizer";
 }
 
@@ -50,10 +68,24 @@ export function canOperateGateRole(profile: Pick<Profile, "role">): boolean {
   return profile.role === "admin" || profile.role === "controller";
 }
 
+export function canUseBuyerSurface(
+  profile: Pick<Profile, "role"> | null | undefined,
+): boolean {
+  return profile?.role !== "controller";
+}
+
+export function redirectIfCannotUseBuyerSurface(
+  profile: Pick<Profile, "role"> | null | undefined,
+): void {
+  if (!canUseBuyerSurface(profile)) redirect("/controller");
+}
+
 // Where a signed-in user should land instead of seeing /login or /signup
 // again. Controllers go to the gate UI; admins and organizers go to
 // the organizer workspace; everyone else goes to the buyer event feed.
-export function defaultRoleDestination(role: UserRole | null | undefined): string {
+export function defaultRoleDestination(
+  role: UserRole | null | undefined,
+): string {
   if (role === "controller") return "/controller";
   if (role === "admin" || role === "organizer") return "/admin";
   return "/events";

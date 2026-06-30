@@ -12,11 +12,16 @@ import { confirmRedemption } from "@/lib/verification/redeem";
 export async function POST(request: NextRequest) {
   try {
     const user = await requireApiUser();
-    const body = await parseJsonBody(request, RedeemConfirmSchema, "Invalid confirm payload.");
+    const body = await parseJsonBody(
+      request,
+      RedeemConfirmSchema,
+      "Invalid confirm payload.",
+    );
     const outcome = await confirmRedemption({
       userId: user.id,
       gateShortCode: body.gate_short_code,
       ticketId: body.ticket_id,
+      token: body.token,
     });
 
     const httpStatus = outcome.result === "valid" ? 200 : 409;

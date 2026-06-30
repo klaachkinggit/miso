@@ -45,13 +45,17 @@ export function ListForResaleButton({
       });
       const payload = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(payload.error ?? "Could not list ticket.");
-      toast({ title: "Ticket listed", description: "Your NFT ticket is now on the official exchange." });
+      toast({
+        title: "Ticket listed",
+        description: "Your digital ticket is now on the official exchange.",
+      });
       setOpen(false);
       router.refresh();
     } catch (error) {
       toast({
         title: "Listing failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -59,7 +63,9 @@ export function ListForResaleButton({
     }
   }
 
-  const maxLabel = maxResalePrice ? formatPrice(maxResalePrice, currency) : null;
+  const maxLabel = maxResalePrice
+    ? formatPrice(maxResalePrice, currency)
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -73,7 +79,8 @@ export function ListForResaleButton({
         <DialogHeader>
           <DialogTitle>List ticket</DialogTitle>
           <DialogDescription>
-            The ticket routes through the MISO exchange and transfers after payment.
+            The ticket routes through the MISO exchange and transfers after
+            payment.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
@@ -88,11 +95,17 @@ export function ListForResaleButton({
             disabled={loading}
           />
           {maxLabel ? (
-            <p className="text-xs text-muted-foreground">Resale price limit: {maxLabel}</p>
+            <p className="text-xs text-muted-foreground">
+              Resale price limit: {maxLabel}
+            </p>
           ) : null}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button onClick={submit} disabled={loading || !price}>
@@ -115,14 +128,18 @@ export function CancelListingButton({ listingId }: { listingId: string }) {
       const res = await fetch(`/api/marketplace/listings/${listingId}`, {
         method: "DELETE",
       });
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(payload.error ?? "Could not cancel listing.");
+      const payload = (await res.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!res.ok)
+        throw new Error(payload.error ?? "Could not cancel listing.");
       toast({ title: "Listing canceled" });
       router.refresh();
     } catch (error) {
       toast({
         title: "Cancel failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -132,7 +149,11 @@ export function CancelListingButton({ listingId }: { listingId: string }) {
 
   return (
     <Button type="button" variant="outline" onClick={cancel} disabled={loading}>
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <X className="h-4 w-4" />
+      )}
       Cancel listing
     </Button>
   );
@@ -160,18 +181,22 @@ export function TransferToWalletButton({ ticketId }: { ticketId: string }) {
           destination_address: address,
         }),
       });
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(payload.error ?? "Could not transfer ticket.");
+      const payload = (await res.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!res.ok)
+        throw new Error(payload.error ?? "Could not transfer ticket.");
       toast({
         title: "Transfer submitted",
-        description: "The NFT ticket is moving to your personal wallet.",
+        description: "The digital ticket is moving to your personal wallet.",
       });
       setOpen(false);
       router.refresh();
     } catch (error) {
       toast({
         title: "Transfer failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -191,8 +216,8 @@ export function TransferToWalletButton({ ticketId }: { ticketId: string }) {
         <DialogHeader>
           <DialogTitle>Transfer to personal wallet</DialogTitle>
           <DialogDescription>
-            This sends the NFT ticket out of MISO custody. MISO cannot recover it,
-            relist it, or control it after transfer.
+            This sends the digital ticket out of MISO custody. MISO cannot
+            recover it, relist it, or control it after transfer.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
@@ -217,7 +242,11 @@ export function TransferToWalletButton({ ticketId }: { ticketId: string }) {
           </label>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button onClick={submit} disabled={loading || !address || !confirm}>

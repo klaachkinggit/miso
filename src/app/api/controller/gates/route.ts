@@ -2,16 +2,23 @@
 // GET  /api/controller/gates?event_id=... — list this controller's open gates.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { requireApiControllerProfile } from "@/lib/api/auth";
+import { requireApiAuthenticatedProfile } from "@/lib/api/auth";
 import { ApiRouteError, apiErrorResponse } from "@/lib/api/errors";
 import { parseJsonBody } from "@/lib/api/request";
 import { OpenGateSchema } from "@/lib/schemas";
-import { listGatesForController, openGateForController } from "@/lib/gates/operations";
+import {
+  listGatesForController,
+  openGateForController,
+} from "@/lib/gates/operations";
 
 export async function POST(request: NextRequest) {
   try {
-    const profile = await requireApiControllerProfile();
-    const body = await parseJsonBody(request, OpenGateSchema, "Invalid gate payload.");
+    const profile = await requireApiAuthenticatedProfile();
+    const body = await parseJsonBody(
+      request,
+      OpenGateSchema,
+      "Invalid gate payload.",
+    );
     const session = await openGateForController({
       eventId: body.event_id,
       profile,
@@ -27,7 +34,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const profile = await requireApiControllerProfile();
+    const profile = await requireApiAuthenticatedProfile();
     const eventId = request.nextUrl.searchParams.get("event_id");
     if (!eventId) throw new ApiRouteError("event_id required.", 400);
 

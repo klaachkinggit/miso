@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, LockKeyhole, Mail, UserRound } from "lucide-react";
+import {
+  ArrowRight,
+  LockKeyhole,
+  Mail,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,74 +13,87 @@ import { buyerSignupAction } from "./actions";
 
 export function BuyerSignupForm({ error }: { error?: string }) {
   return (
-    <form action={buyerSignupAction} className="grid gap-5">
+    <form action={buyerSignupAction} className="grid gap-6">
       <div>
-        <p className="mb-3 text-sm font-medium text-primary">Buyer signup</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Buy premium event tickets and keep every NFT pass ready on your phone.
+        <p className="eyebrow-signal">Buyer signup</p>
+        <h1 className="display mt-4 text-4xl text-foreground md:text-5xl">
+          Create your
+          <br />
+          <span className="display-italic">account.</span>
+        </h1>
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">
+          Buy tickets and keep every digital pass ready on your phone.
         </p>
       </div>
       {error ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
       ) : null}
-      <div className="grid gap-2">
-        <Label htmlFor="display_name">Name</Label>
-        <div className="relative">
-          <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="display_name"
-            name="display_name"
-            autoComplete="name"
-            className="h-11 bg-background/70 pl-10"
-          />
-        </div>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="email">Email</Label>
-        <div className="relative">
-          <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            className="h-11 bg-background/70 pl-10"
-          />
-        </div>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="password">Password</Label>
-        <div className="relative">
-          <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            className="h-11 bg-background/70 pl-10"
-          />
-        </div>
-      </div>
-      <Button type="submit" size="lg" className="mt-1 w-full">
+      <Field
+        icon={UserRound}
+        label="Name"
+        name="display_name"
+        autoComplete="name"
+      />
+      <Field
+        icon={Mail}
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+      />
+      <Field
+        icon={LockKeyhole}
+        label="Password"
+        name="password"
+        type="password"
+        autoComplete="new-password"
+        required
+      />
+      <Button type="submit" size="lg" className="mt-2 w-full">
         Create account <ArrowRight className="h-4 w-4" />
       </Button>
       <p className="text-center text-sm text-muted-foreground">
-        Need an organizer account?{" "}
-        <Link href="/signup/organizer" className="font-medium text-primary hover:underline">
-          Switch to organizer signup
+        Running events?{" "}
+        <Link
+          href="/signup/organizer"
+          className="font-medium text-signal hover:underline"
+        >
+          Organizer signup
         </Link>
       </p>
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link href="/login" className="font-medium text-signal hover:underline">
           Log in
         </Link>
       </p>
     </form>
+  );
+}
+
+type FieldProps = {
+  icon: LucideIcon;
+  label: string;
+  name: string;
+  type?: string;
+  required?: boolean;
+  autoComplete?: string;
+};
+
+function Field({ icon: Icon, label, name, ...rest }: FieldProps) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={name}>{label}</Label>
+      <div className="relative">
+        <Icon
+          aria-hidden
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input id={name} name={name} className="pl-11" {...rest} />
+      </div>
+    </div>
   );
 }

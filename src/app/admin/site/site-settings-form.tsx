@@ -3,16 +3,20 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ImageUploadField } from "@/app/admin/events/image-upload-field";
+import { ImageUploadField } from "@/app/admin/_components/image-upload-field";
 import type { SiteSettings } from "@/lib/site/settings";
 import { updateSiteSettings } from "../actions";
 
-export function SiteSettingsForm({ settings }: { settings: SiteSettings | null }) {
+export function SiteSettingsForm({
+  settings,
+}: {
+  settings: SiteSettings | null;
+}) {
   const [uploading, setUploading] = useState(false);
 
   return (
     <form action={updateSiteSettings} className="grid gap-5">
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardContent className="grid gap-6 p-5">
           <ImageUploadField
             id="landing-hero-bg"

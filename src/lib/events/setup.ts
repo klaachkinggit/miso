@@ -1,10 +1,16 @@
 import { lookup as dnsLookup } from "node:dns/promises";
+import { randomUUID } from "node:crypto";
 import type { Address } from "viem";
 
 import { audit } from "@/lib/audit";
 import { casablancaInputToIso } from "@/lib/format";
+import { assertEventPublishable } from "@/lib/organizers/permissions";
+import { sendEventPublishedEmail } from "@/lib/email/send";
 import { createServiceClient } from "@/lib/supabase/service";
-import { cancelUnsoldTickets, markSoldTicketsRefundPending } from "@/lib/tickets/lifecycle";
+import {
+  cancelUnsoldTickets,
+  markSoldTicketsRefundPending,
+} from "@/lib/tickets/lifecycle";
 import {
   MISO_TICKET_ABI,
   MISO_TICKET_BYTECODE,
@@ -17,7 +23,13 @@ import {
   TransactionTimeoutError,
   waitForTransaction,
 } from "@/lib/thirdweb/transactions";
-import type { Currency, Database, EventRow, Ticket, TicketCategoryKind } from "@/types/db";
+import type {
+  Currency,
+  Database,
+  EventRow,
+  Ticket,
+  TicketCategoryKind,
+} from "@/types/db";
 
 export interface EventDetailsInput {
   name: string;
@@ -37,6 +49,7 @@ export interface EventDetailsInput {
   vibe?: Database["public"]["Enums"]["event_vibe"] | null;
   is_festival: boolean;
   artists: string[];
+  organizer_resale_royalty_bps: number;
 }
 
 export interface CategoryInput {
@@ -53,6 +66,8 @@ export interface CategoryInput {
   public_sales_counter_enabled: boolean;
   benefits?: string | null;
   image_url?: string | null;
+  sale_starts_at?: Date | null;
+  sale_ends_at?: Date | null;
   // Club Table fields (required when kind === 'club_table').
   // Note: `min_spending` is no longer collected — the table `price`
   // doubles as the minimum spending floor at the venue.
@@ -64,17 +79,29 @@ export interface CategoryInput {
   color_hex?: string | null;
 }
 
+function slugify(value: string) {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "event"
+  );
+}
 
 export async function createDraftEvent(params: {
   input: EventDetailsInput;
-  adminUserId: string;
+  actorUserId: string;
   organizerUserId: string;
+  organizationId: string;
 }): Promise<EventRow> {
   const sb = createServiceClient();
   const eventPayload = {
     ...params.input,
     date: casablancaInputToIso(params.input.date),
+    organization_id: params.organizationId,
     organizer_user_id: params.organizerUserId,
+    slug: `${slugify(params.input.name)}-${randomUUID().slice(0, 8)}`,
     status: "draft" as const,
   };
 
@@ -86,7 +113,7 @@ export async function createDraftEvent(params: {
   if (error || !event) throw error ?? new Error("Event could not be created.");
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.create",
     entityType: "event",
     entityId: event.id,
@@ -99,7 +126,7 @@ export async function createDraftEvent(params: {
 export async function updateEventDetails(params: {
   eventId: string;
   input: EventDetailsInput;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { error } = await sb
@@ -109,7 +136,7 @@ export async function updateEventDetails(params: {
   if (error) throw error;
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.update",
     entityType: "event",
     entityId: params.eventId,
@@ -118,7 +145,7 @@ export async function updateEventDetails(params: {
 
 export async function cancelEventSetup(params: {
   eventId: string;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { data: event } = await sb
@@ -138,7 +165,7 @@ export async function cancelEventSetup(params: {
   await markSoldTicketsRefundPending(params.eventId);
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.cancel",
     entityType: "event",
     entityId: params.eventId,
@@ -148,7 +175,7 @@ export async function cancelEventSetup(params: {
 export async function removeEmptyCategory(params: {
   eventId: string;
   categoryId: string;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { data: category } = await sb
@@ -175,7 +202,7 @@ export async function removeEmptyCategory(params: {
   if (categoryError) throw categoryError;
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "category.remove",
     entityType: "ticket_category",
     entityId: params.categoryId,
@@ -186,7 +213,7 @@ export async function removeEmptyCategory(params: {
 export async function cancelUnsoldInventory(params: {
   eventId: string;
   categoryId?: string | null;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   await cancelUnsoldTickets({
     eventId: params.eventId,
@@ -194,7 +221,7 @@ export async function cancelUnsoldInventory(params: {
   });
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "tickets.cancel_unsold",
     entityType: "event",
     entityId: params.eventId,
@@ -210,8 +237,21 @@ export async function cancelUnsoldInventory(params: {
 // Idempotent: re-running after partial failure resumes from the missing step.
 export async function publishEventSetup(params: {
   eventId: string;
-  adminUserId: string;
+  actorUserId: string;
+  requireOrganizerLive?: boolean;
 }): Promise<void> {
+  // Self-serve organizer publishes go through the full publishability
+  // gate (inventory, MAD rejection, organizer live, payout readiness).
+  // The admin workspace keeps its legacy organization-level gating:
+  // admin-created events carry organizer_user_id = admin.id, and admins
+  // have no organizer_profile/seller account to be "live" with.
+  if (params.requireOrganizerLive) {
+    await assertEventPublishable({
+      eventId: params.eventId,
+      requireOrganizerLive: true,
+    });
+  }
+
   const sb = createServiceClient();
   const { data: event } = await sb
     .from("events")
@@ -229,7 +269,7 @@ export async function publishEventSetup(params: {
     if (imageError) throw imageError;
     event.image_ipfs_uri = imageUri;
     await audit({
-      actorUserId: params.adminUserId,
+      actorUserId: params.actorUserId,
       action: "event.image_pinned",
       entityType: "event",
       entityId: params.eventId,
@@ -258,7 +298,7 @@ export async function publishEventSetup(params: {
     event.nft_contract_address = contractAddress;
     event.role_admin_address = admin;
     await audit({
-      actorUserId: params.adminUserId,
+      actorUserId: params.actorUserId,
       action: "event.contract_deployed",
       entityType: "event",
       entityId: params.eventId,
@@ -278,16 +318,26 @@ export async function publishEventSetup(params: {
   if (error) throw error;
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.publish",
     entityType: "event",
     entityId: params.eventId,
   });
+
+  // Best-effort organizer notification. sendEventPublishedEmail never throws
+  // and is a no-op without email env, so it cannot affect the publish result.
+  if (event.organizer_user_id) {
+    await sendEventPublishedEmail({
+      organizerUserId: event.organizer_user_id,
+      eventName: event.name,
+      storefrontPath: `/events/${event.slug ?? params.eventId}`,
+    });
+  }
 }
 
 export async function unpublishEventSetup(params: {
   eventId: string;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<void> {
   const sb = createServiceClient();
   const { error } = await sb
@@ -297,7 +347,7 @@ export async function unpublishEventSetup(params: {
   if (error) throw error;
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "event.unpublish",
     entityType: "event",
     entityId: params.eventId,
@@ -306,7 +356,7 @@ export async function unpublishEventSetup(params: {
 
 export async function createTicketCategory(params: {
   input: CategoryInput;
-  adminUserId: string;
+  actorUserId: string;
 }): Promise<{ id: string; event_id: string; supply: number }> {
   const sb = createServiceClient();
   // Pin a category-specific image to IPFS up front so the metadata
@@ -321,6 +371,8 @@ export async function createTicketCategory(params: {
     ...params.input,
     max_resale_price: params.input.max_resale_price ?? null,
     image_url: params.input.image_url ?? null,
+    sale_starts_at: params.input.sale_starts_at?.toISOString() ?? null,
+    sale_ends_at: params.input.sale_ends_at?.toISOString() ?? null,
     image_ipfs_uri: imageIpfsUri,
     // DB constraint requires min_spending NOT NULL for club_table rows.
     // App contract: table `price` doubles as the minimum spending floor.
@@ -345,12 +397,15 @@ export async function createTicketCategory(params: {
     .maybeSingle<Pick<Ticket, "serial_number">>();
 
   const offset = lastTicket?.serial_number ?? 0;
-  const ticketRows = Array.from({ length: params.input.supply }, (_, index) => ({
-    event_id: params.input.event_id,
-    category_id: category.id,
-    serial_number: offset + index + 1,
-    status: "available" as const,
-  }));
+  const ticketRows = Array.from(
+    { length: params.input.supply },
+    (_, index) => ({
+      event_id: params.input.event_id,
+      category_id: category.id,
+      serial_number: offset + index + 1,
+      status: "available" as const,
+    }),
+  );
 
   const { error: ticketsError } = await sb.from("tickets").insert(ticketRows);
   if (ticketsError) {
@@ -359,7 +414,7 @@ export async function createTicketCategory(params: {
   }
 
   await audit({
-    actorUserId: params.adminUserId,
+    actorUserId: params.actorUserId,
     action: "category.create",
     entityType: "ticket_category",
     entityId: category.id,
@@ -380,13 +435,13 @@ function isPrivateIPv4(addr: string): boolean {
   const v4 = addr.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (!v4) return false;
   const [a, b] = [Number(v4[1]), Number(v4[2])];
-  if (a === 10) return true;                         // 10.0.0.0/8
-  if (a === 127) return true;                        // 127.0.0.0/8
-  if (a === 169 && b === 254) return true;           // 169.254.0.0/16 link-local
-  if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16.0.0/12
-  if (a === 192 && b === 168) return true;           // 192.168.0.0/16
-  if (a === 0) return true;                          // 0.0.0.0/8
-  if (a >= 224) return true;                         // multicast / reserved
+  if (a === 10) return true; // 10.0.0.0/8
+  if (a === 127) return true; // 127.0.0.0/8
+  if (a === 169 && b === 254) return true; // 169.254.0.0/16 link-local
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+  if (a === 192 && b === 168) return true; // 192.168.0.0/16
+  if (a === 0) return true; // 0.0.0.0/8
+  if (a >= 224) return true; // multicast / reserved
   return false;
 }
 
@@ -396,7 +451,9 @@ function isPrivateIPv6(addr: string): boolean {
   if (a.startsWith("fe80:") || a.startsWith("fe80::")) return true;
   if (/^f[cd][0-9a-f]{2}:/.test(a)) return true; // fc00::/7 unique-local
   // IPv4-mapped IPv6: ::ffff:a.b.c.d (decoded form) or ::ffff:xxxx:yyyy (hex form)
-  const mappedDecoded = a.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+  const mappedDecoded = a.match(
+    /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/,
+  );
   if (mappedDecoded) return isPrivateIPv4(mappedDecoded[1]!);
   const mappedHex = a.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
   if (mappedHex) {
@@ -454,7 +511,9 @@ export function classifyImageHost(
     }
   }
   const isLocalSupabase =
-    opts.nodeEnv !== "production" && !!supabaseHost && url.hostname === supabaseHost;
+    opts.nodeEnv !== "production" &&
+    !!supabaseHost &&
+    url.hostname === supabaseHost;
   if (isLocalSupabase) return "local-supabase";
   if (isPrivateOrLocalHost(url.hostname)) return "blocked";
   return "public-candidate";
@@ -499,7 +558,8 @@ async function pinImageToIpfs(imageUrl: string): Promise<string> {
       await assertResolvedHostIsPublic(finalUrl.hostname);
     }
   }
-  const mimeType = res.headers.get("content-type") ?? "application/octet-stream";
+  const mimeType =
+    res.headers.get("content-type") ?? "application/octet-stream";
   if (!ALLOWED_IMAGE_MIME.test(mimeType.split(";")[0]!.trim())) {
     throw new Error(`Event image MIME type not allowed: ${mimeType}`);
   }
@@ -518,7 +578,11 @@ async function pinImageToIpfs(imageUrl: string): Promise<string> {
 async function deployMisoTicket(args: {
   name: string;
   admin: Address;
-}): Promise<{ contractAddress: Address; txHash: string; transactionId: string }> {
+}): Promise<{
+  contractAddress: Address;
+  txHash: string;
+  transactionId: string;
+}> {
   const deployed = await deployContract({
     bytecode: MISO_TICKET_BYTECODE,
     abi: MISO_TICKET_ABI as unknown as import("viem").Abi,

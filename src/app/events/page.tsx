@@ -1,21 +1,15 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { EventCard } from "@/components/site/event-card";
 import { EmptyState } from "@/components/site/empty-state";
-import { PageHeader } from "@/components/site/page-header";
 import { EventsFilterPanel } from "@/components/site/events-filter-panel";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, redirectIfCannotUseBuyerSurface } from "@/lib/auth";
 import {
   EVENT_QUICK_FILTERS,
   eventDiscoveryDescription,
-  filterDiscoveredEvents,
   hasActiveFilters,
   normalizeEventDiscoveryParams,
-  priceBucketRange,
-  rangeForEventFilter,
 } from "@/lib/events/discovery";
-import { createServiceClient } from "@/lib/supabase/service";
-import type { EventRow, TicketCategory } from "@/types/db";
+import { listPublishedEvents } from "@/lib/events/public";
 
 type RawSearchParams = {
   when?: string;
@@ -33,94 +27,53 @@ export default async function EventsPage({
 }: {
   searchParams?: Promise<RawSearchParams>;
 }) {
-  const [params, profile] = await Promise.all([searchParams, getCurrentProfile()]);
+  const [params, profile] = await Promise.all([
+    searchParams,
+    getCurrentProfile(),
+  ]);
   const discovery = normalizeEventDiscoveryParams(params);
-  if (profile?.role === "controller") redirect("/controller");
+  redirectIfCannotUseBuyerSurface(profile);
 
-  const sb = createServiceClient();
-  let query = sb
-    .from("events")
-    .select("*")
-    .eq("status", "published");
-
-  const range = rangeForEventFilter(discovery.when);
-  if (range) {
-    query = query.gte("date", range.start.toISOString()).lt("date", range.end.toISOString());
-  }
-  if (discovery.genre) query = query.eq("genre", discovery.genre);
-  if (discovery.vibe) query = query.eq("vibe", discovery.vibe);
-  if (discovery.festival) query = query.eq("is_festival", true);
-  if (discovery.q) {
-    // Postgres full-text on the generated search_tsv column.
-    query = query.textSearch("search_tsv", discovery.q, {
-      type: "websearch",
-      config: "simple",
-    });
-  }
-
-  const { data } = await query.order("date", { ascending: true }).returns<EventRow[]>();
-
-  let events = filterDiscoveredEvents(data ?? [], discovery);
-
-  const priceRange = priceBucketRange(discovery.price);
-  if (priceRange && events.length) {
-    const ids = events.map((event) => event.id);
-    const { data: categories } = await sb
-      .from("ticket_categories")
-      .select("event_id, price")
-      .in("event_id", ids)
-      .returns<Pick<TicketCategory, "event_id" | "price">[]>();
-    const eligibleIds = new Set<string>();
-    for (const category of categories ?? []) {
-      const value = typeof category.price === "string" ? parseFloat(category.price) : category.price;
-      if (value >= priceRange.min && value <= priceRange.max) {
-        eligibleIds.add(category.event_id);
-      }
-    }
-    events = events.filter((event) => eligibleIds.has(event.id));
-  }
-
-  if (discovery.sort === "popular" && events.length) {
-    const ids = events.map((event) => event.id);
-    const { data: popularity } = await sb
-      .from("event_popularity")
-      .select("event_id, tickets_sold")
-      .in("event_id", ids);
-    const popByEvent = new Map<string, number>(
-      (popularity ?? []).map((row) => [row.event_id as string, Number(row.tickets_sold ?? 0)]),
-    );
-    events = [...events].sort((a, b) => (popByEvent.get(b.id) ?? 0) - (popByEvent.get(a.id) ?? 0));
-  }
+  const events = await listPublishedEvents({ discovery });
 
   return (
-    <div className="container py-8 pb-20 md:py-12 md:pb-12">
-      <PageHeader
-        title="Events"
-        description={eventDiscoveryDescription(events.length, discovery)}
-        variant="display"
-        className="mb-6"
-      />
+    <div className="container py-12 pb-20 md:py-16 md:pb-12">
+      <header className="mb-10 border-b border-hairline pb-10">
+        <p className="eyebrow-signal">Explore</p>
+        <h1 className="display mt-4 text-5xl text-foreground md:text-7xl">
+          Events<span className="display-italic">.</span>
+        </h1>
+        <p className="mt-4 max-w-xl text-muted-foreground">
+          {eventDiscoveryDescription(events.length, discovery)}
+        </p>
+      </header>
 
       <div className="mb-6">
-        <EventsFilterPanel discovery={discovery} hasActive={hasActiveFilters(discovery)} />
+        <EventsFilterPanel
+          discovery={discovery}
+          hasActive={hasActiveFilters(discovery)}
+        />
       </div>
 
-      <div className="-mx-6 mb-8 flex gap-2 overflow-x-auto px-6 pb-2 [&::-webkit-scrollbar]:hidden">
-        {EVENT_QUICK_FILTERS.map((filter) => (
-          <Link
-            key={filter.key}
-            href={filter.href}
-            aria-current={discovery.when === filter.key ? "page" : undefined}
-            className={
-              "shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors " +
-              (discovery.when === filter.key
-                ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground")
-            }
-          >
-            {filter.label}
-          </Link>
-        ))}
+      <div className="-mx-6 mb-10 flex gap-2 overflow-x-auto px-6 pb-2 [&::-webkit-scrollbar]:hidden">
+        {EVENT_QUICK_FILTERS.map((filter) => {
+          const active = discovery.when === filter.key;
+          return (
+            <Link
+              key={filter.key}
+              href={filter.href}
+              aria-current={active ? "page" : undefined}
+              className={
+                "shrink-0 rounded-full border px-4 py-1.5 font-mono text-[12px] font-medium uppercase tracking-[0.16em] transition-colors " +
+                (active
+                  ? "border-signal bg-signal text-ink"
+                  : "border-hairline bg-transparent text-muted-foreground hover:border-hairline-strong hover:text-foreground")
+              }
+            >
+              {filter.label}
+            </Link>
+          );
+        })}
       </div>
 
       {events.length ? (
@@ -131,11 +84,11 @@ export default async function EventsPage({
         </div>
       ) : (
         <EmptyState
-          title="No events match your filters"
+          title="Nothing matches yet"
           description={
             hasActiveFilters(discovery)
-              ? "Try clearing some filters or widening your search."
-              : "New ticket drops will be published soon."
+              ? "Clear some filters or widen your search."
+              : "New drops will be published soon."
           }
         />
       )}

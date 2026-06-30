@@ -4,8 +4,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { clientIp, enforceRateLimit } from "@/lib/rate-limit";
+import { createOrganizationForAdmin } from "@/lib/organizations/setup";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import type { OrganizerOnboardingAnswers } from "@/lib/payments/stripe-connect";
+import type { Json } from "@/types/db";
 
 const OrganizerSignupSchema = z.object({
   display_name: z.string().min(2).max(120),
@@ -14,7 +17,10 @@ const OrganizerSignupSchema = z.object({
   organization_name: z.string().min(2).max(160),
   event_types: z.string().min(2).max(1000),
   expected_monthly_attendees: z.string().optional().nullable(),
-  country: z.string().length(2).transform((v) => v.toUpperCase()),
+  country: z
+    .string()
+    .length(2)
+    .transform((v) => v.toUpperCase()),
   website: z.string().url().optional().or(z.literal("")).nullable(),
 });
 
@@ -25,16 +31,24 @@ function fail(message: string): never {
 export async function organizerSignupAction(formData: FormData) {
   const parsed = OrganizerSignupSchema.safeParse({
     display_name: formData.get("display_name"),
-    email: String(formData.get("email") ?? "").trim().toLowerCase(),
+    email: String(formData.get("email") ?? "")
+      .trim()
+      .toLowerCase(),
     password: formData.get("password"),
     organization_name: formData.get("organization_name"),
     event_types: formData.get("event_types"),
-    expected_monthly_attendees: formData.get("expected_monthly_attendees") || null,
+    expected_monthly_attendees:
+      formData.get("expected_monthly_attendees") || null,
     country: formData.get("country"),
     website: formData.get("website") || null,
   });
-  if (!parsed.success) fail(parsed.error.issues[0]?.message ?? "Invalid organizer details.");
+  if (!parsed.success)
+    fail(parsed.error.issues[0]?.message ?? "Invalid organizer details.");
   const input = parsed.data;
+
+  if (!(await enforceRateLimit("auth", await clientIp())).allowed) {
+    fail("Too many attempts. Please wait a minute and try again.");
+  }
 
   const sb = await createClient();
   const { data, error } = await sb.auth.signUp({
@@ -44,7 +58,10 @@ export async function organizerSignupAction(formData: FormData) {
       data: { full_name: input.display_name },
     },
   });
-  if (error) fail(error.message);
+  if (error)
+    fail(
+      "Signup could not be completed. Please check your details and try again.",
+    );
 
   const userId = data?.user?.id;
   if (!userId) fail("Signup did not return a user.");
@@ -60,9 +77,21 @@ export async function organizerSignupAction(formData: FormData) {
   const service = createServiceClient();
   const { error: profileError } = await service
     .from("profiles")
-    .update({ organizer_onboarding: onboarding, display_name: input.display_name })
+    .update({ display_name: input.display_name })
     .eq("id", userId);
   if (profileError) fail(profileError.message);
+
+  try {
+    await createOrganizationForAdmin({
+      name: input.organization_name,
+      adminUserId: userId,
+      onboarding: onboarding as unknown as Json,
+    });
+  } catch (err) {
+    fail(
+      err instanceof Error ? err.message : "Organization could not be created.",
+    );
+  }
 
   try {
     await ensureUserWallet(userId, input.email);

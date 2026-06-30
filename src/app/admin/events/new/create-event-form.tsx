@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ImageUploadField } from "@/app/admin/events/image-upload-field";
-import { DiscoveryFields } from "@/app/admin/events/discovery-fields";
+import { ImageUploadField } from "@/app/admin/_components/image-upload-field";
+import { DiscoveryFields } from "@/app/admin/_components/discovery-fields";
 import { uploadPublicEventImage } from "@/lib/supabase/uploads";
 import { createEvent } from "../../actions";
 
@@ -27,9 +27,12 @@ export function CreateEventForm({ error }: { error?: string }) {
   }
 
   return (
-    <form action={createEvent} className="glass grid gap-5 rounded-lg p-6">
+    <form
+      action={createEvent}
+      className="grid gap-6 rounded-md border border-hairline bg-ink-raised p-6"
+    >
       {error ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
       ) : null}
@@ -42,7 +45,9 @@ export function CreateEventForm({ error }: { error?: string }) {
         <div className="grid gap-2">
           <Label htmlFor="date">Date</Label>
           <Input id="date" name="date" type="datetime-local" required />
-          <p className="text-xs text-muted-foreground">Interpreted as Africa/Casablanca local time.</p>
+          <p className="text-xs text-muted-foreground">
+            Interpreted as Africa/Casablanca local time.
+          </p>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="capacity">Capacity</Label>
@@ -71,7 +76,8 @@ export function CreateEventForm({ error }: { error?: string }) {
       <div className="grid gap-5 rounded-md border border-border/60 bg-background/30 p-4">
         <p className="text-sm font-medium text-foreground/90">Event artwork</p>
         <p className="-mt-3 text-xs text-muted-foreground">
-          Upload distinct images for each surface. Any slot left empty falls back to the default image.
+          Upload distinct images for each surface. Any slot left empty falls
+          back to the default image.
         </p>
         <ImageUploadField
           id="event-image"
@@ -119,8 +125,9 @@ export function CreateEventForm({ error }: { error?: string }) {
       <div className="grid gap-2">
         <Label htmlFor="floor_plan">Floor plan / club map</Label>
         <p className="text-xs text-muted-foreground">
-          One image per event, attached at event creation. Buyers see it under the ticket
-          listings to match each Club Table tier color with its location at the venue.
+          One image per event, attached at event creation. Buyers see it under
+          the ticket listings to match each Club Table tier color with its
+          location at the venue.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Input
@@ -134,9 +141,13 @@ export function CreateEventForm({ error }: { error?: string }) {
           />
           <div className="min-w-40 text-sm text-muted-foreground">
             {uploadingFloor ? (
-              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Uploading</span>
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Uploading
+              </span>
             ) : floorPlanUrl ? (
-              <span className="flex items-center gap-2 text-emerald-300"><Map className="h-4 w-4" /> Map ready</span>
+              <span className="flex items-center gap-2 text-signal">
+                <Map className="h-4 w-4" /> Map ready
+              </span>
             ) : (
               "Optional"
             )}
@@ -164,7 +175,8 @@ export function CreateEventForm({ error }: { error?: string }) {
         ) : null}
       </div>
       <p className="text-xs text-muted-foreground">
-        Sales, resale, and public counter visibility are configured per category.
+        Sales, resale, and public counter visibility are configured per
+        category.
       </p>
       <Button type="submit" disabled={uploadingImage || uploadingFloor}>
         Create event and mint collection

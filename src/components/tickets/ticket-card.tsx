@@ -12,7 +12,12 @@ import { formatDate, formatPrice } from "@/lib/format";
 import { explorerUrl, shortAddress } from "@/lib/chain/utils";
 import { eventImage } from "@/lib/events/images";
 import { cn } from "@/lib/utils";
-import type { EventRow, ResaleListing, Ticket, TicketCategory } from "@/types/db";
+import type {
+  EventRow,
+  ResaleListing,
+  Ticket,
+  TicketCategory,
+} from "@/types/db";
 
 export function TicketCard({
   ticket,
@@ -35,47 +40,68 @@ export function TicketCard({
 }) {
   const eventInPast = new Date(event.date).getTime() < Date.now();
   const eventCanceled = event.status === "canceled";
-  const displayStatus: "valid" | "used" | "expired" | "refunded" | "refund_pending" | "canceled" | "listed" =
+  const displayStatus:
+    | "valid"
+    | "used"
+    | "expired"
+    | "refunded"
+    | "refund_pending"
+    | "canceled"
+    | "listed" =
     ticket.status === "used"
       ? "used"
       : ticket.status === "refunded"
-      ? "refunded"
-      : ticket.status === "refund_pending"
-      ? "refund_pending"
-      : ticket.status === "canceled" || eventCanceled
-      ? "canceled"
-      : ticket.status === "expired" || (ticket.status === "sold" && eventInPast)
-      ? "expired"
-      : ticket.status === "listed"
-      ? "listed"
-      : "valid";
+        ? "refunded"
+        : ticket.status === "refund_pending"
+          ? "refund_pending"
+          : ticket.status === "canceled" || eventCanceled
+            ? "canceled"
+            : ticket.status === "expired" ||
+                (ticket.status === "sold" && eventInPast)
+              ? "expired"
+              : ticket.status === "listed"
+                ? "listed"
+                : "valid";
   const inactive = displayStatus !== "valid" && displayStatus !== "listed";
   const badgeVariant =
     displayStatus === "valid"
       ? "success"
       : displayStatus === "used"
-      ? "warning"
-      : displayStatus === "refund_pending"
-      ? "warning"
-      : displayStatus === "expired"
-      ? "secondary"
-      : displayStatus === "listed"
-      ? "secondary"
-      : "destructive";
+        ? "warning"
+        : displayStatus === "refund_pending"
+          ? "warning"
+          : displayStatus === "expired"
+            ? "secondary"
+            : displayStatus === "listed"
+              ? "secondary"
+              : "destructive";
+  const displayLabel =
+    displayStatus === "used" ? "consumed" : displayStatus.replace("_", " ");
 
   return (
-    <Card className={cn("glass group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.01]", inactive && "opacity-60 grayscale")}>
+    <Card
+      className={cn(
+        "group relative overflow-hidden rounded-lg transition-transform hover:scale-[1.01]",
+        inactive && "opacity-60 grayscale",
+      )}
+    >
       <div className="relative aspect-[5/2] overflow-hidden bg-secondary">
         {(() => {
           const tv = ticket.image_url ?? eventImage(event, "ticket");
           return tv ? (
-            <Image src={tv} alt={event.name} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover" />
+            <Image
+              src={tv}
+              alt={event.name}
+              fill
+              sizes="(min-width: 1024px) 33vw, 100vw"
+              className="object-cover"
+            />
           ) : null;
         })()}
         <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
         <div className="ticket-foil pointer-events-none absolute inset-0 animate-shimmer opacity-60 mix-blend-screen" />
         <Badge className="absolute right-4 top-4" variant={badgeVariant}>
-          {displayStatus}
+          {displayLabel}
         </Badge>
       </div>
 
@@ -109,12 +135,21 @@ export function TicketCard({
             <Badge variant="secondary">{category?.name ?? "Ticket"}</Badge>
           </div>
           <div>
-            <p className="text-muted-foreground">Wallet</p>
-            <p className="font-mono">{shortAddress(ticket.owner_evm_address)}</p>
+            <p className="text-muted-foreground">Holder</p>
+            <p className="font-mono">
+              {shortAddress(ticket.owner_evm_address)}
+            </p>
           </div>
           <div>
             <p className="text-muted-foreground">Price</p>
-            <p>{category ? formatPrice(originalOnlineTotal ?? category.price, category.currency) : "Paid"}</p>
+            <p>
+              {category
+                ? formatPrice(
+                    originalOnlineTotal ?? category.price,
+                    category.currency,
+                  )
+                : "Paid"}
+            </p>
           </div>
           {ticket.total_headcount ? (
             <div>
@@ -125,19 +160,26 @@ export function TicketCard({
           {ticket.min_spending_remaining != null && category ? (
             <div>
               <p className="text-muted-foreground">Venue balance</p>
-              <p>{formatPrice(ticket.min_spending_remaining, category.currency)}</p>
+              <p>
+                {formatPrice(ticket.min_spending_remaining, category.currency)}
+              </p>
             </div>
           ) : null}
         </div>
         {ticket.transferred_off_platform_at ? (
-          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-            Transferred to personal wallet {shortAddress(ticket.transferred_to_address)}.
+          <p className="rounded-md border border-hairline-strong bg-ink-soft p-3 text-xs text-muted-foreground">
+            Transferred to personal wallet{" "}
+            {shortAddress(ticket.transferred_to_address)}.
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
           {ticket.nft_contract_address && ticket.mint_tx_hash ? (
             <Button asChild variant="outline">
-              <a href={explorerUrl("tx", ticket.mint_tx_hash)} target="_blank" rel="noreferrer">
+              <a
+                href={explorerUrl("tx", ticket.mint_tx_hash)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 Explorer <ExternalLink className="h-4 w-4" />
               </a>
             </Button>
@@ -149,8 +191,15 @@ export function TicketCard({
             <ListForResaleButton
               ticketId={ticket.id}
               currency={category.currency}
-              maxResalePrice={maxListPrice ?? originalOnlineTotal ?? category.max_resale_price}
-              defaultPrice={maxListPrice ?? originalOnlineTotal ?? category.max_resale_price ?? category.price}
+              maxResalePrice={
+                maxListPrice ?? originalOnlineTotal ?? category.max_resale_price
+              }
+              defaultPrice={
+                maxListPrice ??
+                originalOnlineTotal ??
+                category.max_resale_price ??
+                category.price
+              }
             />
           ) : null}
           {canExport && !ticket.transferred_off_platform_at ? (

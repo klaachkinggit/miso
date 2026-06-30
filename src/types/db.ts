@@ -4,1738 +4,682 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[]
+  | Json[];
 
+export type Currency = "EUR";
+export type EventGenre =
+  | "techno"
+  | "afro_house"
+  | "rap"
+  | "commercial"
+  | "live";
+export type EventStatus = "draft" | "published" | "canceled" | "completed";
+export type EventVibe =
+  | "club"
+  | "festival"
+  | "rooftop"
+  | "student_party"
+  | "private_event";
+export type ListingStatus =
+  | "active"
+  | "sold"
+  | "canceled"
+  | "expired"
+  | "transferring"
+  | "repair_needed";
+export type MarketplacePaymentKind = "primary" | "resale";
+export type MarketplacePaymentStatus =
+  | "requires_payment"
+  | "processing"
+  | "succeeded"
+  | "fulfillment_pending"
+  | "transfers_pending"
+  | "paid"
+  | "failed"
+  | "refund_pending"
+  | "refunded"
+  | "disputed"
+  | "repair_needed";
+export type MarketplaceTransferRecipientRole = "organizer" | "resale_seller";
+export type MarketplaceTransferStatus =
+  | "pending"
+  | "created"
+  | "reversed"
+  | "failed";
+export type OrganizationRole = "admin" | "controller";
+export type OrganizationStatus = "active" | "suspended" | "deleted";
+export type PurchaseStatus = "pending" | "paid" | "failed" | "refunded";
+export type RedemptionResult =
+  | "valid"
+  | "already_used"
+  | "refunded"
+  | "canceled"
+  | "wrong_event"
+  | "expired"
+  | "owner_mismatch"
+  | "invalid_signature"
+  | "tx_failed"
+  | "tx_pending"
+  | "no_ticket"
+  | "no_session"
+  | "wrong_category";
+export type SalesChannel =
+  | "mini_site"
+  | "qr"
+  | "marketplace"
+  | "widget"
+  | "ticket_office"
+  | "invitation"
+  | "import";
+export type SellerRiskStatus =
+  | "clear"
+  | "restricted"
+  | "owes_recovery"
+  | "blocked";
+export type TicketCategoryKind = "standard" | "club_table";
+export type TicketStatus =
+  | "available"
+  | "reserved"
+  | "sold"
+  | "listed"
+  | "used"
+  | "refunded"
+  | "canceled"
+  | "expired"
+  | "refund_pending"
+  | "minting"
+  | "transferring"
+  | "repair_needed";
+export type UserRole = "user" | "controller" | "admin" | "organizer";
+
+export type EventRow = {
+  artists: string[];
+  capacity: number;
+  city: string;
+  conditions: string | null;
+  created_at: string;
+  date: string;
+  description: string | null;
+  floor_plan_url: string | null;
+  genre: EventGenre | null;
+  hero_url: string | null;
+  id: string;
+  image_ipfs_uri: string | null;
+  image_url: string | null;
+  is_festival: boolean;
+  marketplace_url: string | null;
+  name: string;
+  nft_contract_address: string | null;
+  organization_id: string;
+  organizer_resale_royalty_bps: number;
+  organizer_user_id: string | null;
+  public_sales_counter_enabled: boolean;
+  resale_enabled: boolean;
+  role_admin_address: string | null;
+  sales_channel: SalesChannel;
+  sales_enabled: boolean;
+  search_tsv: unknown;
+  slug: string | null;
+  status: EventStatus;
+  thumbnail_url: string | null;
+  ticket_visual_url: string | null;
+  updated_at: string;
+  venue_name: string;
+  vibe: EventVibe | null;
+};
+export type Profile = {
+  created_at: string;
+  display_name: string | null;
+  email: string;
+  id: string;
+  organizer_onboarding: Json | null;
+  pro_crypto_mode: boolean;
+  role: UserRole;
+  stripe_account_id: string | null;
+  stripe_charges_enabled: boolean;
+  stripe_details_submitted: boolean;
+  stripe_payouts_enabled: boolean;
+};
+export type Ticket = {
+  canceled_at: string | null;
+  category_id: string;
+  color_hex_snapshot: string | null;
+  created_at: string;
+  current_listing_id: string | null;
+  event_id: string;
+  extra_guests_count: number;
+  id: string;
+  image_url: string | null;
+  last_transfer_tx_hash: string | null;
+  metadata_uri: string | null;
+  min_spending_remaining: number | null;
+  min_spending_total: number | null;
+  mint_tx_hash: string | null;
+  minted_at: string | null;
+  nft_contract_address: string | null;
+  nft_token_id: number | null;
+  original_purchase_id: string | null;
+  owner_evm_address: string | null;
+  owner_user_id: string | null;
+  redeem_tx_hash: string | null;
+  refunded_at: string | null;
+  reserved_until: string | null;
+  serial_number: number;
+  status: TicketStatus;
+  total_headcount: number | null;
+  transferred_off_platform_at: string | null;
+  transferred_to_address: string | null;
+  updated_at: string;
+  used_at: string | null;
+};
+export type TicketCategory = {
+  base_capacity: number | null;
+  benefits: string | null;
+  color_hex: string | null;
+  created_at: string;
+  currency: Currency;
+  description: string | null;
+  event_id: string;
+  extra_guests_enabled: boolean;
+  id: string;
+  image_ipfs_uri: string | null;
+  image_url: string | null;
+  kind: TicketCategoryKind;
+  max_extra_guests: number | null;
+  max_resale_price: number | null;
+  min_spending: number | null;
+  name: string;
+  online_advance: number | null;
+  price: number;
+  price_per_extra_guest: number | null;
+  public_sales_counter_enabled: boolean;
+  resale_enabled: boolean;
+  sale_ends_at: string | null;
+  sale_starts_at: string | null;
+  sales_enabled: boolean;
+  sold_count: number;
+  supply: number;
+};
+export type TicketRedemption = {
+  controller_user_id: string;
+  event_id: string;
+  evm_address: string;
+  gate_name: string | null;
+  gate_session_id: string | null;
+  id: string;
+  organization_id: string | null;
+  redeem_tx_hash: string | null;
+  redeemed_at: string;
+  result: RedemptionResult;
+  ticket_id: string;
+};
+export type Purchase = {
+  amount: number;
+  buyer_total_amount: number | null;
+  buyer_user_id: string;
+  checkout_idempotency_key: string | null;
+  created_at: string;
+  currency: Currency;
+  event_id: string;
+  extra_guests_count: number;
+  gift_recipient_user_id: string | null;
+  id: string;
+  min_spending_total: number | null;
+  online_advance_amount: number | null;
+  organization_id: string | null;
+  paid_at: string | null;
+  payment_provider: string | null;
+  platform_fee_amount: number;
+  provider_payment_id: string | null;
+  provider_session_id: string | null;
+  sales_channel: SalesChannel;
+  status: PurchaseStatus;
+  stripe_fee_amount: number;
+  ticket_id: string;
+  tracking_origin: string | null;
+};
+export type ResaleListing = {
+  buyer_total_amount: number | null;
+  buyer_user_id: string | null;
+  checkout_idempotency_key: string | null;
+  created_at: string;
+  currency: Currency;
+  id: string;
+  organization_id: string | null;
+  payment_provider: string | null;
+  platform_fee_amount: number;
+  price: number;
+  provider_session_id: string | null;
+  royalty_amount: number;
+  sales_channel: SalesChannel;
+  seller_user_id: string;
+  sold_at: string | null;
+  status: ListingStatus;
+  stripe_fee_amount: number;
+  ticket_id: string;
+  tracking_origin: string | null;
+};
+export type Wallet = {
+  created_at: string;
+  evm_address: string;
+  id: string;
+  is_primary: boolean;
+  smart_account_address: string | null;
+  user_id: string;
+};
+export type GateSession = {
+  allowed_category_ids: string[] | null;
+  closed_at: string | null;
+  controller_user_id: string;
+  created_at: string;
+  event_id: string;
+  expires_at: string;
+  gate_name: string | null;
+  id: string;
+  last_redemption_id: string | null;
+  last_result: string | null;
+  last_ticket_id: string | null;
+  opened_at: string;
+  short_code: string;
+  status: string;
+};
+export type AuditLog = {
+  action: string;
+  actor_user_id: string | null;
+  created_at: string;
+  entity_id: string;
+  entity_type: string;
+  id: string;
+  metadata_json: Json | null;
+};
+export type EventController = {
+  event_id: string;
+  invited_at: string;
+  user_id: string;
+};
+export type ChainOp = {
+  attempt: number;
+  contract_address: string;
+  created_at: string;
+  error_message: string | null;
+  from_address: string | null;
+  id: string;
+  idempotency_key: string;
+  listing_id: string | null;
+  metadata_uri: string | null;
+  op_type: string;
+  purchase_id: string | null;
+  status: string;
+  ticket_id: string;
+  to_address: string;
+  token_id: number;
+  transaction_id: string | null;
+  tx_hash: string | null;
+  updated_at: string;
+};
+export type Organization = {
+  branding: Json;
+  country_code: string | null;
+  created_at: string;
+  created_by_user_id: string | null;
+  custom_domain: string | null;
+  custom_domain_verification_token: string | null;
+  custom_domain_verified_at: string | null;
+  default_currency: Currency;
+  id: string;
+  legal_profile: Json;
+  name: string;
+  organizer_onboarding: Json | null;
+  resale_cap_bps: number;
+  resale_royalty_bps: number;
+  resale_royalty_enabled: boolean;
+  slug: string;
+  status: OrganizationStatus;
+  stripe_account_id: string | null;
+  stripe_charges_enabled: boolean;
+  stripe_details_submitted: boolean;
+  stripe_payouts_enabled: boolean;
+  theme: Json | null;
+  updated_at: string;
+};
+export type OrganizationMembership = {
+  created_at: string;
+  id: string;
+  organization_id: string;
+  role: OrganizationRole;
+  updated_at: string;
+  user_id: string;
+};
+export type OrganizationCustomer = {
+  first_seen_at: string;
+  last_seen_at: string;
+  organization_id: string;
+  source: SalesChannel | null;
+  user_id: string;
+};
+export type StripeSellerAccount = {
+  charges_enabled: boolean;
+  created_at: string;
+  details_submitted: boolean;
+  disabled_reason: string | null;
+  id: string;
+  last_webhook_at: string | null;
+  payouts_enabled: boolean;
+  requirements_json: Json | null;
+  seller_risk_status: SellerRiskStatus;
+  stripe_account_id: string;
+  updated_at: string;
+  user_id: string;
+};
+export type OrganizerProfile = {
+  activated_at: string | null;
+  created_at: string;
+  event_typology: string;
+  legal_verified_at: string | null;
+  no_siret: boolean;
+  page_description: string | null;
+  page_name: string | null;
+  page_slug: string | null;
+  siret: string | null;
+  status: string;
+  stripe_verified_at: string | null;
+  ticketing_footprint: string;
+  updated_at: string;
+  user_id: string;
+  volume_estimation: string;
+  widget_accent_color: string;
+};
+export type MarketplacePayment = {
+  amount_total_cents: number;
+  buyer_user_id: string;
+  created_at: string;
+  currency: Currency;
+  discount_cents: number;
+  disputed_at: string | null;
+  failure_reason: string | null;
+  fulfilled_at: string | null;
+  id: string;
+  kind: MarketplacePaymentKind;
+  last_webhook_at: string | null;
+  marketplace_fee_bps: number;
+  marketplace_fee_cents: number;
+  organizer_royalty_bps: number;
+  organizer_royalty_cents: number;
+  organizer_user_id: string | null;
+  primary_seller_cents: number;
+  primary_seller_user_id: string;
+  promo_code_id: string | null;
+  purchase_id: string | null;
+  refunded_at: string | null;
+  resale_listing_id: string | null;
+  status: MarketplacePaymentStatus;
+  stripe_charge_id: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_transfer_group: string | null;
+  succeeded_at: string | null;
+  transferred_at: string | null;
+  updated_at: string;
+};
+export type MarketplaceTransfer = {
+  amount_cents: number;
+  created_at: string;
+  currency: Currency;
+  failure_reason: string | null;
+  id: string;
+  marketplace_payment_id: string;
+  recipient_role: MarketplaceTransferRecipientRole;
+  recipient_user_id: string;
+  reversed_amount_cents: number;
+  status: MarketplaceTransferStatus;
+  stripe_connected_account_id: string;
+  stripe_transfer_id: string | null;
+  stripe_transfer_reversal_id: string | null;
+  stripe_transfer_reversal_ids: string[];
+  updated_at: string;
+};
+export type MarketplacePaymentItem = {
+  amount_cents: number;
+  created_at: string;
+  id: string;
+  marketplace_payment_id: string;
+  purchase_id: string;
+};
+export type EventWaitlist = {
+  claim_expires_at: string | null;
+  created_at: string;
+  event_id: string;
+  id: string;
+  notified_at: string | null;
+  user_id: string;
+};
+export type OrganizationFollower = {
+  created_at: string;
+  id: string;
+  organization_id: string;
+  unsubscribe_token: string;
+  unsubscribed_at: string | null;
+  user_id: string;
+};
+export type PromoCode = {
+  active: boolean;
+  amount_off_cents: number | null;
+  code: string;
+  created_at: string;
+  discount_kind: string;
+  ends_at: string | null;
+  id: string;
+  max_uses: number | null;
+  organization_id: string;
+  percent_off: number | null;
+  starts_at: string | null;
+  used_count: number;
+};
+export type ResalePriceCap = {
+  cap_bps: number;
+  country_code: string;
+  label: string | null;
+  updated_at: string;
+};
+export type OrgEmbedding = {
+  content: string;
+  created_at: string;
+  embedding: string;
+  id: string;
+  metadata: Json;
+  organization_id: string;
+  source_id: string | null;
+  source_type: string;
+  updated_at: string;
+};
+export type SiteSettings = {
+  id: string;
+  landing_audience_url: string | null;
+  landing_dashboard_url: string | null;
+  landing_hero_bg_url: string | null;
+  updated_at: string;
+};
+
+type RowMap = {
+  events: EventRow;
+  profiles: Profile;
+  tickets: Ticket;
+  ticket_categories: TicketCategory;
+  ticket_redemptions: TicketRedemption;
+  purchases: Purchase;
+  resale_listings: ResaleListing;
+  wallets: Wallet;
+  gate_sessions: GateSession;
+  audit_logs: AuditLog;
+  event_controllers: EventController;
+  chain_ops: ChainOp;
+  organizations: Organization;
+  organization_memberships: OrganizationMembership;
+  organization_customers: OrganizationCustomer;
+  stripe_seller_accounts: StripeSellerAccount;
+  organizer_profiles: OrganizerProfile;
+  marketplace_payments: MarketplacePayment;
+  marketplace_transfers: MarketplaceTransfer;
+  marketplace_payment_items: MarketplacePaymentItem;
+  event_waitlists: EventWaitlist;
+  organization_followers: OrganizationFollower;
+  promo_codes: PromoCode;
+  resale_price_caps: ResalePriceCap;
+  org_embeddings: OrgEmbedding;
+  site_settings: SiteSettings;
+};
+type EnumMap = {
+  currency: Currency;
+  event_genre: EventGenre;
+  event_status: EventStatus;
+  event_vibe: EventVibe;
+  listing_status: ListingStatus;
+  marketplace_payment_kind: MarketplacePaymentKind;
+  marketplace_payment_status: MarketplacePaymentStatus;
+  marketplace_transfer_recipient_role: MarketplaceTransferRecipientRole;
+  marketplace_transfer_status: MarketplaceTransferStatus;
+  organization_role: OrganizationRole;
+  organization_status: OrganizationStatus;
+  purchase_status: PurchaseStatus;
+  redemption_result: RedemptionResult;
+  sales_channel: SalesChannel;
+  seller_risk_status: SellerRiskStatus;
+  ticket_category_kind: TicketCategoryKind;
+  ticket_status: TicketStatus;
+  user_role: UserRole;
+};
+type FunctionMap = {
+  apply_stripe_account_snapshot: {
+    Args: {
+      p_user_id: string;
+      p_stripe_account_id: string;
+      p_charges_enabled: boolean;
+      p_payouts_enabled: boolean;
+      p_details_submitted: boolean;
+      p_disabled_reason: string | null;
+      p_requirements_json: Json | null;
+    };
+    Returns: StripeSellerAccount;
+  };
+  decrement_promo_use: { Args: { promo_id: string }; Returns: PromoCode[] };
+  increment_promo_use: { Args: { promo_id: string }; Returns: PromoCode[] };
+  match_org_embeddings: {
+    Args: {
+      query_embedding: string;
+      match_org_id: string;
+      match_count?: number;
+    };
+    Returns: Array<{
+      id: string;
+      source_type: string;
+      source_id: string | null;
+      content: string;
+      metadata: Json;
+      similarity: number;
+    }>;
+  };
+};
+export type Tables<T extends keyof RowMap> = RowMap[T];
+export type TablesInsert<T extends keyof RowMap> = Partial<RowMap[T]>;
+export type TablesUpdate<T extends keyof RowMap> = Partial<RowMap[T]>;
+export type Enums<T extends keyof EnumMap> = EnumMap[T];
+export type CompositeTypes<_T extends string> = never;
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          operationName?: string
-          query?: string
-          variables?: Json
-          extensions?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
-      audit_logs: {
-        Row: {
-          action: string
-          actor_user_id: string | null
-          created_at: string
-          entity_id: string
-          entity_type: string
-          id: string
-          metadata_json: Json | null
-        }
-        Insert: {
-          action: string
-          actor_user_id?: string | null
-          created_at?: string
-          entity_id: string
-          entity_type: string
-          id?: string
-          metadata_json?: Json | null
-        }
-        Update: {
-          action?: string
-          actor_user_id?: string | null
-          created_at?: string
-          entity_id?: string
-          entity_type?: string
-          id?: string
-          metadata_json?: Json | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audit_logs_actor_user_id_fkey"
-            columns: ["actor_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chain_ops: {
-        Row: {
-          attempt: number
-          contract_address: string
-          created_at: string
-          error_message: string | null
-          from_address: string | null
-          id: string
-          idempotency_key: string
-          listing_id: string | null
-          metadata_uri: string | null
-          op_type: string
-          purchase_id: string | null
-          status: string
-          ticket_id: string
-          to_address: string
-          token_id: number
-          transaction_id: string | null
-          tx_hash: string | null
-          updated_at: string
-        }
-        Insert: {
-          attempt?: number
-          contract_address: string
-          created_at?: string
-          error_message?: string | null
-          from_address?: string | null
-          id?: string
-          idempotency_key: string
-          listing_id?: string | null
-          metadata_uri?: string | null
-          op_type: string
-          purchase_id?: string | null
-          status?: string
-          ticket_id: string
-          to_address: string
-          token_id: number
-          transaction_id?: string | null
-          tx_hash?: string | null
-          updated_at?: string
-        }
-        Update: {
-          attempt?: number
-          contract_address?: string
-          created_at?: string
-          error_message?: string | null
-          from_address?: string | null
-          id?: string
-          idempotency_key?: string
-          listing_id?: string | null
-          metadata_uri?: string | null
-          op_type?: string
-          purchase_id?: string | null
-          status?: string
-          ticket_id?: string
-          to_address?: string
-          token_id?: number
-          transaction_id?: string | null
-          tx_hash?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chain_ops_listing_id_fkey"
-            columns: ["listing_id"]
-            isOneToOne: false
-            referencedRelation: "resale_listings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chain_ops_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: false
-            referencedRelation: "purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chain_ops_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      event_controllers: {
-        Row: {
-          event_id: string
-          invited_at: string
-          user_id: string
-        }
-        Insert: {
-          event_id: string
-          invited_at?: string
-          user_id: string
-        }
-        Update: {
-          event_id?: string
-          invited_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_controllers_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_controllers_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      events: {
-        Row: {
-          artists: string[]
-          capacity: number
-          city: string
-          conditions: string | null
-          created_at: string
-          date: string
-          description: string | null
-          floor_plan_url: string | null
-          genre: Database["public"]["Enums"]["event_genre"] | null
-          hero_url: string | null
-          id: string
-          image_ipfs_uri: string | null
-          image_url: string | null
-          is_festival: boolean
-          marketplace_url: string | null
-          name: string
-          nft_contract_address: string | null
-          organizer_user_id: string | null
-          public_sales_counter_enabled: boolean
-          resale_enabled: boolean
-          role_admin_address: string | null
-          sales_enabled: boolean
-          search_tsv: unknown | null
-          status: Database["public"]["Enums"]["event_status"]
-          thumbnail_url: string | null
-          ticket_visual_url: string | null
-          updated_at: string
-          venue_name: string
-          vibe: Database["public"]["Enums"]["event_vibe"] | null
-        }
-        Insert: {
-          artists?: string[]
-          capacity: number
-          city: string
-          conditions?: string | null
-          created_at?: string
-          date: string
-          description?: string | null
-          floor_plan_url?: string | null
-          genre?: Database["public"]["Enums"]["event_genre"] | null
-          hero_url?: string | null
-          id?: string
-          image_ipfs_uri?: string | null
-          image_url?: string | null
-          is_festival?: boolean
-          marketplace_url?: string | null
-          name: string
-          nft_contract_address?: string | null
-          organizer_user_id?: string | null
-          public_sales_counter_enabled?: boolean
-          resale_enabled?: boolean
-          role_admin_address?: string | null
-          sales_enabled?: boolean
-          search_tsv?: unknown | null
-          status?: Database["public"]["Enums"]["event_status"]
-          thumbnail_url?: string | null
-          ticket_visual_url?: string | null
-          updated_at?: string
-          venue_name: string
-          vibe?: Database["public"]["Enums"]["event_vibe"] | null
-        }
-        Update: {
-          artists?: string[]
-          capacity?: number
-          city?: string
-          conditions?: string | null
-          created_at?: string
-          date?: string
-          description?: string | null
-          floor_plan_url?: string | null
-          genre?: Database["public"]["Enums"]["event_genre"] | null
-          hero_url?: string | null
-          id?: string
-          image_ipfs_uri?: string | null
-          image_url?: string | null
-          is_festival?: boolean
-          marketplace_url?: string | null
-          name?: string
-          nft_contract_address?: string | null
-          organizer_user_id?: string | null
-          public_sales_counter_enabled?: boolean
-          resale_enabled?: boolean
-          role_admin_address?: string | null
-          sales_enabled?: boolean
-          search_tsv?: unknown | null
-          status?: Database["public"]["Enums"]["event_status"]
-          thumbnail_url?: string | null
-          ticket_visual_url?: string | null
-          updated_at?: string
-          venue_name?: string
-          vibe?: Database["public"]["Enums"]["event_vibe"] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "events_organizer_user_id_fkey"
-            columns: ["organizer_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      gate_sessions: {
-        Row: {
-          allowed_category_ids: string[] | null
-          closed_at: string | null
-          controller_user_id: string
-          created_at: string
-          event_id: string
-          expires_at: string
-          gate_name: string | null
-          id: string
-          last_redemption_id: string | null
-          last_result: string | null
-          last_ticket_id: string | null
-          opened_at: string
-          short_code: string
-          status: string
-        }
-        Insert: {
-          allowed_category_ids?: string[] | null
-          closed_at?: string | null
-          controller_user_id: string
-          created_at?: string
-          event_id: string
-          expires_at: string
-          gate_name?: string | null
-          id?: string
-          last_redemption_id?: string | null
-          last_result?: string | null
-          last_ticket_id?: string | null
-          opened_at?: string
-          short_code: string
-          status?: string
-        }
-        Update: {
-          allowed_category_ids?: string[] | null
-          closed_at?: string | null
-          controller_user_id?: string
-          created_at?: string
-          event_id?: string
-          expires_at?: string
-          gate_name?: string | null
-          id?: string
-          last_redemption_id?: string | null
-          last_result?: string | null
-          last_ticket_id?: string | null
-          opened_at?: string
-          short_code?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gate_sessions_controller_user_id_fkey"
-            columns: ["controller_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gate_sessions_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gate_sessions_last_redemption_fk"
-            columns: ["last_redemption_id"]
-            isOneToOne: false
-            referencedRelation: "ticket_redemptions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gate_sessions_last_ticket_id_fkey"
-            columns: ["last_ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          display_name: string | null
-          email: string
-          id: string
-          organizer_onboarding: Json | null
-          pro_crypto_mode: boolean
-          role: Database["public"]["Enums"]["user_role"]
-          stripe_account_id: string | null
-          stripe_charges_enabled: boolean
-          stripe_details_submitted: boolean
-          stripe_payouts_enabled: boolean
-        }
-        Insert: {
-          created_at?: string
-          display_name?: string | null
-          email: string
-          id: string
-          organizer_onboarding?: Json | null
-          pro_crypto_mode?: boolean
-          role?: Database["public"]["Enums"]["user_role"]
-          stripe_account_id?: string | null
-          stripe_charges_enabled?: boolean
-          stripe_details_submitted?: boolean
-          stripe_payouts_enabled?: boolean
-        }
-        Update: {
-          created_at?: string
-          display_name?: string | null
-          email?: string
-          id?: string
-          organizer_onboarding?: Json | null
-          pro_crypto_mode?: boolean
-          role?: Database["public"]["Enums"]["user_role"]
-          stripe_account_id?: string | null
-          stripe_charges_enabled?: boolean
-          stripe_details_submitted?: boolean
-          stripe_payouts_enabled?: boolean
-        }
-        Relationships: []
-      }
-      purchases: {
-        Row: {
-          amount: number
-          buyer_user_id: string
-          checkout_idempotency_key: string | null
-          created_at: string
-          currency: Database["public"]["Enums"]["currency"]
-          event_id: string
-          extra_guests_count: number
-          gift_recipient_user_id: string | null
-          id: string
-          min_spending_total: number | null
-          online_advance_amount: number | null
-          paid_at: string | null
-          payment_provider: string | null
-          provider_payment_id: string | null
-          provider_session_id: string | null
-          status: Database["public"]["Enums"]["purchase_status"]
-          ticket_id: string
-        }
-        Insert: {
-          amount: number
-          buyer_user_id: string
-          checkout_idempotency_key?: string | null
-          created_at?: string
-          currency: Database["public"]["Enums"]["currency"]
-          event_id: string
-          extra_guests_count?: number
-          gift_recipient_user_id?: string | null
-          id?: string
-          min_spending_total?: number | null
-          online_advance_amount?: number | null
-          paid_at?: string | null
-          payment_provider?: string | null
-          provider_payment_id?: string | null
-          provider_session_id?: string | null
-          status?: Database["public"]["Enums"]["purchase_status"]
-          ticket_id: string
-        }
-        Update: {
-          amount?: number
-          buyer_user_id?: string
-          checkout_idempotency_key?: string | null
-          created_at?: string
-          currency?: Database["public"]["Enums"]["currency"]
-          event_id?: string
-          extra_guests_count?: number
-          gift_recipient_user_id?: string | null
-          id?: string
-          min_spending_total?: number | null
-          online_advance_amount?: number | null
-          paid_at?: string | null
-          payment_provider?: string | null
-          provider_payment_id?: string | null
-          provider_session_id?: string | null
-          status?: Database["public"]["Enums"]["purchase_status"]
-          ticket_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "purchases_buyer_user_id_fkey"
-            columns: ["buyer_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "purchases_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "purchases_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      resale_listings: {
-        Row: {
-          buyer_total_amount: number | null
-          buyer_user_id: string | null
-          checkout_idempotency_key: string | null
-          created_at: string
-          currency: Database["public"]["Enums"]["currency"]
-          id: string
-          payment_provider: string | null
-          platform_fee_amount: number
-          price: number
-          provider_session_id: string | null
-          seller_user_id: string
-          sold_at: string | null
-          status: Database["public"]["Enums"]["listing_status"]
-          ticket_id: string
-        }
-        Insert: {
-          buyer_total_amount?: number | null
-          buyer_user_id?: string | null
-          checkout_idempotency_key?: string | null
-          created_at?: string
-          currency: Database["public"]["Enums"]["currency"]
-          id?: string
-          payment_provider?: string | null
-          platform_fee_amount?: number
-          price: number
-          provider_session_id?: string | null
-          seller_user_id: string
-          sold_at?: string | null
-          status?: Database["public"]["Enums"]["listing_status"]
-          ticket_id: string
-        }
-        Update: {
-          buyer_total_amount?: number | null
-          buyer_user_id?: string | null
-          checkout_idempotency_key?: string | null
-          created_at?: string
-          currency?: Database["public"]["Enums"]["currency"]
-          id?: string
-          payment_provider?: string | null
-          platform_fee_amount?: number
-          price?: number
-          provider_session_id?: string | null
-          seller_user_id?: string
-          sold_at?: string | null
-          status?: Database["public"]["Enums"]["listing_status"]
-          ticket_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "resale_listings_buyer_user_id_fkey"
-            columns: ["buyer_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "resale_listings_seller_user_id_fkey"
-            columns: ["seller_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "resale_listings_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      resale_seller_settlements: {
-        Row: {
-          amount: number
-          created_at: string
-          currency: Database["public"]["Enums"]["currency"]
-          id: string
-          listing_id: string
-          provider_transfer_id: string | null
-          seller_user_id: string
-          status: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          currency: Database["public"]["Enums"]["currency"]
-          id?: string
-          listing_id: string
-          provider_transfer_id?: string | null
-          seller_user_id: string
-          status?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          currency?: Database["public"]["Enums"]["currency"]
-          id?: string
-          listing_id?: string
-          provider_transfer_id?: string | null
-          seller_user_id?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "resale_seller_settlements_listing_id_fkey"
-            columns: ["listing_id"]
-            isOneToOne: true
-            referencedRelation: "resale_listings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "resale_seller_settlements_seller_user_id_fkey"
-            columns: ["seller_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      site_settings: {
-        Row: {
-          id: string
-          landing_audience_url: string | null
-          landing_dashboard_url: string | null
-          landing_hero_bg_url: string | null
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          landing_audience_url?: string | null
-          landing_dashboard_url?: string | null
-          landing_hero_bg_url?: string | null
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          landing_audience_url?: string | null
-          landing_dashboard_url?: string | null
-          landing_hero_bg_url?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      ticket_categories: {
-        Row: {
-          base_capacity: number | null
-          benefits: string | null
-          color_hex: string | null
-          created_at: string
-          currency: Database["public"]["Enums"]["currency"]
-          description: string | null
-          event_id: string
-          extra_guests_enabled: boolean
-          id: string
-          image_ipfs_uri: string | null
-          image_url: string | null
-          kind: Database["public"]["Enums"]["ticket_category_kind"]
-          max_extra_guests: number | null
-          max_resale_price: number | null
-          min_spending: number | null
-          name: string
-          online_advance: number | null
-          price: number
-          price_per_extra_guest: number | null
-          public_sales_counter_enabled: boolean
-          resale_enabled: boolean
-          sales_enabled: boolean
-          sold_count: number
-          supply: number
-        }
-        Insert: {
-          base_capacity?: number | null
-          benefits?: string | null
-          color_hex?: string | null
-          created_at?: string
-          currency: Database["public"]["Enums"]["currency"]
-          description?: string | null
-          event_id: string
-          extra_guests_enabled?: boolean
-          id?: string
-          image_ipfs_uri?: string | null
-          image_url?: string | null
-          kind?: Database["public"]["Enums"]["ticket_category_kind"]
-          max_extra_guests?: number | null
-          max_resale_price?: number | null
-          min_spending?: number | null
-          name: string
-          online_advance?: number | null
-          price: number
-          price_per_extra_guest?: number | null
-          public_sales_counter_enabled?: boolean
-          resale_enabled?: boolean
-          sales_enabled?: boolean
-          sold_count?: number
-          supply: number
-        }
-        Update: {
-          base_capacity?: number | null
-          benefits?: string | null
-          color_hex?: string | null
-          created_at?: string
-          currency?: Database["public"]["Enums"]["currency"]
-          description?: string | null
-          event_id?: string
-          extra_guests_enabled?: boolean
-          id?: string
-          image_ipfs_uri?: string | null
-          image_url?: string | null
-          kind?: Database["public"]["Enums"]["ticket_category_kind"]
-          max_extra_guests?: number | null
-          max_resale_price?: number | null
-          min_spending?: number | null
-          name?: string
-          online_advance?: number | null
-          price?: number
-          price_per_extra_guest?: number | null
-          public_sales_counter_enabled?: boolean
-          resale_enabled?: boolean
-          sales_enabled?: boolean
-          sold_count?: number
-          supply?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ticket_categories_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ticket_redemptions: {
-        Row: {
-          controller_user_id: string
-          event_id: string
-          evm_address: string
-          gate_name: string | null
-          gate_session_id: string | null
-          id: string
-          redeem_tx_hash: string | null
-          redeemed_at: string
-          result: Database["public"]["Enums"]["redemption_result"]
-          ticket_id: string
-        }
-        Insert: {
-          controller_user_id: string
-          event_id: string
-          evm_address: string
-          gate_name?: string | null
-          gate_session_id?: string | null
-          id?: string
-          redeem_tx_hash?: string | null
-          redeemed_at?: string
-          result: Database["public"]["Enums"]["redemption_result"]
-          ticket_id: string
-        }
-        Update: {
-          controller_user_id?: string
-          event_id?: string
-          evm_address?: string
-          gate_name?: string | null
-          gate_session_id?: string | null
-          id?: string
-          redeem_tx_hash?: string | null
-          redeemed_at?: string
-          result?: Database["public"]["Enums"]["redemption_result"]
-          ticket_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ticket_redemptions_controller_user_id_fkey"
-            columns: ["controller_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ticket_redemptions_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ticket_redemptions_gate_session_id_fkey"
-            columns: ["gate_session_id"]
-            isOneToOne: false
-            referencedRelation: "gate_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ticket_redemptions_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tickets: {
-        Row: {
-          canceled_at: string | null
-          category_id: string
-          color_hex_snapshot: string | null
-          created_at: string
-          current_listing_id: string | null
-          event_id: string
-          extra_guests_count: number
-          id: string
-          image_url: string | null
-          last_transfer_tx_hash: string | null
-          metadata_uri: string | null
-          min_spending_remaining: number | null
-          min_spending_total: number | null
-          mint_tx_hash: string | null
-          minted_at: string | null
-          nft_contract_address: string | null
-          nft_token_id: number | null
-          original_purchase_id: string | null
-          owner_evm_address: string | null
-          owner_user_id: string | null
-          redeem_tx_hash: string | null
-          refunded_at: string | null
-          reserved_until: string | null
-          serial_number: number
-          status: Database["public"]["Enums"]["ticket_status"]
-          total_headcount: number | null
-          transferred_off_platform_at: string | null
-          transferred_to_address: string | null
-          updated_at: string
-          used_at: string | null
-        }
-        Insert: {
-          canceled_at?: string | null
-          category_id: string
-          color_hex_snapshot?: string | null
-          created_at?: string
-          current_listing_id?: string | null
-          event_id: string
-          extra_guests_count?: number
-          id?: string
-          image_url?: string | null
-          last_transfer_tx_hash?: string | null
-          metadata_uri?: string | null
-          min_spending_remaining?: number | null
-          min_spending_total?: number | null
-          mint_tx_hash?: string | null
-          minted_at?: string | null
-          nft_contract_address?: string | null
-          nft_token_id?: number | null
-          original_purchase_id?: string | null
-          owner_evm_address?: string | null
-          owner_user_id?: string | null
-          redeem_tx_hash?: string | null
-          refunded_at?: string | null
-          reserved_until?: string | null
-          serial_number: number
-          status?: Database["public"]["Enums"]["ticket_status"]
-          total_headcount?: number | null
-          transferred_off_platform_at?: string | null
-          transferred_to_address?: string | null
-          updated_at?: string
-          used_at?: string | null
-        }
-        Update: {
-          canceled_at?: string | null
-          category_id?: string
-          color_hex_snapshot?: string | null
-          created_at?: string
-          current_listing_id?: string | null
-          event_id?: string
-          extra_guests_count?: number
-          id?: string
-          image_url?: string | null
-          last_transfer_tx_hash?: string | null
-          metadata_uri?: string | null
-          min_spending_remaining?: number | null
-          min_spending_total?: number | null
-          mint_tx_hash?: string | null
-          minted_at?: string | null
-          nft_contract_address?: string | null
-          nft_token_id?: number | null
-          original_purchase_id?: string | null
-          owner_evm_address?: string | null
-          owner_user_id?: string | null
-          redeem_tx_hash?: string | null
-          refunded_at?: string | null
-          reserved_until?: string | null
-          serial_number?: number
-          status?: Database["public"]["Enums"]["ticket_status"]
-          total_headcount?: number | null
-          transferred_off_platform_at?: string | null
-          transferred_to_address?: string | null
-          updated_at?: string
-          used_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tickets_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "ticket_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tickets_current_listing_fk"
-            columns: ["current_listing_id"]
-            isOneToOne: false
-            referencedRelation: "resale_listings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tickets_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tickets_owner_user_id_fkey"
-            columns: ["owner_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      wallets: {
-        Row: {
-          created_at: string
-          evm_address: string
-          id: string
-          is_primary: boolean
-          smart_account_address: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          evm_address: string
-          id?: string
-          is_primary?: boolean
-          smart_account_address?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          evm_address?: string
-          id?: string
-          is_primary?: boolean
-          smart_account_address?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wallets_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-    }
-    Views: {
-      event_popularity: {
-        Row: {
-          event_id: string | null
-          tickets_sold: number | null
-        }
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-    }
-    Functions: {
-      current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Enums"]["user_role"]
-      }
-      has_role: {
-        Args: {
-          roles: Database["public"]["Enums"]["user_role"][]
-        }
-        Returns: boolean
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-    }
+      [K in keyof RowMap]: {
+        Row: RowMap[K];
+        Insert: Partial<RowMap[K]>;
+        Update: Partial<RowMap[K]>;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: FunctionMap;
+    Enums: EnumMap;
+    CompositeTypes: Record<string, never>;
+  };
+};
+export const Constants = {
+  public: {
     Enums: {
-      currency: "EUR"
-      event_genre: "techno" | "afro_house" | "rap" | "commercial" | "live"
-      event_status: "draft" | "published" | "canceled" | "completed"
-      event_vibe:
-        | "club"
-        | "festival"
-        | "rooftop"
-        | "student_party"
-        | "private_event"
-      listing_status:
-        | "active"
-        | "sold"
-        | "canceled"
-        | "expired"
-        | "transferring"
-        | "repair_needed"
-      purchase_status: "pending" | "paid" | "failed" | "refunded"
-      redemption_result:
-        | "valid"
-        | "already_used"
-        | "refunded"
-        | "canceled"
-        | "wrong_event"
-        | "expired"
-        | "owner_mismatch"
-        | "invalid_signature"
-        | "wrong_category"
-        | "tx_failed"
-        | "tx_pending"
-        | "no_ticket"
-        | "no_session"
-      ticket_status:
-        | "available"
-        | "reserved"
-        | "sold"
-        | "listed"
-        | "used"
-        | "refunded"
-        | "canceled"
-        | "expired"
-        | "refund_pending"
-        | "minting"
-        | "transferring"
-        | "repair_needed"
-      ticket_category_kind: "standard" | "club_table"
-      user_role: "user" | "controller" | "admin" | "organizer"
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-  storage: {
-    Tables: {
-      buckets: {
-        Row: {
-          allowed_mime_types: string[] | null
-          avif_autodetection: boolean | null
-          created_at: string | null
-          file_size_limit: number | null
-          id: string
-          name: string
-          owner: string | null
-          owner_id: string | null
-          public: boolean | null
-          type: Database["storage"]["Enums"]["buckettype"]
-          updated_at: string | null
-        }
-        Insert: {
-          allowed_mime_types?: string[] | null
-          avif_autodetection?: boolean | null
-          created_at?: string | null
-          file_size_limit?: number | null
-          id: string
-          name: string
-          owner?: string | null
-          owner_id?: string | null
-          public?: boolean | null
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string | null
-        }
-        Update: {
-          allowed_mime_types?: string[] | null
-          avif_autodetection?: boolean | null
-          created_at?: string | null
-          file_size_limit?: number | null
-          id?: string
-          name?: string
-          owner?: string | null
-          owner_id?: string | null
-          public?: boolean | null
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      buckets_analytics: {
-        Row: {
-          created_at: string
-          deleted_at: string | null
-          format: string
-          id: string
-          name: string
-          type: Database["storage"]["Enums"]["buckettype"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          deleted_at?: string | null
-          format?: string
-          id?: string
-          name: string
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          deleted_at?: string | null
-          format?: string
-          id?: string
-          name?: string
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      buckets_vectors: {
-        Row: {
-          created_at: string
-          id: string
-          type: Database["storage"]["Enums"]["buckettype"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id: string
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          type?: Database["storage"]["Enums"]["buckettype"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      iceberg_namespaces: {
-        Row: {
-          bucket_name: string
-          catalog_id: string
-          created_at: string
-          id: string
-          metadata: Json
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          bucket_name: string
-          catalog_id: string
-          created_at?: string
-          id?: string
-          metadata?: Json
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          bucket_name?: string
-          catalog_id?: string
-          created_at?: string
-          id?: string
-          metadata?: Json
-          name?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "iceberg_namespaces_catalog_id_fkey"
-            columns: ["catalog_id"]
-            isOneToOne: false
-            referencedRelation: "buckets_analytics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      iceberg_tables: {
-        Row: {
-          bucket_name: string
-          catalog_id: string
-          created_at: string
-          id: string
-          location: string
-          name: string
-          namespace_id: string
-          remote_table_id: string | null
-          shard_id: string | null
-          shard_key: string | null
-          updated_at: string
-        }
-        Insert: {
-          bucket_name: string
-          catalog_id: string
-          created_at?: string
-          id?: string
-          location: string
-          name: string
-          namespace_id: string
-          remote_table_id?: string | null
-          shard_id?: string | null
-          shard_key?: string | null
-          updated_at?: string
-        }
-        Update: {
-          bucket_name?: string
-          catalog_id?: string
-          created_at?: string
-          id?: string
-          location?: string
-          name?: string
-          namespace_id?: string
-          remote_table_id?: string | null
-          shard_id?: string | null
-          shard_key?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "iceberg_tables_catalog_id_fkey"
-            columns: ["catalog_id"]
-            isOneToOne: false
-            referencedRelation: "buckets_analytics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "iceberg_tables_namespace_id_fkey"
-            columns: ["namespace_id"]
-            isOneToOne: false
-            referencedRelation: "iceberg_namespaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      migrations: {
-        Row: {
-          executed_at: string | null
-          hash: string
-          id: number
-          name: string
-        }
-        Insert: {
-          executed_at?: string | null
-          hash: string
-          id: number
-          name: string
-        }
-        Update: {
-          executed_at?: string | null
-          hash?: string
-          id?: number
-          name?: string
-        }
-        Relationships: []
-      }
-      objects: {
-        Row: {
-          bucket_id: string | null
-          created_at: string | null
-          id: string
-          last_accessed_at: string | null
-          metadata: Json | null
-          name: string | null
-          owner: string | null
-          owner_id: string | null
-          path_tokens: string[] | null
-          updated_at: string | null
-          user_metadata: Json | null
-          version: string | null
-        }
-        Insert: {
-          bucket_id?: string | null
-          created_at?: string | null
-          id?: string
-          last_accessed_at?: string | null
-          metadata?: Json | null
-          name?: string | null
-          owner?: string | null
-          owner_id?: string | null
-          path_tokens?: string[] | null
-          updated_at?: string | null
-          user_metadata?: Json | null
-          version?: string | null
-        }
-        Update: {
-          bucket_id?: string | null
-          created_at?: string | null
-          id?: string
-          last_accessed_at?: string | null
-          metadata?: Json | null
-          name?: string | null
-          owner?: string | null
-          owner_id?: string | null
-          path_tokens?: string[] | null
-          updated_at?: string | null
-          user_metadata?: Json | null
-          version?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "objects_bucketId_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      s3_multipart_uploads: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          id: string
-          in_progress_size: number
-          key: string
-          metadata: Json | null
-          owner_id: string | null
-          upload_signature: string
-          user_metadata: Json | null
-          version: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          id: string
-          in_progress_size?: number
-          key: string
-          metadata?: Json | null
-          owner_id?: string | null
-          upload_signature: string
-          user_metadata?: Json | null
-          version: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          id?: string
-          in_progress_size?: number
-          key?: string
-          metadata?: Json | null
-          owner_id?: string | null
-          upload_signature?: string
-          user_metadata?: Json | null
-          version?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "s3_multipart_uploads_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      s3_multipart_uploads_parts: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          etag: string
-          id: string
-          key: string
-          owner_id: string | null
-          part_number: number
-          size: number
-          upload_id: string
-          version: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          etag: string
-          id?: string
-          key: string
-          owner_id?: string | null
-          part_number: number
-          size?: number
-          upload_id: string
-          version: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          etag?: string
-          id?: string
-          key?: string
-          owner_id?: string | null
-          part_number?: number
-          size?: number
-          upload_id?: string
-          version?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "s3_multipart_uploads_parts_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "s3_multipart_uploads_parts_upload_id_fkey"
-            columns: ["upload_id"]
-            isOneToOne: false
-            referencedRelation: "s3_multipart_uploads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vector_indexes: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          data_type: string
-          dimension: number
-          distance_metric: string
-          id: string
-          metadata_configuration: Json | null
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          data_type: string
-          dimension: number
-          distance_metric: string
-          id?: string
-          metadata_configuration?: Json | null
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          data_type?: string
-          dimension?: number
-          distance_metric?: string
-          id?: string
-          metadata_configuration?: Json | null
-          name?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vector_indexes_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets_vectors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      allow_any_operation: {
-        Args: {
-          expected_operations: string[]
-        }
-        Returns: boolean
-      }
-      allow_only_operation: {
-        Args: {
-          expected_operation: string
-        }
-        Returns: boolean
-      }
-      can_insert_object: {
-        Args: {
-          bucketid: string
-          name: string
-          owner: string
-          metadata: Json
-        }
-        Returns: undefined
-      }
-      extension: {
-        Args: {
-          name: string
-        }
-        Returns: string
-      }
-      filename: {
-        Args: {
-          name: string
-        }
-        Returns: string
-      }
-      foldername: {
-        Args: {
-          name: string
-        }
-        Returns: string[]
-      }
-      get_common_prefix: {
-        Args: {
-          p_key: string
-          p_prefix: string
-          p_delimiter: string
-        }
-        Returns: string
-      }
-      get_size_by_bucket: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          size: number
-          bucket_id: string
-        }[]
-      }
-      list_multipart_uploads_with_delimiter: {
-        Args: {
-          bucket_id: string
-          prefix_param: string
-          delimiter_param: string
-          max_keys?: number
-          next_key_token?: string
-          next_upload_token?: string
-        }
-        Returns: {
-          key: string
-          id: string
-          created_at: string
-        }[]
-      }
-      list_objects_with_delimiter: {
-        Args: {
-          _bucket_id: string
-          prefix_param: string
-          delimiter_param: string
-          max_keys?: number
-          start_after?: string
-          next_token?: string
-          sort_order?: string
-        }
-        Returns: {
-          name: string
-          id: string
-          metadata: Json
-          updated_at: string
-          created_at: string
-          last_accessed_at: string
-        }[]
-      }
-      operation: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      search: {
-        Args: {
-          prefix: string
-          bucketname: string
-          limits?: number
-          levels?: number
-          offsets?: number
-          search?: string
-          sortcolumn?: string
-          sortorder?: string
-        }
-        Returns: {
-          name: string
-          id: string
-          updated_at: string
-          created_at: string
-          last_accessed_at: string
-          metadata: Json
-        }[]
-      }
-      search_by_timestamp: {
-        Args: {
-          p_prefix: string
-          p_bucket_id: string
-          p_limit: number
-          p_level: number
-          p_start_after: string
-          p_sort_order: string
-          p_sort_column: string
-          p_sort_column_after: string
-        }
-        Returns: {
-          key: string
-          name: string
-          id: string
-          updated_at: string
-          created_at: string
-          last_accessed_at: string
-          metadata: Json
-        }[]
-      }
-      search_v2: {
-        Args: {
-          prefix: string
-          bucket_name: string
-          limits?: number
-          levels?: number
-          start_after?: string
-          sort_order?: string
-          sort_column?: string
-          sort_column_after?: string
-        }
-        Returns: {
-          key: string
-          name: string
-          id: string
-          updated_at: string
-          created_at: string
-          last_accessed_at: string
-          metadata: Json
-        }[]
-      }
-    }
-    Enums: {
-      buckettype: "STANDARD" | "ANALYTICS" | "VECTOR"
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
-
-type PublicSchema = Database[Extract<keyof Database, "public">]
-
-export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-// ---- Convenience row aliases for app code ----
-// Generated types above are the source of truth. These aliases keep
-// imports stable across the codebase and survive regeneration.
-
-export type EventRow = Tables<"events">
-export type Profile = Tables<"profiles">
-export type Ticket = Tables<"tickets">
-export type TicketCategory = Tables<"ticket_categories">
-export type TicketRedemption = Tables<"ticket_redemptions">
-export type Purchase = Tables<"purchases">
-export type ResaleListing = Tables<"resale_listings">
-export type Wallet = Tables<"wallets">
-export type GateSession = Tables<"gate_sessions">
-export type AuditLog = Tables<"audit_logs">
-export type EventController = Tables<"event_controllers">
-export type ChainOp = Tables<"chain_ops">
-
-export type Currency = Enums<"currency">
-export type UserRole = Enums<"user_role">
-export type RedemptionResult = Enums<"redemption_result">
-export type TicketCategoryKind = Enums<"ticket_category_kind">
+      currency: ["EUR"],
+      event_genre: ["techno", "afro_house", "rap", "commercial", "live"],
+      event_status: ["draft", "published", "canceled", "completed"],
+      event_vibe: [
+        "club",
+        "festival",
+        "rooftop",
+        "student_party",
+        "private_event",
+      ],
+      listing_status: [
+        "active",
+        "sold",
+        "canceled",
+        "expired",
+        "transferring",
+        "repair_needed",
+      ],
+      marketplace_payment_kind: ["primary", "resale"],
+      marketplace_payment_status: [
+        "requires_payment",
+        "processing",
+        "succeeded",
+        "fulfillment_pending",
+        "transfers_pending",
+        "paid",
+        "failed",
+        "refund_pending",
+        "refunded",
+        "disputed",
+        "repair_needed",
+      ],
+      marketplace_transfer_recipient_role: ["organizer", "resale_seller"],
+      marketplace_transfer_status: ["pending", "created", "reversed", "failed"],
+      organization_role: ["admin", "controller"],
+      organization_status: ["active", "suspended", "deleted"],
+      purchase_status: ["pending", "paid", "failed", "refunded"],
+      redemption_result: [
+        "valid",
+        "already_used",
+        "refunded",
+        "canceled",
+        "wrong_event",
+        "expired",
+        "owner_mismatch",
+        "invalid_signature",
+        "tx_failed",
+        "tx_pending",
+        "no_ticket",
+        "no_session",
+        "wrong_category",
+      ],
+      sales_channel: [
+        "mini_site",
+        "qr",
+        "marketplace",
+        "widget",
+        "ticket_office",
+        "invitation",
+        "import",
+      ],
+      seller_risk_status: ["clear", "restricted", "owes_recovery", "blocked"],
+      ticket_category_kind: ["standard", "club_table"],
+      ticket_status: [
+        "available",
+        "reserved",
+        "sold",
+        "listed",
+        "used",
+        "refunded",
+        "canceled",
+        "expired",
+        "refund_pending",
+        "minting",
+        "transferring",
+        "repair_needed",
+      ],
+      user_role: ["user", "controller", "admin", "organizer"],
+    },
+  },
+} as const;

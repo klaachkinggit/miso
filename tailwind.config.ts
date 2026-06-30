@@ -11,6 +11,16 @@ const config: Config = {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+        display: ["var(--font-display)", "Georgia", "serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -45,15 +55,26 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-      fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+        ink: {
+          DEFAULT: "hsl(var(--ink))",
+          raised: "hsl(var(--ink-raised))",
+          soft: "hsl(var(--ink-soft))",
+          elevated: "hsl(var(--ink-elevated))",
+        },
+        paper: {
+          DEFAULT: "hsl(var(--paper))",
+          warm: "hsl(var(--paper-warm))",
+          hairline: "hsl(var(--paper-hairline))",
+        },
+        signal: {
+          DEFAULT: "hsl(var(--signal))",
+          pressed: "hsl(var(--signal-pressed))",
+          soft: "hsl(var(--signal-soft))",
+        },
+        hairline: {
+          DEFAULT: "hsl(var(--hairline))",
+          strong: "hsl(var(--hairline-strong))",
+        },
       },
       keyframes: {
         "accordion-down": {

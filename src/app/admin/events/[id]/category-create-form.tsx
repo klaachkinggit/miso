@@ -31,9 +31,10 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
   const isClub = kind === "club_table";
 
   return (
-    <Card className="glass h-fit rounded-lg">
+    <Card className="h-fit rounded-lg">
       <CardHeader>
-        <CardTitle>Add category</CardTitle>
+        <p className="eyebrow">Inventory</p>
+        <CardTitle>Add category.</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={createCategory} className="grid gap-4">
@@ -65,8 +66,17 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <Label htmlFor="price">{isClub ? "Table price (base)" : "Price"}</Label>
-              <Input id="price" name="price" type="number" step="0.01" min="0" required />
+              <Label htmlFor="price">
+                {isClub ? "Table price (base)" : "Price"}
+              </Label>
+              <Input
+                id="price"
+                name="price"
+                type="number"
+                step="0.01"
+                min="0"
+                required
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="currency">Currency</Label>
@@ -87,15 +97,22 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="max_resale_price">Max resale</Label>
-              <Input id="max_resale_price" name="max_resale_price" type="number" step="0.01" min="0" />
+              <Input
+                id="max_resale_price"
+                name="max_resale_price"
+                type="number"
+                step="0.01"
+                min="0"
+              />
             </div>
           </div>
 
           {isClub ? (
-            <div className="grid gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-              <p className="text-xs uppercase tracking-wide text-amber-300/80">Club table</p>
-              <p className="text-xs text-amber-200/70">
-                The table price above doubles as the minimum spending for the table.
+            <div className="grid gap-3 rounded-md border border-hairline bg-ink-soft p-3">
+              <p className="eyebrow-signal">Club table</p>
+              <p className="text-xs text-muted-foreground">
+                The table price above doubles as the minimum spending for the
+                table.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
@@ -133,7 +150,9 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
                       onChange={(e) => setColor(e.target.value)}
                       className="h-10 w-12 cursor-pointer rounded border border-input bg-transparent"
                     />
-                    <span className="font-mono text-xs text-muted-foreground">{color}</span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {color}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -150,7 +169,9 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
               {extraGuests ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="price_per_extra_guest">Price per extra guest</Label>
+                    <Label htmlFor="price_per_extra_guest">
+                      Price per extra guest
+                    </Label>
                     <Input
                       id="price_per_extra_guest"
                       name="price_per_extra_guest"
@@ -198,7 +219,7 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
                     <Loader2 className="h-4 w-4 animate-spin" /> Uploading
                   </span>
                 ) : imageUrl ? (
-                  <span className="flex items-center gap-2 text-emerald-300">
+                  <span className="flex items-center gap-2 text-signal">
                     <ImagePlus className="h-4 w-4" /> Tier artwork ready
                   </span>
                 ) : (
@@ -210,11 +231,21 @@ export function CategoryCreateForm({ eventId }: { eventId: string }) {
 
           <div className="grid gap-2 rounded-md border border-border/70 p-3 text-sm">
             <label className="flex items-center gap-3">
-              <input name="sales_enabled" type="checkbox" className="h-4 w-4" defaultChecked />
+              <input
+                name="sales_enabled"
+                type="checkbox"
+                className="h-4 w-4"
+                defaultChecked
+              />
               Sales enabled
             </label>
             <label className="flex items-center gap-3">
-              <input name="resale_enabled" type="checkbox" className="h-4 w-4" defaultChecked />
+              <input
+                name="resale_enabled"
+                type="checkbox"
+                className="h-4 w-4"
+                defaultChecked
+              />
               Resale enabled
             </label>
             <label className="flex items-center gap-3">

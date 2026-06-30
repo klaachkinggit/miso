@@ -34,6 +34,7 @@ import {
 } from "@/lib/thirdweb/transactions";
 import { ensureUserWallet } from "@/lib/thirdweb/wallet";
 import { markTicketRedeemed } from "@/lib/tickets/lifecycle";
+import { verifyGateToken } from "@/lib/gates/rotating-token";
 import type {
   EventRow,
   GateSession,
@@ -105,12 +106,15 @@ export async function prepareRedemption(params: {
     .eq("id", params.ticketId)
     .single<Ticket>();
   if (!ticket) throw new Error("Ticket not found");
-  if (ticket.owner_user_id !== params.userId) throw new DomainError("Not ticket owner");
-  if (ticket.event_id !== gate.event_id) throw new DomainError("Ticket is for a different event");
+  if (ticket.owner_user_id !== params.userId)
+    throw new DomainError("Not ticket owner");
+  if (ticket.event_id !== gate.event_id)
+    throw new DomainError("Ticket is for a different event");
   if (!gateAllowsTicketCategory(gate, ticket.category_id)) {
     throw new DomainError("Ticket category is not accepted at this gate");
   }
-  if (ticket.status !== "sold") throw new Error(`Ticket not redeemable (status: ${ticket.status})`);
+  if (ticket.status !== "sold")
+    throw new Error(`Ticket not redeemable (status: ${ticket.status})`);
   if (!ticket.nft_contract_address || ticket.nft_token_id === null) {
     throw new Error("Ticket has no on-chain identity");
   }
@@ -194,12 +198,22 @@ export async function confirmRedemption(params: {
   userId: string;
   gateShortCode: string;
   ticketId: string;
+  token?: string;
 }): Promise<ConfirmOutcome> {
   const sb = createServiceClient();
 
   const gate = await getGateSessionByShortCode(params.gateShortCode);
   if (!gate) return { result: "no_session", reason: "Gate not found" };
-  if (!isGateSessionUsable(gate)) return { result: "no_session", reason: "Gate closed/expired" };
+  if (!isGateSessionUsable(gate))
+    return { result: "no_session", reason: "Gate closed/expired" };
+  // Rotating-QR freshness (no-op when MISO_GATE_ROTATION_SECRET is unset): a stale
+  // screenshot or shared link carries an expired token and is rejected here.
+  if (!verifyGateToken(gate.id, params.token)) {
+    return {
+      result: "no_session",
+      reason: "Gate code expired — rescan the QR",
+    };
+  }
 
   const { data: ticket } = await sb
     .from("tickets")
@@ -237,7 +251,10 @@ export async function confirmRedemption(params: {
       gate_name: gate.gate_name,
       redeem_tx_hash: null,
     });
-    return { result: "wrong_category", reason: "Ticket category is not accepted at this gate" };
+    return {
+      result: "wrong_category",
+      reason: "Ticket category is not accepted at this gate",
+    };
   }
 
   const { data: event } = await sb
@@ -259,7 +276,8 @@ export async function confirmRedemption(params: {
       redeem_tx_hash: null,
     }).then(() => ({ result, reason }));
 
-  if (ticket.status === "used") return failFast("already_used", "Ticket already used");
+  if (ticket.status === "used")
+    return failFast("already_used", "Ticket already used");
   if (ticket.status === "refund_pending" || ticket.status === "refunded") {
     return failFast("refunded", "Ticket refunded");
   }
@@ -267,7 +285,8 @@ export async function confirmRedemption(params: {
     return failFast("canceled", "Ticket canceled");
   }
   if (ticket.status === "expired") return failFast("expired", "Ticket expired");
-  if (ticket.status !== "sold") return failFast("invalid_signature", `Bad status ${ticket.status}`);
+  if (ticket.status !== "sold")
+    return failFast("invalid_signature", `Bad status ${ticket.status}`);
   if (!ticket.nft_contract_address || ticket.nft_token_id === null) {
     return failFast("invalid_signature", "Ticket has no on-chain identity");
   }
@@ -285,7 +304,11 @@ export async function confirmRedemption(params: {
       gate_name: gate.gate_name,
       redeem_tx_hash: null,
     });
-    return { result: "already_used", reason: "Concurrent redeem", redemption_id: redemption_id ?? undefined };
+    return {
+      result: "already_used",
+      reason: "Concurrent redeem",
+      redemption_id: redemption_id ?? undefined,
+    };
   }
 
   const redemption_id = await recordAndPublishGateResult({
@@ -302,7 +325,8 @@ export async function confirmRedemption(params: {
   // On-chain attribute write — DB flip already committed. Failure logs
   // an audit entry; admin retry tool can backfill the attribute.
   let redeemTxHash: string | null = null;
-  const roleAdmin = (event.role_admin_address ?? (await backendWallet())) as Address;
+  const roleAdmin = (event.role_admin_address ??
+    (await backendWallet())) as Address;
   // Bind idempotency to the redemption row id when we have one — that
   // way an admin replay (e.g. after a previous attempt's revert) does
   // not collide with the prior key. Falls back to ticket id if the

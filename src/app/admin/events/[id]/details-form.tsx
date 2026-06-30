@@ -11,10 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { casablancaInputValue } from "@/lib/format";
 import { shortAddress } from "@/lib/chain/utils";
 import { uploadPublicEventImage } from "@/lib/supabase/uploads";
-import { ImageUploadField } from "@/app/admin/events/image-upload-field";
-import { DiscoveryFields } from "@/app/admin/events/discovery-fields";
+import { ImageUploadField } from "@/app/admin/_components/image-upload-field";
+import { DiscoveryFields } from "@/app/admin/_components/discovery-fields";
 import type { EventRow } from "@/types/db";
-import { cancelEvent, publishEvent, unpublishEvent, updateEvent } from "../../actions";
+import {
+  cancelEvent,
+  publishEvent,
+  unpublishEvent,
+  updateEvent,
+} from "../../actions";
 
 export function DetailsForm({ event }: { event: EventRow }) {
   const [floorPlanUrl, setFloorPlanUrl] = useState(event.floor_plan_url ?? "");
@@ -24,7 +29,9 @@ export function DetailsForm({ event }: { event: EventRow }) {
   async function uploadFloorPlan(file: File) {
     setUploadingFloor(true);
     try {
-      setFloorPlanUrl(await uploadPublicEventImage(file, `events/${event.id}/floor-plans`));
+      setFloorPlanUrl(
+        await uploadPublicEventImage(file, `events/${event.id}/floor-plans`),
+      );
     } finally {
       setUploadingFloor(false);
     }
@@ -32,12 +39,19 @@ export function DetailsForm({ event }: { event: EventRow }) {
 
   return (
     <div className="grid gap-5">
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-3">
-            <span>Event details</span>
-            <Badge variant={event.status === "published" ? "success" : "secondary"}>{event.status}</Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="eyebrow">Event</p>
+              <CardTitle className="mt-2">Details.</CardTitle>
+            </div>
+            <Badge
+              variant={event.status === "published" ? "signal" : "secondary"}
+            >
+              {event.status}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <form action={updateEvent} className="grid gap-5">
@@ -50,29 +64,57 @@ export function DetailsForm({ event }: { event: EventRow }) {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="date">Date</Label>
-                <Input id="date" name="date" type="datetime-local" defaultValue={casablancaInputValue(event.date)} required />
-                <p className="text-xs text-muted-foreground">Interpreted as Africa/Casablanca local time.</p>
+                <Input
+                  id="date"
+                  name="date"
+                  type="datetime-local"
+                  defaultValue={casablancaInputValue(event.date)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Interpreted as Africa/Casablanca local time.
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="capacity">Capacity</Label>
-                <Input id="capacity" name="capacity" type="number" min="1" defaultValue={event.capacity} required />
+                <Input
+                  id="capacity"
+                  name="capacity"
+                  type="number"
+                  min="1"
+                  defaultValue={event.capacity}
+                  required
+                />
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="venue_name">Venue</Label>
-                <Input id="venue_name" name="venue_name" defaultValue={event.venue_name} required />
+                <Input
+                  id="venue_name"
+                  name="venue_name"
+                  defaultValue={event.venue_name}
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="city">City</Label>
-                <Input id="city" name="city" defaultValue={event.city} required />
+                <Input
+                  id="city"
+                  name="city"
+                  defaultValue={event.city}
+                  required
+                />
               </div>
             </div>
             <DiscoveryFields event={event} />
             <div className="grid gap-5 rounded-md border border-border/60 bg-background/30 p-4">
-              <p className="text-sm font-medium text-foreground/90">Event artwork</p>
+              <p className="text-sm font-medium text-foreground/90">
+                Event artwork
+              </p>
               <p className="-mt-3 text-xs text-muted-foreground">
-                Upload distinct images for each surface. Any slot left empty falls back to the legacy event image.
+                Upload distinct images for each surface. Any slot left empty
+                falls back to the legacy event image.
               </p>
               <ImageUploadField
                 id="event-image"
@@ -122,17 +164,28 @@ export function DetailsForm({ event }: { event: EventRow }) {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" rows={5} defaultValue={event.description ?? ""} />
+              <Textarea
+                id="description"
+                name="description"
+                rows={5}
+                defaultValue={event.description ?? ""}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="conditions">Conditions</Label>
-              <Textarea id="conditions" name="conditions" rows={3} defaultValue={event.conditions ?? ""} />
+              <Textarea
+                id="conditions"
+                name="conditions"
+                rows={3}
+                defaultValue={event.conditions ?? ""}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="floor-plan">Floor plan / club map</Label>
               <p className="text-xs text-muted-foreground">
-                Shown to buyers below the ticket listings so they can cross-reference the
-                color vignette of each Club Table tier with its location at the venue.
+                Shown to buyers below the ticket listings so they can
+                cross-reference the color vignette of each Club Table tier with
+                its location at the venue.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Input
@@ -150,7 +203,7 @@ export function DetailsForm({ event }: { event: EventRow }) {
                       <Loader2 className="h-4 w-4 animate-spin" /> Uploading
                     </span>
                   ) : floorPlanUrl ? (
-                    <span className="flex items-center gap-2 text-emerald-300">
+                    <span className="flex items-center gap-2 text-signal">
                       <Map className="h-4 w-4" /> Map ready
                     </span>
                   ) : (
@@ -180,15 +233,17 @@ export function DetailsForm({ event }: { event: EventRow }) {
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              Sales, resale, and the public counter are configured per category in the panel
-              below.
+              Sales, resale, and the public counter are configured per category
+              in the panel below.
             </p>
-            <Button type="submit" disabled={uploadingImage || uploadingFloor}>Save changes</Button>
+            <Button type="submit" disabled={uploadingImage || uploadingFloor}>
+              Save changes
+            </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card className="glass rounded-lg">
+      <Card className="rounded-lg">
         <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="font-semibold">MisoTicket contract</h3>
@@ -209,14 +264,21 @@ export function DetailsForm({ event }: { event: EventRow }) {
           </div>
           <div className="flex flex-wrap gap-2">
             {!event.nft_contract_address && event.status !== "draft" ? (
-              <form action={`/api/admin/events/${event.id}/retry-deploy`} method="post">
-                <Button type="submit" variant="outline">Retry deploy</Button>
+              <form
+                action={`/api/admin/events/${event.id}/retry-deploy`}
+                method="post"
+              >
+                <Button type="submit" variant="outline">
+                  Retry deploy
+                </Button>
               </form>
             ) : null}
             {event.status === "published" ? (
               <form action={unpublishEvent}>
                 <input type="hidden" name="event_id" value={event.id} />
-                <Button type="submit" variant="outline">Unpublish</Button>
+                <Button type="submit" variant="outline">
+                  Unpublish
+                </Button>
               </form>
             ) : event.status === "draft" ? (
               <form action={publishEvent}>
@@ -227,7 +289,9 @@ export function DetailsForm({ event }: { event: EventRow }) {
             {event.status !== "canceled" ? (
               <form action={cancelEvent}>
                 <input type="hidden" name="event_id" value={event.id} />
-                <Button type="submit" variant="destructive">Cancel event</Button>
+                <Button type="submit" variant="destructive">
+                  Cancel event
+                </Button>
               </form>
             ) : null}
           </div>

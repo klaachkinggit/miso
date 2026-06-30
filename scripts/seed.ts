@@ -7,13 +7,15 @@
 //   - buyer@miso.local       password: misobuyer
 //   - organizer@miso.local   password: misoorganizer
 //   - admin@miso.local       password: misoadmin
-//
-// Fixture accounts for resale/controller e2e coverage are also seeded, but
-// they are not shown as primary demo credentials.
+//   - seller@miso.local      password: misoseller
+//   - controller@miso.local  password: misocontroller
 //
 // Creates:
+//   - Miso organization with Stripe-ready seller rows for local checkout
 //   - published events across tonight, this week, weekend, and next month
 //   - NFT ticket tiers seeded as `available`
+//   - controller access for every event
+//   - buyer ownership of four paid mini-site tickets for wallet/gate testing
 //
 // Run with: npm run demo:seed.
 // The script loads .env itself, matching the Next.js runtime.
@@ -41,29 +43,54 @@ interface SeedUser {
   password: string;
   display_name: string;
   role: "admin" | "organizer" | "user" | "controller";
-  demoLabel?: "buyer" | "organizer" | "admin";
+  demoLabel: "buyer" | "organizer" | "admin" | "seller" | "controller";
 }
 
-type DemoSeedUser = SeedUser & { demoLabel: "buyer" | "organizer" | "admin" };
+const DEMO_PASSWORDS = {
+  buyer: "misobuyer",
+  organizer: "misoorganizer",
+  admin: "misoadmin",
+  seller: "misoseller",
+  controller: "misocontroller",
+} as const;
 
-const demoUsers: DemoSeedUser[] = [
-  { email: "buyer@miso.local", password: "misobuyer", display_name: "Demo Buyer", role: "user", demoLabel: "buyer" },
+const users: SeedUser[] = [
+  {
+    email: "buyer@miso.local",
+    password: DEMO_PASSWORDS.buyer,
+    display_name: "Demo Buyer",
+    role: "user",
+    demoLabel: "buyer",
+  },
   {
     email: "organizer@miso.local",
-    password: "misoorganizer",
+    password: DEMO_PASSWORDS.organizer,
     display_name: "Demo Organizer",
     role: "organizer",
     demoLabel: "organizer",
   },
-  { email: "admin@miso.local", password: "misoadmin", display_name: "Demo Admin", role: "admin", demoLabel: "admin" },
+  {
+    email: "admin@miso.local",
+    password: DEMO_PASSWORDS.admin,
+    display_name: "Demo Admin",
+    role: "admin",
+    demoLabel: "admin",
+  },
+  {
+    email: "seller@miso.local",
+    password: DEMO_PASSWORDS.seller,
+    display_name: "Demo Seller",
+    role: "user",
+    demoLabel: "seller",
+  },
+  {
+    email: "controller@miso.local",
+    password: DEMO_PASSWORDS.controller,
+    display_name: "Demo Controller",
+    role: "controller",
+    demoLabel: "controller",
+  },
 ];
-
-const fixtureUsers: SeedUser[] = [
-  { email: "seller@miso.local", password: "misoseller", display_name: "Demo Seller", role: "user" },
-  { email: "controller@miso.local", password: "misocontroller", display_name: "Demo Controller", role: "controller" },
-];
-
-const users: SeedUser[] = [...demoUsers, ...fixtureUsers];
 
 interface SeedEvent {
   name: string;
@@ -112,8 +139,31 @@ function nextWeekday(base: Date, weekday: number, minimumDaysAway = 1) {
   return addDays(base, days);
 }
 
-function nextMonthDate(base: Date, dayOfMonth: number, hour: number, minute = 0) {
-  return new Date(base.getFullYear(), base.getMonth() + 1, dayOfMonth, hour, minute, 0, 0);
+function nextMonthDate(
+  base: Date,
+  dayOfMonth: number,
+  hour: number,
+  minute = 0,
+) {
+  return new Date(
+    base.getFullYear(),
+    base.getMonth() + 1,
+    dayOfMonth,
+    hour,
+    minute,
+    0,
+    0,
+  );
+}
+
+function slugify(value: string) {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "event"
+  );
 }
 
 function buildSeedEvents(): SeedEvent[] {
@@ -130,7 +180,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Concrete",
       city: "Paris",
       capacity: 900,
-      description: "A members-only electronic night with cinematic lighting, token-gated access, and collectible NFT tickets.",
+      description:
+        "A members-only electronic night with cinematic lighting, token-gated access, and collectible NFT tickets.",
       genre: "techno",
       vibe: "club",
       artists: ["Mila Stern", "DVS1"],
@@ -138,14 +189,17 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "General NFT",
           description: "Entry ticket minted to your event wallet.",
-          benefits: "QR check-in, NFT proof of attendance, and official resale eligibility.",
+          benefits:
+            "QR check-in, NFT proof of attendance, and official resale eligibility.",
           price: 18,
           supply: 36,
         },
         {
           name: "Gold Circle",
-          description: "Premium floor access with a limited collectible design.",
-          benefits: "Priority entry, collector artwork, and member-only bar access.",
+          description:
+            "Premium floor access with a limited collectible design.",
+          benefits:
+            "Priority entry, collector artwork, and member-only bar access.",
           price: 52,
           supply: 12,
         },
@@ -157,7 +211,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Tresor",
       city: "Berlin",
       capacity: 650,
-      description: "A raw warehouse performance with premium access control and anti-scalping resale limits.",
+      description:
+        "A raw warehouse performance with premium access control and anti-scalping resale limits.",
       genre: "techno",
       vibe: "club",
       artists: ["Bambounou", "Helena Hauff"],
@@ -165,14 +220,16 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Floor Token",
           description: "Main floor access for the live set.",
-          benefits: "NFT ticket, verified QR entry, and official marketplace protection.",
+          benefits:
+            "NFT ticket, verified QR entry, and official marketplace protection.",
           price: 26,
           supply: 34,
         },
         {
           name: "Backstage Ledger",
           description: "Limited backstage access with collector metadata.",
-          benefits: "Backstage wristband, priority gate, artist drop eligibility, and resale cap protection.",
+          benefits:
+            "Backstage wristband, priority gate, artist drop eligibility, and resale cap protection.",
           price: 90,
           supply: 6,
         },
@@ -184,7 +241,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Printworks",
       city: "London",
       capacity: 420,
-      description: "A curated rooftop concert blending fashion, music, and clean digital ownership.",
+      description:
+        "A curated rooftop concert blending fashion, music, and clean digital ownership.",
       genre: "live",
       vibe: "rooftop",
       artists: ["Jorja Smith", "SAULT Soundsystem"],
@@ -192,14 +250,16 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Skyline Entry",
           description: "Standard access with NFT ticket ownership.",
-          benefits: "Fast QR scan, on-chain ticket identity, and secure transfer history.",
+          benefits:
+            "Fast QR scan, on-chain ticket identity, and secure transfer history.",
           price: 22,
           supply: 28,
         },
         {
           name: "Balcony Member",
           description: "Elevated viewing and limited member collectible.",
-          benefits: "Balcony access, private check-in lane, and loyalty reward drop.",
+          benefits:
+            "Balcony access, private check-in lane, and loyalty reward drop.",
           price: 68,
           supply: 8,
         },
@@ -211,7 +271,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Shelter",
       city: "Amsterdam",
       capacity: 2500,
-      description: "A weekend festival afterparty with collectible tickets, VIP access, and secure member resale.",
+      description:
+        "A weekend festival afterparty with collectible tickets, VIP access, and secure member resale.",
       genre: "commercial",
       vibe: "festival",
       is_festival: true,
@@ -227,7 +288,8 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "VIP Membership",
           description: "VIP lounge and loyalty-linked access.",
-          benefits: "VIP lane, private platform, loyalty reward, and limited gold ticket art.",
+          benefits:
+            "VIP lane, private platform, loyalty reward, and limited gold ticket art.",
           price: 120,
           supply: 10,
         },
@@ -239,7 +301,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "MISO Members House",
       city: "Lisbon",
       capacity: 300,
-      description: "A private culture and technology evening for promoters, artists, collectors, and nightlife members.",
+      description:
+        "A private culture and technology evening for promoters, artists, collectors, and nightlife members.",
       genre: "live",
       vibe: "private_event",
       artists: ["MISO Talks", "NTS Residents"],
@@ -247,14 +310,16 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Member Access",
           description: "Forum entry with digital identity activation.",
-          benefits: "Talks, wallet setup, NFT ticket, and loyalty program preview.",
+          benefits:
+            "Talks, wallet setup, NFT ticket, and loyalty program preview.",
           price: 12,
           supply: 40,
         },
         {
           name: "Founders NFT",
           description: "Limited membership pass for early MISO supporters.",
-          benefits: "Priority seating, founders collectible, VIP marketplace access, and future reward eligibility.",
+          benefits:
+            "Priority seating, founders collectible, VIP marketplace access, and future reward eligibility.",
           price: 48,
           supply: 14,
         },
@@ -266,7 +331,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Azotea Cibeles",
       city: "Madrid",
       capacity: 540,
-      description: "A skyline rooftop set with curated house DJs and gated member entry.",
+      description:
+        "A skyline rooftop set with curated house DJs and gated member entry.",
       genre: "afro_house",
       vibe: "rooftop",
       artists: ["Shimza", "Desiree"],
@@ -281,14 +347,17 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Sunset Lounge",
           description: "Reserved seating zone with bottle service add-on.",
-          benefits: "Reserved seating, fast lane, drink credit, member-only after-hours.",
+          benefits:
+            "Reserved seating, fast lane, drink credit, member-only after-hours.",
           price: 75,
           supply: 10,
         },
         {
           name: "Skyline Club Table",
-          description: "Private rooftop club table with bottle minimum and host service.",
-          benefits: "Reserved table, dedicated host, fast lane entry, premium view.",
+          description:
+            "Private rooftop club table with bottle minimum and host service.",
+          benefits:
+            "Reserved table, dedicated host, fast lane entry, premium view.",
           price: 0,
           supply: 6,
           kind: "club_table",
@@ -308,7 +377,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Knockdown Center",
       city: "New York",
       capacity: 1800,
-      description: "An all-night industrial techno marathon with on-chain ticket protection.",
+      description:
+        "An all-night industrial techno marathon with on-chain ticket protection.",
       genre: "techno",
       vibe: "club",
       artists: ["Amelie Lens", "SPFDJ"],
@@ -323,7 +393,8 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Producer Booth",
           description: "Limited booth access with artist mingle.",
-          benefits: "Booth wristband, artist meet, signed vinyl drop, priority resale.",
+          benefits:
+            "Booth wristband, artist meet, signed vinyl drop, priority resale.",
           price: 145,
           supply: 8,
         },
@@ -335,7 +406,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Contact",
       city: "Tokyo",
       capacity: 700,
-      description: "A bass-driven night with collectible sticker drops and identity-bound tickets.",
+      description:
+        "A bass-driven night with collectible sticker drops and identity-bound tickets.",
       genre: "rap",
       vibe: "club",
       artists: ["Awich", "¥ØU$UK€ ¥UK1MAT$U"],
@@ -362,7 +434,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Riad Yima",
       city: "Marrakech",
       capacity: 280,
-      description: "An intimate riad night with live percussion and members-only entry list.",
+      description:
+        "An intimate riad night with live percussion and members-only entry list.",
       genre: "afro_house",
       vibe: "private_event",
       artists: ["Amine K", "Polyswitch"],
@@ -377,7 +450,8 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Salon Privé",
           description: "Reserved salon access with chef tasting.",
-          benefits: "Private salon, tasting menu, signed memorabilia, priority transfer.",
+          benefits:
+            "Private salon, tasting menu, signed memorabilia, priority transfer.",
           price: 95,
           supply: 8,
         },
@@ -389,7 +463,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Cova Santa",
       city: "Ibiza",
       capacity: 1400,
-      description: "A sunrise open-air session with token-gated lounges and resale price caps.",
+      description:
+        "A sunrise open-air session with token-gated lounges and resale price caps.",
       genre: "afro_house",
       vibe: "festival",
       is_festival: true,
@@ -417,7 +492,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Departamento",
       city: "Mexico City",
       capacity: 320,
-      description: "A vinyl-only listening room with rotating selectors and limited member badges.",
+      description:
+        "A vinyl-only listening room with rotating selectors and limited member badges.",
       genre: "commercial",
       vibe: "private_event",
       artists: ["Yu Su", "Gilles Peterson"],
@@ -432,7 +508,8 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Selector Seat",
           description: "Reserved seat behind the DJ booth.",
-          benefits: "Reserved seat, selector meet, vinyl raffle entry, member badge.",
+          benefits:
+            "Reserved seat, selector meet, vinyl raffle entry, member badge.",
           price: 58,
           supply: 8,
         },
@@ -444,7 +521,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Faust",
       city: "Seoul",
       capacity: 480,
-      description: "A garage and breaks marathon with member-only after-hours and digital collectibles.",
+      description:
+        "A garage and breaks marathon with member-only after-hours and digital collectibles.",
       genre: "rap",
       vibe: "club",
       artists: ["Yaeji", "Park Hye Jin"],
@@ -459,7 +537,8 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Selector Lounge",
           description: "Private lounge with selector mingle.",
-          benefits: "Private lounge, selector mingle, drink credit, signed collectible.",
+          benefits:
+            "Private lounge, selector mingle, drink credit, signed collectible.",
           price: 82,
           supply: 10,
         },
@@ -471,7 +550,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Harpa",
       city: "Reykjavik",
       capacity: 600,
-      description: "An ambient and techno hybrid show under aurora projections.",
+      description:
+        "An ambient and techno hybrid show under aurora projections.",
       genre: "techno",
       vibe: "festival",
       is_festival: true,
@@ -487,7 +567,8 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Glacier Suite",
           description: "Private suite with curated tasting flight.",
-          benefits: "Suite access, tasting flight, art print drop, priority resale.",
+          benefits:
+            "Suite access, tasting flight, art print drop, priority resale.",
           price: 140,
           supply: 8,
         },
@@ -499,7 +580,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "Sea Point Pavilion",
       city: "Cape Town",
       capacity: 1100,
-      description: "A coastal afterparty with sunset DJs, capped resale, and identity-bound NFTs.",
+      description:
+        "A coastal afterparty with sunset DJs, capped resale, and identity-bound NFTs.",
       genre: "afro_house",
       vibe: "festival",
       is_festival: true,
@@ -515,7 +597,8 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Yacht Deck",
           description: "Reserved deck access with curated host.",
-          benefits: "Deck access, host, drink package, priority transfer, member raffle.",
+          benefits:
+            "Deck access, host, drink package, priority transfer, member raffle.",
           price: 165,
           supply: 10,
         },
@@ -527,7 +610,8 @@ function buildSeedEvents(): SeedEvent[] {
       venue_name: "The Lawn",
       city: "Canggu",
       capacity: 900,
-      description: "A daytime jungle session with breathwork add-ons and on-chain ticket history.",
+      description:
+        "A daytime jungle session with breathwork add-ons and on-chain ticket history.",
       genre: "live",
       vibe: "festival",
       is_festival: true,
@@ -543,7 +627,8 @@ function buildSeedEvents(): SeedEvent[] {
         {
           name: "Tree House Lounge",
           description: "Reserved tree house with private bar.",
-          benefits: "Private lounge, bar credit, signed print, member loyalty boost.",
+          benefits:
+            "Private lounge, bar credit, signed print, member loyalty boost.",
           price: 92,
           supply: 8,
         },
@@ -573,7 +658,9 @@ async function ensureUser(user: SeedUser): Promise<string> {
     user_metadata: { full_name: user.display_name },
   });
   if (created.error || !created.data.user) {
-    throw new Error(`Failed to create auth user ${user.email}: ${created.error?.message}`);
+    throw new Error(
+      `Failed to create auth user ${user.email}: ${created.error?.message}`,
+    );
   }
   const userId = created.data.user.id;
   await sb.from("profiles").upsert({
@@ -585,14 +672,84 @@ async function ensureUser(user: SeedUser): Promise<string> {
   return userId;
 }
 
+async function ensureMisoOrganization(): Promise<string> {
+  const { data, error } = await sb
+    .from("organizations")
+    .upsert(
+      {
+        name: "Miso",
+        slug: "miso",
+        default_currency: "EUR",
+        status: "active",
+        stripe_account_id: "acct_seed_miso",
+        stripe_charges_enabled: true,
+        stripe_details_submitted: true,
+        stripe_payouts_enabled: true,
+      },
+      { onConflict: "slug" },
+    )
+    .select("id")
+    .single<{ id: string }>();
+  if (error || !data)
+    throw new Error(`Failed to ensure Miso organization: ${error?.message}`);
+  return data.id;
+}
+
+async function ensureOrganizationMembership(
+  organizationId: string,
+  userId: string,
+  role: "admin" | "controller",
+) {
+  const { error } = await sb.from("organization_memberships").upsert(
+    {
+      organization_id: organizationId,
+      user_id: userId,
+      role,
+    },
+    { onConflict: "organization_id,user_id" },
+  );
+  if (error)
+    throw new Error(`Failed to seed organization membership: ${error.message}`);
+}
+
+async function ensureStripeSellerAccount(userId: string, label: string) {
+  const { error } = await sb.from("stripe_seller_accounts").upsert(
+    {
+      user_id: userId,
+      stripe_account_id: `acct_seed_${label}`,
+      charges_enabled: true,
+      payouts_enabled: true,
+      details_submitted: true,
+      disabled_reason: null,
+      requirements_json: {},
+      seller_risk_status: "clear",
+      last_webhook_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  if (error)
+    throw new Error(
+      `Failed to seed Stripe seller account for ${label}: ${error.message}`,
+    );
+}
+
 async function hideThrowawayTestEvents() {
-  const fixturePrefixes = ["Authz Fixture", "ChainOps Fixture", "Invariant Cancel"];
+  const fixturePrefixes = [
+    "Authz Fixture",
+    "ChainOps Fixture",
+    "Invariant Cancel",
+  ];
   for (const prefix of fixturePrefixes) {
     const { error } = await sb
       .from("events")
-      .update({ status: "canceled", sales_enabled: false, resale_enabled: false })
+      .update({
+        status: "canceled",
+        sales_enabled: false,
+        resale_enabled: false,
+      })
       .like("name", `${prefix}%`);
-    if (error) throw new Error(`Failed to hide ${prefix} events: ${error.message}`);
+    if (error)
+      throw new Error(`Failed to hide ${prefix} events: ${error.message}`);
   }
   const legacyDemoNames = [
     "Miso Demo Night",
@@ -613,14 +770,21 @@ async function hideThrowawayTestEvents() {
     .from("events")
     .update({ status: "canceled", sales_enabled: false, resale_enabled: false })
     .in("name", legacyDemoNames);
-  if (error) throw new Error(`Failed to hide legacy demo events: ${error.message}`);
+  if (error)
+    throw new Error(`Failed to hide legacy demo events: ${error.message}`);
 }
 
-async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<string> {
+async function ensureEvent(
+  event: SeedEvent,
+  organizerUserId: string,
+  organizationId: string,
+): Promise<string> {
+  const slug = slugify(event.name);
   const { data: existing } = await sb
     .from("events")
     .select("id")
-    .eq("name", event.name)
+    .eq("organization_id", organizationId)
+    .eq("slug", slug)
     .maybeSingle();
   if (existing) {
     await sb
@@ -639,6 +803,8 @@ async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<s
         resale_enabled: true,
         public_sales_counter_enabled: true,
         organizer_user_id: organizerUserId,
+        organization_id: organizationId,
+        slug,
         status: "published",
       })
       .eq("id", existing.id);
@@ -662,11 +828,14 @@ async function ensureEvent(event: SeedEvent, organizerUserId: string): Promise<s
       resale_enabled: true,
       public_sales_counter_enabled: true,
       organizer_user_id: organizerUserId,
+      organization_id: organizationId,
+      slug,
       status: "published",
     })
     .select("id")
     .single();
-  if (error || !data) throw new Error(`Failed to create event: ${error?.message}`);
+  if (error || !data)
+    throw new Error(`Failed to create event: ${error?.message}`);
   return data.id;
 }
 
@@ -747,7 +916,10 @@ async function ensureCategoryWithTickets(args: {
     })
     .select("id")
     .single();
-  if (error || !category) throw new Error(`Failed to create category ${args.name}: ${error?.message}`);
+  if (error || !category)
+    throw new Error(
+      `Failed to create category ${args.name}: ${error?.message}`,
+    );
 
   await insertAvailableTickets({
     eventId: args.eventId,
@@ -781,7 +953,8 @@ async function insertAvailableTickets(args: {
     status: "available" as const,
   }));
   const { error: ticketsErr } = await sb.from("tickets").insert(ticketRows);
-  if (ticketsErr) throw new Error(`Failed to seed tickets: ${ticketsErr.message}`);
+  if (ticketsErr)
+    throw new Error(`Failed to seed tickets: ${ticketsErr.message}`);
 }
 
 async function ensureController(eventId: string, controllerUserId: string) {
@@ -790,16 +963,22 @@ async function ensureController(eventId: string, controllerUserId: string) {
     .upsert({ event_id: eventId, user_id: controllerUserId });
 }
 
-async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) {
+async function ensureBuyerOwnsTickets(
+  buyerUserId: string,
+  targetCount: number,
+) {
   const { data: ownedRows, error: ownedErr } = await sb
     .from("tickets")
     .select("id")
     .eq("owner_user_id", buyerUserId);
-  if (ownedErr) throw new Error(`Failed to read buyer tickets: ${ownedErr.message}`);
+  if (ownedErr)
+    throw new Error(`Failed to read buyer tickets: ${ownedErr.message}`);
   const alreadyOwned = ownedRows?.length ?? 0;
   const needed = Math.max(0, targetCount - alreadyOwned);
   if (needed === 0) {
-    console.log(`  buyer already owns ${alreadyOwned} ticket(s) — skipping claim`);
+    console.log(
+      `  buyer already owns ${alreadyOwned} ticket(s) — skipping claim`,
+    );
     return;
   }
 
@@ -808,11 +987,14 @@ async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) 
     .select("id, event_id, category_id")
     .eq("status", "available")
     .limit(needed * 3);
-  if (poolErr) throw new Error(`Failed to read available tickets: ${poolErr.message}`);
-  if (!pool || pool.length === 0) throw new Error("No available tickets to claim for buyer");
+  if (poolErr)
+    throw new Error(`Failed to read available tickets: ${poolErr.message}`);
+  if (!pool || pool.length === 0)
+    throw new Error("No available tickets to claim for buyer");
 
   const claimedEvents = new Set<string>();
-  const claims: Array<{ id: string; event_id: string; category_id: string }> = [];
+  const claims: Array<{ id: string; event_id: string; category_id: string }> =
+    [];
   for (const row of pool) {
     if (claimedEvents.has(row.event_id)) continue;
     claims.push(row);
@@ -833,7 +1015,20 @@ async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) 
       .select("price, currency, sold_count")
       .eq("id", ticket.category_id)
       .single<{ price: number; currency: "EUR"; sold_count: number }>();
-    if (catErr || !cat) throw new Error(`Failed to read category for ticket ${ticket.id}: ${catErr?.message}`);
+    if (catErr || !cat)
+      throw new Error(
+        `Failed to read category for ticket ${ticket.id}: ${catErr?.message}`,
+      );
+
+    const { data: event, error: eventErr } = await sb
+      .from("events")
+      .select("organization_id")
+      .eq("id", ticket.event_id)
+      .single<{ organization_id: string | null }>();
+    if (eventErr || !event)
+      throw new Error(
+        `Failed to read event for ticket ${ticket.id}: ${eventErr?.message}`,
+      );
 
     const sessionKey = `seed_buyer_${ticket.id}`;
     const { data: purchase, error: purchaseErr } = await sb
@@ -842,6 +1037,7 @@ async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) 
         {
           buyer_user_id: buyerUserId,
           event_id: ticket.event_id,
+          organization_id: event.organization_id,
           ticket_id: ticket.id,
           provider_session_id: sessionKey,
           provider_payment_id: `seed_pi_${ticket.id}`,
@@ -850,13 +1046,16 @@ async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) 
           amount: cat.price,
           currency: cat.currency,
           status: "paid",
+          sales_channel: "mini_site",
+          tracking_origin: "seed:demo",
           paid_at: new Date().toISOString(),
         },
         { onConflict: "provider_session_id" },
       )
       .select("id")
       .single<{ id: string }>();
-    if (purchaseErr || !purchase) throw new Error(`Failed to seed purchase: ${purchaseErr?.message}`);
+    if (purchaseErr || !purchase)
+      throw new Error(`Failed to seed purchase: ${purchaseErr?.message}`);
 
     const { error: ticketErr } = await sb
       .from("tickets")
@@ -867,14 +1066,19 @@ async function ensureBuyerOwnsTickets(buyerUserId: string, targetCount: number) 
         original_purchase_id: purchase.id,
       })
       .eq("id", ticket.id);
-    if (ticketErr) throw new Error(`Failed to claim ticket ${ticket.id}: ${ticketErr.message}`);
+    if (ticketErr)
+      throw new Error(
+        `Failed to claim ticket ${ticket.id}: ${ticketErr.message}`,
+      );
 
     await sb
       .from("ticket_categories")
       .update({ sold_count: cat.sold_count + 1 })
       .eq("id", ticket.category_id);
   }
-  console.log(`  buyer claimed ${claims.length} ticket(s) (total ${alreadyOwned + claims.length})`);
+  console.log(
+    `  buyer claimed ${claims.length} ticket(s) (total ${alreadyOwned + claims.length})`,
+  );
 }
 
 async function main() {
@@ -885,15 +1089,47 @@ async function main() {
     console.log(`  user ${user.email} → ${userIds[user.email]}`);
   }
 
+  const misoOrganizationId = await ensureMisoOrganization();
+  await ensureOrganizationMembership(
+    misoOrganizationId,
+    userIds["organizer@miso.local"],
+    "admin",
+  );
+  await ensureOrganizationMembership(
+    misoOrganizationId,
+    userIds["admin@miso.local"],
+    "admin",
+  );
+  await ensureOrganizationMembership(
+    misoOrganizationId,
+    userIds["controller@miso.local"],
+    "controller",
+  );
+  await ensureStripeSellerAccount(userIds["organizer@miso.local"], "organizer");
+  await ensureStripeSellerAccount(userIds["admin@miso.local"], "admin");
+  await ensureStripeSellerAccount(userIds["seller@miso.local"], "seller");
+  console.log(`  organization miso → ${misoOrganizationId}`);
+  console.log(
+    "  Stripe seller accounts ready for organizer, admin, and seller fixtures",
+  );
+
   await hideThrowawayTestEvents();
   console.log("  throwaway test events hidden");
 
   const events = buildSeedEvents();
   for (const [index, event] of events.entries()) {
     const organizerUserId =
-      index === 0 ? userIds["organizer@miso.local"] : userIds["admin@miso.local"];
-    const eventId = await ensureEvent(event, organizerUserId);
-    console.log(`  event ${eventId} — ${event.name} (${event.date.toLocaleString()})`);
+      index === 0
+        ? userIds["organizer@miso.local"]
+        : userIds["admin@miso.local"];
+    const eventId = await ensureEvent(
+      event,
+      organizerUserId,
+      misoOrganizationId,
+    );
+    console.log(
+      `  event ${eventId} — ${event.name} (${event.date.toLocaleString()})`,
+    );
     for (const category of event.categories) {
       await ensureCategoryWithTickets({
         eventId,
@@ -919,9 +1155,11 @@ async function main() {
 
   await ensureBuyerOwnsTickets(userIds["buyer@miso.local"], 4);
 
-  console.log("\nDone. Demo credentials:");
-  for (const user of demoUsers) {
-    console.log(`  ${user.demoLabel.padEnd(11)}  ${user.email}  /  ${user.password}`);
+  console.log("\nDone. Local test credentials:");
+  for (const user of users) {
+    console.log(
+      `  ${user.demoLabel.padEnd(11)}  ${user.email}  /  ${user.password}`,
+    );
   }
 }
 

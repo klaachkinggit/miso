@@ -1,55 +1,76 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { BottomNav } from "@/components/site/bottom-nav";
+import { SmoothScroll } from "@/components/site/smooth-scroll";
 import { Toaster } from "@/components/ui/toaster";
+import { getConfiguredAppUrl } from "@/lib/url";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  axes: ["opsz", "SOFT"],
+});
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3002";
+const siteUrl = getConfiguredAppUrl();
 
 const description =
-  "On-chain ticketing on Base. Buyers checkout with Stripe and mint an ERC-721 ticket per tier; organizers onboard via Stripe Connect and track sales, revenue, and door redemptions in real time. Anti-scalping resale with price caps.";
+  "MISO Tickets helps fans discover concerts, festivals, nightlife, and cultural events with verified digital tickets, secure checkout, QR door access, and official anti-scalping resale.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Miso — On-chain ticketing on Base",
-    template: "%s · Miso",
+    default: "MISO Tickets | Verified Event Tickets & Official Resale",
+    template: "%s · MISO Tickets",
   },
   description,
-  applicationName: "Miso",
+  applicationName: "MISO Tickets",
   generator: "Next.js",
   keywords: [
-    "NFT ticketing",
-    "Base Sepolia",
+    "MISO Tickets",
+    "MISO events",
+    "MISO ticketing",
+    "MISO resale",
+    "verified event tickets",
+    "concert tickets",
+    "festival tickets",
+    "nightlife tickets",
+    "verified digital ticketing",
     "ERC-721 tickets",
-    "Stripe Connect",
     "event organizer dashboard",
     "anti-scalping resale",
     "Web3 events",
-    "primary + resale marketplace",
+    "official ticket resale marketplace",
   ],
-  authors: [{ name: "Miso" }],
-  creator: "Miso",
-  publisher: "Miso",
+  authors: [{ name: "MISO Tickets" }],
+  creator: "MISO Tickets",
+  publisher: "MISO Tickets",
   category: "events",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     url: siteUrl,
-    siteName: "Miso",
-    title: "Miso — On-chain ticketing on Base",
+    siteName: "MISO Tickets",
+    title: "MISO Tickets | Verified Event Tickets & Official Resale",
     description,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Miso — On-chain ticketing on Base",
+    title: "MISO Tickets | Verified Event Tickets & Official Resale",
     description,
   },
   robots: {
@@ -61,20 +82,34 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#0e0e10",
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
 };
 
-export const dynamic = "force-dynamic";
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="en"
+      className={`dark ${geist.variable} ${geistMono.variable} ${fraunces.variable}`}
+    >
       <body className="font-sans">
+        <SmoothScroll />
+        <a
+          href="#main-content"
+          className="sr-only z-[100] focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-paper focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ink focus:shadow-lg"
+        >
+          Skip to content
+        </a>
         <Header />
-        <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+        <main id="main-content" className="min-h-[calc(100vh-4rem)]">
+          {children}
+        </main>
         <Footer />
         <BottomNav />
         <Toaster />

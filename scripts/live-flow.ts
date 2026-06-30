@@ -48,7 +48,7 @@ async function main() {
   console.log(`event ${event.id} — "${event.name}"`);
 
   console.log("→ publish (deploys MisoTicket on chain if needed)…");
-  await publishEventSetup({ eventId: event.id, adminUserId: adminId });
+  await publishEventSetup({ eventId: event.id, actorUserId: adminId });
   const { data: published } = await sb
     .from("events")
     .select("nft_contract_address")
@@ -86,7 +86,8 @@ async function main() {
     })
     .select("id")
     .single<{ id: string }>();
-  if (purchaseErr || !purchase) throw purchaseErr ?? new Error("purchase insert failed");
+  if (purchaseErr || !purchase)
+    throw purchaseErr ?? new Error("purchase insert failed");
   console.log(`   purchase ${purchase.id}`);
 
   console.log("→ fulfill (mints ERC-721 on chain)…");
@@ -117,10 +118,16 @@ async function main() {
   console.log(`   attr tx: ${outcome.attr_tx_signature ?? "(none)"}`);
 
   console.log("\n✓ live flow complete");
-  console.log(`  contract: https://sepolia.basescan.org/address/${published?.nft_contract_address}`);
-  console.log(`  mint tx:  https://sepolia.basescan.org/tx/${fulfilled.mintTxHash}`);
+  console.log(
+    `  contract: https://sepolia.basescan.org/address/${published?.nft_contract_address}`,
+  );
+  console.log(
+    `  mint tx:  https://sepolia.basescan.org/tx/${fulfilled.mintTxHash}`,
+  );
   if (outcome.attr_tx_signature) {
-    console.log(`  redeem tx: https://sepolia.basescan.org/tx/${outcome.attr_tx_signature}`);
+    console.log(
+      `  redeem tx: https://sepolia.basescan.org/tx/${outcome.attr_tx_signature}`,
+    );
   }
 }
 

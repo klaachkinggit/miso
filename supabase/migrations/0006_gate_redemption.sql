@@ -3,8 +3,7 @@
 -- New flow:
 --   1. Controller opens a gate_session for an event.
 --   2. Customer opens the redemption page via the gate's short_code.
---   3. Customer (or custodial backend) signs a Solana transaction (Memo + on-chain
---      attribute update) proving NFT ownership.
+--   3. Backend wallet writes the on-chain redeemed attribute for the ticket.
 --   4. Backend confirms the transaction, links it to the gate_session, then flips
 --      the ticket → used.
 --
