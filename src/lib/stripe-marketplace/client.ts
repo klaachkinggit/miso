@@ -45,23 +45,12 @@ export function stripeEnv() {
   return cachedEnv;
 }
 
-export function resetStripeEnvCacheForTest() {
-  cachedEnv = undefined;
-}
-
-// Single Stripe SDK instance per server process. Reusing one Stripe()
-// keeps the underlying HTTP agent + retry config consistent across
-// every route and webhook handler.
-
 let cachedClient: Stripe | undefined;
 
 export function stripeClient(): Stripe {
   if (cachedClient) return cachedClient;
   const env = stripeEnv();
   cachedClient = new Stripe(env.STRIPE_SECRET_KEY, {
-    // Pin an explicit API version so a future global Stripe upgrade
-    // never silently changes payload shapes. Bump deliberately.
-    // Keep in lockstep with src/lib/payments/stripe.ts.
     apiVersion: "2026-05-27.dahlia",
     typescript: true,
     appInfo: {
@@ -70,14 +59,4 @@ export function stripeClient(): Stripe {
     },
   });
   return cachedClient;
-}
-
-export function resetStripeClientForTest() {
-  cachedClient = undefined;
-}
-
-// Inject a fake Stripe SDK for E2E tests that exercise every layer
-// without a network call. Production code never calls this.
-export function setStripeClientForTest(fake: Stripe) {
-  cachedClient = fake;
 }

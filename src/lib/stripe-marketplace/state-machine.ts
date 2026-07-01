@@ -27,7 +27,6 @@ export interface TransitionPlan {
 }
 
 // Pure reducer: maps (current_payment, event) → DB patch + side-effect flags.
-// No I/O. Tested in __tests__/state-machine.test.ts.
 export function reducePaymentTransition(
   payment: MarketplacePaymentRow,
   event: PaymentEvent,

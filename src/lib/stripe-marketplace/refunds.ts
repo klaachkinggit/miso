@@ -417,7 +417,6 @@ export interface ReversalStep {
 
 // Pure: prorate-min allocation across created transfers. Organizer royalty is
 // clawed back before resale-seller proceeds (closer to platform commission).
-// No I/O — tested in __tests__/reversal-plan.test.ts.
 export function planProRateReversals(
   transfers: MarketplaceTransferRow[],
   refundCents: number,

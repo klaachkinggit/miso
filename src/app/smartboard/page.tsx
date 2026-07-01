@@ -84,6 +84,9 @@ export default async function SmartboardPage({
     .order("created_at", { ascending: false })
     .returns<EventRow[]>();
   const eventRows = events ?? [];
+  const publishedEvents = eventRows.filter(
+    (event) => event.status === "published",
+  );
   const eventIds = eventRows.map((event) => event.id);
   const { data: tickets } = eventIds.length
     ? await sb
@@ -441,20 +444,15 @@ export default async function SmartboardPage({
                   Controller invitations are available inside published events
                   with generated tickets.
                 </p>
-                {eventRows.filter((event) => event.status === "published")
-                  .length ? (
+                {publishedEvents.length ? (
                   <div className="grid gap-2">
-                    {eventRows
-                      .filter((event) => event.status === "published")
-                      .map((event) => (
-                        <Button key={event.id} asChild variant="outline">
-                          <Link
-                            href={`/smartboard/events/${event.id}?tab=door`}
-                          >
-                            {event.name}
-                          </Link>
-                        </Button>
-                      ))}
+                    {publishedEvents.map((event) => (
+                      <Button key={event.id} asChild variant="outline">
+                        <Link href={`/smartboard/events/${event.id}?tab=door`}>
+                          {event.name}
+                        </Link>
+                      </Button>
+                    ))}
                   </div>
                 ) : (
                   <Badge variant="warning">Locked</Badge>
