@@ -1,10 +1,4 @@
-// MisoTicket ABI.
-//
-// Bytecode is generated from `contracts/MisoTicket.sol` by
-// `npm run contracts:compile`.
-//
-// ABI is hand-written from the Solidity source so runtime code can
-// deploy/read without depending on a compiler artifact.
+// MisoTicket ABI and bytecode used by runtime contract deployment.
 
 import { type Abi } from "viem";
 

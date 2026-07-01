@@ -1,14 +1,6 @@
 import { z } from "zod";
 
 const CurrencySchema = z.literal("EUR");
-const RelativeReturnPathSchema = z
-  .string()
-  .trim()
-  .max(512)
-  .regex(/^\/(?!\/)/, "Return path must be a relative path")
-  .refine((value) => !value.includes("\\") && !/[\r\n]/.test(value), {
-    message: "Return path contains invalid characters",
-  });
 const HexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #AABBCC");
@@ -164,24 +156,6 @@ export const CreateCategorySchema = z
         "Extra guests require a price per extra guest and a positive max extra guests.",
     },
   );
-
-export const PurchaseInitSchema = z.object({
-  category_id: z.string().uuid(),
-  quantity: z.coerce.number().int().min(1).max(10).default(1),
-  extra_guests_count: z.coerce.number().int().min(0).default(0),
-  gift_recipient_email: z
-    .string()
-    .email()
-    .optional()
-    .nullable()
-    .transform((v) => (v ? v.toLowerCase() : null)),
-  return_path: RelativeReturnPathSchema.optional().nullable(),
-});
-
-export const ResaleCheckoutSchema = z.object({
-  listing_id: z.string().uuid(),
-  return_path: RelativeReturnPathSchema.optional().nullable(),
-});
 
 export const ResellInitSchema = z.object({
   ticket_id: z.string().uuid(),

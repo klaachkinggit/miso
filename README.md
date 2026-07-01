@@ -45,9 +45,8 @@ for removed harness files and user-level installs for personal tool preferences.
 npm install --legacy-peer-deps
 cp .env.example .env.local          # fill in the values below
 supabase start
-supabase db reset                   # applies the migration chain (+ seed if present)
-npm run supabase:types              # regenerate types (also re-appends convenience aliases)
-npm run demo:seed                   # optional demo data
+supabase db reset                   # applies the migration chain
+npm run supabase:types              # regenerate local database types
 npm run dev                         # http://localhost:3002
 ```
 
@@ -102,14 +101,7 @@ Never commit `.env.local` or provider secrets.
 npm run typecheck
 npm run lint
 npm run build
-npm run test:unit        # vitest
-npm run test:e2e         # playwright (run `npm run test:e2e:install` once)
-# standard local suite: npm run test:all
 ```
-
-`npm run test:all` runs typecheck, lint, unit tests, and default e2e. Release
-validation also includes `npm run build`, `npm run test:e2e:all-local`, and the
-live-chain smoke when credentials are available; see `tests/README.md`.
 
 ## Deploy
 
