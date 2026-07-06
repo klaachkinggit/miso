@@ -9,6 +9,11 @@ out
 dist
 build
 
+# test/build reports
+coverage
+playwright-report
+test-results
+
 # env
 .env
 .env.local
