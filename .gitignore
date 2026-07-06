@@ -46,7 +46,8 @@ artifacts/
 
 # local agent/runtime state
 .agents/
-.codex/
+.codex/bash.log
+.codex/sessions/
 .claude/
 
 # local code graph index

@@ -1,0 +1,33 @@
+[mcp_servers.vercel]
+url = "https://mcp.vercel.com"
+
+[mcp_servers.supabase]
+url = "https://mcp.supabase.com/mcp?read_only=true"
+
+[mcp_servers.stripe]
+command = "npx"
+args = ["-y", "@stripe/mcp@latest"]
+env_vars = ["STRIPE_SECRET_KEY"]
+
+[mcp_servers.github]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
+
+[mcp_servers.github.env]
+GITHUB_PERSONAL_ACCESS_TOKEN = "$GITHUB_TOKEN"
+
+[mcp_servers.git]
+command = "uvx"
+args = ["mcp-server-git", "--repository", "."]
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp"]
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
