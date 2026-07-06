@@ -50,9 +50,8 @@ src/types/db.generated.ts
 artifacts/
 
 # local agent/runtime state
+.codex/
 .agents/
-.codex/bash.log
-.codex/sessions/
 .claude/
 
 # local code graph index

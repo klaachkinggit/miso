@@ -21,7 +21,7 @@ If a `.codegraph/` directory exists, use CodeGraph before grep/find or broad fil
 - Supabase generated types live in `src/types/db.ts`; regenerate them with `npm run supabase:types` after local migration changes.
 - Runtime configuration examples live in `.env.example`; never edit or commit `.env`.
 
-Edit source owners, not generated output. Do not edit `.next/`, `node_modules/`, `.vercel/`, `.codegraph/`, `.agents/`, `.codex/sessions/`, or local environment files.
+Edit source owners, not generated output. Do not edit `.next/`, `node_modules/`, `.vercel/`, `.codegraph/`, `.agents/`, `.codex/`, `.claude/`, or local environment files.
 
 ## Verification
 

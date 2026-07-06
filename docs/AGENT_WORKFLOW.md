@@ -6,12 +6,12 @@ This document treats Miso as an AI-agent work environment, not only as a codebas
 
 Safe facts from the current checkout:
 
-- The repository is compact: application code, migrations, docs, local Codex skill/config files, and package metadata are tracked.
+- The repository is compact: application code, migrations, docs, lightweight agent workflow scripts, and package metadata are tracked.
 - No tracked build output, reports, archives, or obvious generated artifact directories were found in the tracked file set.
-- Local runtime directories are ignored: `.next/`, `node_modules/`, `.vercel/`, `.codegraph/`, `.agents/`, `.claude/`, and Codex session logs.
+- Local runtime directories are ignored: `.next/`, `node_modules/`, `.vercel/`, `.codegraph/`, `.agents/`, `.codex/`, and `.claude/`.
 - There is no `.codegraph/` index in this checkout right now, so agents should not assume CodeGraph is available.
 - `src/types/db.ts` is generated from Supabase and is tracked because application code imports it.
-- The old broad harness surface is not present on this branch. Keep the replacement lightweight and repo-local.
+- The old broad harness and repo-local Codex config surfaces are not present on this branch. Keep the replacement lightweight, production-safe, and repo-local.
 
 Main risks for future AI work:
 
@@ -63,7 +63,7 @@ Never edit or commit:
 
 - `.env`, `.env.local`, `.env.*.local`
 - `.next/`, `node_modules/`, `out/`, `dist/`, `build/`
-- `.vercel/`, `.codegraph/`, `.agents/`, `.claude/`, `.codex/sessions/`
+- `.vercel/`, `.codegraph/`, `.agents/`, `.codex/`, `.claude/`
 - test reports, coverage, local screenshots, or one-off audit reports unless the user explicitly asks for a tracked artifact
 
 Tracked generated contract:

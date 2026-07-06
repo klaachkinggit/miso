@@ -31,7 +31,7 @@ fi
 
 tracked_local_artifacts="$(
   git ls-files \
-    '.next/*' 'node_modules/*' '.vercel/*' '.codegraph/*' '.agents/*' '.claude/*' \
+    '.next/*' 'node_modules/*' '.vercel/*' '.codegraph/*' '.agents/*' '.codex/*' '.claude/*' \
     'coverage/*' 'playwright-report/*' 'test-results/*' 'out/*' 'dist/*' 'build/*' \
     2>/dev/null || true
 )"
@@ -48,7 +48,7 @@ if [ -n "$tracked_stale_artifacts" ]; then
   fail "tracked stale report/backup/handoff artifacts need explicit ownership"
 fi
 
-for path in .env .env.local .next/ node_modules/ .vercel/ .codegraph/ .agents/ .claude/ .codex/sessions/ coverage/ playwright-report/ test-results/ out/ dist/ build/; do
+for path in .env .env.local .next/ node_modules/ .vercel/ .codegraph/ .agents/ .codex/ .claude/ coverage/ playwright-report/ test-results/ out/ dist/ build/; do
   git check-ignore -q "$path" || fail "$path is not ignored"
 done
 
@@ -73,7 +73,7 @@ if (missing.length) {
   console.error(`Missing package scripts: ${missing.join(", ")}`);
   process.exit(1);
 }
-for (const file of [".codex/hooks.json", "package-lock.json"]) {
+for (const file of ["package-lock.json"]) {
   if (fs.existsSync(file)) JSON.parse(fs.readFileSync(file, "utf8"));
 }
 '
