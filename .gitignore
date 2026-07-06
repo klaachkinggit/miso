@@ -38,11 +38,7 @@ src/types/db.generated.ts
 # typescript
 *.tsbuildinfo
 
-# playwright
-playwright-report
-test-results
-playwright/.cache
-.playwright-mcp
+# vercel
 .vercel
 
 # solidity artifacts
@@ -50,13 +46,8 @@ artifacts/
 
 # local agent/runtime state
 .agents/
-.codex/bash.log
-.codex/sessions/
-.claude/bash.log
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
-.claude/sessions/
-.claude/projects/
+.codex/
+.claude/
 
 # local code graph index
 .codegraph/

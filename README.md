@@ -13,31 +13,8 @@ on Base Sepolia (Thirdweb); payments run on Stripe Connect.
 - Thirdweb — ERC-721 ticket minting/transfers on Base Sepolia
 - Vercel AI SDK v6 — Anthropic (copilot + buyer assistant), OpenAI (embeddings)
 - Resend (transactional email), Upstash Redis (rate limiting), Sentry (monitoring)
-- Vitest (unit) + Playwright (e2e)
 
-See `docs/FEATURES.md` for the code-derived feature inventory,
-`docs/CONTEXT.md` for the domain glossary (authoritative), `docs/adr/` for key
-decisions, and `docs/ENVIRONMENT.md` for the current key/secret inventory.
-
-## Agent harness
-
-The repo-local agent harness supports switching between Codex and Claude without
-changing project behavior. Some information is intentionally duplicated across
-provider entrypoints so each tool can boot with the same project contract:
-
-- `AGENTS.md` — Codex/project shared rules
-- `CLAUDE.md` — Claude Code mirror of the same rules
-- `prompts/` — shared reusable workflow prompts
-- `.codex/config.toml` — MCP server configuration
-- `.codex/hooks.json` + `.codex/hooks/` — local safety/format hooks
-- `.codex/skills/` — Codex skill mirror with compact entrypoints
-- `.claude/settings.json` + `.claude/hooks/` — Claude Code safety/format hooks
-- `.claude/commands/` — Claude slash-command wrappers for `prompts/`
-- `.claude/skills/` — Claude skill mirror matching `.codex/skills/`
-
-`.codex/skills/` and `.claude/skills/` should stay mirrored. Legacy `.agents/`
-folders and in-repo harness archive folders are not kept here; use git history
-for removed harness files and user-level installs for personal tool preferences.
+See `docs/CONTEXT.md` for the domain glossary and product rules.
 
 ## Local setup
 
@@ -105,7 +82,6 @@ npm run build
 
 ## Deploy
 
-Vercel-ready: `development` → preview, `main` → production (production is cut from
-`development`; never push `main` directly). Configure production from
-`.env.example` plus `docs/ci-and-deploy.md`. Storefront subdomains need a
-wildcard domain; custom domains are provisioned via the Vercel Domains API.
+Vercel-ready: `main` is the production branch. Configure production from
+`.env.example`. Storefront subdomains need a wildcard domain; custom domains are
+provisioned via the Vercel Domains API.

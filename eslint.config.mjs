@@ -11,14 +11,9 @@ const config = [
   {
     ignores: [
       ".next/**",
-      ".codex/**",
-      ".harness-archive/**",
       "node_modules/**",
       "next-env.d.ts",
       "supabase/**",
-      "scripts/**",
-      "playwright-report/**",
-      "test-results/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
