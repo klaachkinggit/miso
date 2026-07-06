@@ -75,26 +75,10 @@ Never commit `.env.local` or provider secrets.
 ## Checks
 
 ```bash
-npm run agent:check-repo
-npm run agent:preflight
-npm run agent:verify
-```
-
-`agent:check-repo` verifies the agent-facing repo contract. `agent:preflight`
-is the start-of-task hygiene check and refuses a dirty tree. `agent:verify`
-runs the full local implementation gate. Before handing work off, run
-`npm run agent:finish`; it refuses to pass while the Git worktree is dirty.
-
-For individual checks:
-
-```bash
 npm run typecheck
 npm run lint
 npm run build
 ```
-
-AI agents should read `AGENTS.md` first, then `docs/AGENT_WORKFLOW.md` for the
-ownership map, generated-file rules, and recovery plan.
 
 ## Deploy
 

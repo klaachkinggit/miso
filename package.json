@@ -8,10 +8,6 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "agent:check-repo": "bash tools/agent-check-repo.sh",
-    "agent:preflight": "bash tools/agent-preflight.sh",
-    "agent:verify": "bash tools/agent-verify.sh",
-    "agent:finish": "bash tools/agent-finish.sh",
     "supabase:types": "supabase gen types typescript --local > src/types/db.ts"
   },
   "dependencies": {
